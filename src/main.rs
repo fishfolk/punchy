@@ -70,6 +70,8 @@ impl Animation {
     }
 }
 
+#[derive(Component)]
+pub struct Parallax;
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
@@ -80,6 +82,7 @@ fn main() {
         .add_system(animation_cycling)
         .add_system(animation_flipping)
         .add_system(player_animation_state)
+        .add_system(parallax_system)
         .run();
 }
 
@@ -105,15 +108,39 @@ fn setup(
         .spawn_bundle(SpriteSheetBundle {
             sprite: TextureAtlasSprite::new(0),
             texture_atlas: atlas_handle,
-            //transform: Transform::from_xyz(0., 0., 1.),
+            transform: Transform::from_xyz(0., 0., 100.),
             ..Default::default()
         })
         .insert(Player {
-            movement_speed: 250.0,
+            movement_speed: 100.0,
             facing_left: false,
             state: State::IDLE,
         })
         .insert(Animation::new(7. / 60., animation_map));
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("background_01.png"),
+            transform: Transform::from_xyz(0., 0., 4.),
+            ..Default::default()
+        })
+        .insert(Parallax);
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("background_02.png"),
+            transform: Transform::from_xyz(0., 0., 3.),
+            ..Default::default()
+        })
+        .insert(Parallax);
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("background_03.png"),
+            transform: Transform::from_xyz(0., 0., 2.),
+            ..Default::default()
+        })
+        .insert(Parallax);
 }
 
 fn player_controller(
@@ -201,4 +228,17 @@ fn camera_follow_player(
     //TODO: Add a way to change the camera speed
     camera.translation.x += (player.x - camera.translation.x) * time.delta_seconds() * 5.;
     camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
+}
+
+pub fn parallax_system(
+    cam_query: Query<&Transform, With<Camera>>,
+    mut query: Query<&mut Transform, (With<Parallax>, Without<Camera>)>,
+) {
+    let cam_trans = cam_query.single();
+
+    //TODO: Check the parallax values
+    for mut trans in query.iter_mut() {
+        trans.translation.x = -cam_trans.translation.x * (0.2 * trans.translation.z);
+        trans.translation.y = -cam_trans.translation.y * (0.1 * trans.translation.z);
+    }
 }
