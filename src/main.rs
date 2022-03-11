@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{ops::Range, time::Duration};
 
 use bevy::{prelude::*, utils::HashMap};
 
@@ -75,6 +75,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(player_controller)
+        .add_system(camera_follow_player)
         .add_system(animation_cycling)
         .add_system(animation_flipping)
         .add_system(player_animation_state)
@@ -87,7 +88,7 @@ fn setup(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
-    camera_bundle.orthographic_projection.scale = 0.5;
+    camera_bundle.orthographic_projection.scale = 0.75;
     commands.spawn_bundle(camera_bundle);
 
     let texture_handle = asset_server.load("PlayerFishy(96x80).png");
@@ -186,4 +187,17 @@ fn player_animation_state(mut query: Query<(&Player, &mut Animation)>) {
     let (player, mut animation) = query.single_mut();
 
     animation.set(player.state);
+}
+
+fn camera_follow_player(
+    player_query: Query<&Transform, With<Player>>,
+    mut camera_query: Query<&mut Transform, (With<Camera>, Without<Player>)>,
+    time: Res<Time>,
+) {
+    let player = player_query.single().translation;
+    let mut camera = camera_query.single_mut();
+
+    //TODO: Add a way to change the camera speed
+    camera.translation.x += (player.x - camera.translation.x) * time.delta_seconds() * 5.;
+    camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
 }
