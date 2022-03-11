@@ -5,6 +5,7 @@ use bevy::prelude::*;
 #[derive(Component)]
 struct Player {
     movement_speed: f32,
+    facing_left: bool,
 }
 
 #[derive(Component)]
@@ -12,6 +13,7 @@ struct Animation {
     indices: Range<usize>,
     timer: Timer,
 }
+
 impl Animation {
     fn new(fps: f32, indices: Range<usize>) -> Self {
         Self {
@@ -27,6 +29,7 @@ fn main() {
         .add_startup_system(setup)
         .add_system(player_controller)
         .add_system(animation_cycling)
+        .add_system(animation_flipping_system)
         .run();
 }
 
@@ -49,23 +52,26 @@ fn setup(
         })
         .insert(Player {
             movement_speed: 250.0,
+            facing_left: false,
         })
         .insert(Animation::new(5. / 60., 0..13));
 }
 
 fn player_controller(
-    mut query: Query<(&Player, &mut Transform)>,
+    mut query: Query<(&mut Player, &mut Transform)>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (player, mut transform) = query.single_mut();
+    let (mut player, mut transform) = query.single_mut();
 
     if keyboard.pressed(KeyCode::A) {
         transform.translation.x -= player.movement_speed * time.delta_seconds();
+        player.facing_left = true;
     }
 
     if keyboard.pressed(KeyCode::D) {
         transform.translation.x += player.movement_speed * time.delta_seconds();
+        player.facing_left = false;
     }
 
     if keyboard.pressed(KeyCode::W) {
@@ -89,4 +95,10 @@ fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>
             }
         }
     }
+}
+
+fn animation_flipping_system(mut query: Query<(&mut TextureAtlasSprite, &Player)>) {
+    let (mut texture_atlas_sprite, player) = query.single_mut();
+
+    texture_atlas_sprite.flip_x = player.facing_left;
 }
