@@ -1,4 +1,4 @@
-use std::{ops::Range, time::Duration};
+use std::ops::Range;
 
 use bevy::{prelude::*, utils::HashMap};
 
@@ -72,6 +72,7 @@ impl Animation {
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(player_controller)
