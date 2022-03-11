@@ -1,25 +1,72 @@
 use std::ops::Range;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+enum State {
+    IDLE,
+    RUNNING,
+}
 
 #[derive(Component)]
 struct Player {
     movement_speed: f32,
     facing_left: bool,
+    state: State,
 }
 
 #[derive(Component)]
 struct Animation {
-    indices: Range<usize>,
+    animations: HashMap<State, Range<usize>>,
+    current_frame: usize,
+    current_state: Option<State>,
     timer: Timer,
 }
 
 impl Animation {
-    fn new(fps: f32, indices: Range<usize>) -> Self {
+    fn new(fps: f32, animations: HashMap<State, Range<usize>>) -> Self {
         Self {
-            indices: indices,
+            animations,
+            current_frame: 0,
+            current_state: None,
             timer: Timer::from_seconds(fps, true),
         }
+    }
+
+    fn set(&mut self, state: State) {
+        if self.current_state == Some(state) {
+            return;
+        }
+
+        self.current_frame = 0;
+        self.current_state = Some(state);
+        self.timer.reset();
+    }
+
+    fn is_last_frame(&self) -> bool {
+        if let Some(indices) = self.get_current_indices() {
+            if let Some(index) = self.get_current_index() {
+                return index >= indices.end;
+            }
+        }
+
+        return false;
+    }
+
+    fn get_current_indices(&self) -> Option<&Range<usize>> {
+        if let Some(state) = self.current_state {
+            return self.animations.get(&state);
+        }
+
+        None
+    }
+
+    fn get_current_index(&self) -> Option<usize> {
+        if let Some(indices) = self.get_current_indices() {
+            return Some(indices.start + self.current_frame);
+        }
+
+        None
     }
 }
 
@@ -29,7 +76,8 @@ fn main() {
         .add_startup_system(setup)
         .add_system(player_controller)
         .add_system(animation_cycling)
-        .add_system(animation_flipping_system)
+        .add_system(animation_flipping)
+        .add_system(player_animation_state)
         .run();
 }
 
@@ -38,10 +86,18 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    let mut camera_bundle = OrthographicCameraBundle::new_2d();
+    camera_bundle.orthographic_projection.scale = 0.5;
+    commands.spawn_bundle(camera_bundle);
+
     let texture_handle = asset_server.load("PlayerFishy(96x80).png");
     let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(96., 80.), 14, 7);
     let atlas_handle = texture_atlases.add(texture_atlas);
+
+    let mut animation_map = HashMap::default();
+
+    animation_map.insert(State::IDLE, 0..13);
+    animation_map.insert(State::RUNNING, 14..19);
 
     commands
         .spawn_bundle(SpriteSheetBundle {
@@ -53,8 +109,9 @@ fn setup(
         .insert(Player {
             movement_speed: 250.0,
             facing_left: false,
+            state: State::IDLE,
         })
-        .insert(Animation::new(5. / 60., 0..13));
+        .insert(Animation::new(7. / 60., animation_map));
 }
 
 fn player_controller(
@@ -64,22 +121,38 @@ fn player_controller(
 ) {
     let (mut player, mut transform) = query.single_mut();
 
+    let mut dir = Vec2::ZERO;
+
     if keyboard.pressed(KeyCode::A) {
-        transform.translation.x -= player.movement_speed * time.delta_seconds();
-        player.facing_left = true;
+        dir -= Vec2::X;
     }
 
     if keyboard.pressed(KeyCode::D) {
-        transform.translation.x += player.movement_speed * time.delta_seconds();
-        player.facing_left = false;
+        dir += Vec2::X;
     }
 
     if keyboard.pressed(KeyCode::W) {
-        transform.translation.y += player.movement_speed * time.delta_seconds();
+        dir += Vec2::Y;
     }
 
     if keyboard.pressed(KeyCode::S) {
-        transform.translation.y -= player.movement_speed * time.delta_seconds();
+        dir -= Vec2::Y;
+    }
+
+    dir = dir.normalize_or_zero() * player.movement_speed * time.delta_seconds();
+    transform.translation.x += dir.x;
+    transform.translation.y += dir.y;
+
+    if dir.x > 0. {
+        player.facing_left = false;
+    } else if dir.x < 0. {
+        player.facing_left = true;
+    }
+
+    if dir == Vec2::ZERO {
+        player.state = State::IDLE;
+    } else {
+        player.state = State::RUNNING;
     }
 }
 
@@ -89,16 +162,28 @@ fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>
 
         if animation.timer.finished() {
             animation.timer.reset();
-            texture_atlas_sprite.index += 1;
-            if texture_atlas_sprite.index > animation.indices.end {
-                texture_atlas_sprite.index = animation.indices.start;
+
+            if animation.is_last_frame() {
+                animation.current_frame = 0;
+            } else {
+                animation.current_frame += 1;
             }
+        }
+
+        if let Some(index) = animation.get_current_index() {
+            texture_atlas_sprite.index = index;
         }
     }
 }
 
-fn animation_flipping_system(mut query: Query<(&mut TextureAtlasSprite, &Player)>) {
+fn animation_flipping(mut query: Query<(&mut TextureAtlasSprite, &Player)>) {
     let (mut texture_atlas_sprite, player) = query.single_mut();
 
     texture_atlas_sprite.flip_x = player.facing_left;
+}
+
+fn player_animation_state(mut query: Query<(&Player, &mut Animation)>) {
+    let (player, mut animation) = query.single_mut();
+
+    animation.set(player.state);
 }
