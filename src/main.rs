@@ -6,6 +6,7 @@ use bevy::{prelude::*, utils::HashMap};
 enum State {
     IDLE,
     RUNNING,
+    ATTACKING,
 }
 
 #[derive(Component)]
@@ -83,6 +84,7 @@ fn main() {
         .add_system(animation_flipping)
         .add_system(player_animation_state)
         .add_system(parallax_system)
+        .add_system(player_attack)
         .run();
 }
 
@@ -103,6 +105,7 @@ fn setup(
 
     animation_map.insert(State::IDLE, 0..13);
     animation_map.insert(State::RUNNING, 14..19);
+    animation_map.insert(State::ATTACKING, 85..91);
 
     commands
         .spawn_bundle(SpriteSheetBundle {
@@ -112,7 +115,7 @@ fn setup(
             ..Default::default()
         })
         .insert(Player {
-            movement_speed: 100.0,
+            movement_speed: 150.0,
             facing_left: false,
             state: State::IDLE,
         })
@@ -149,6 +152,10 @@ fn player_controller(
     time: Res<Time>,
 ) {
     let (mut player, mut transform) = query.single_mut();
+
+    if player.state == State::ATTACKING {
+        return;
+    }
 
     let mut dir = Vec2::ZERO;
 
@@ -230,7 +237,7 @@ fn camera_follow_player(
     camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
 }
 
-pub fn parallax_system(
+fn parallax_system(
     cam_query: Query<&Transform, With<Camera>>,
     mut query: Query<&mut Transform, (With<Parallax>, Without<Camera>)>,
 ) {
@@ -240,5 +247,44 @@ pub fn parallax_system(
     for mut trans in query.iter_mut() {
         trans.translation.x = -cam_trans.translation.x * (0.2 * trans.translation.z);
         trans.translation.y = -cam_trans.translation.y * (0.1 * trans.translation.z);
+    }
+}
+
+fn player_attack(
+    mut query: Query<(&mut Player, &mut Transform, &Animation)>,
+    keyboard: Res<Input<KeyCode>>,
+    time: Res<Time>,
+) {
+    let (mut player, mut transform, animation) = query.single_mut();
+
+    if player.state != State::ATTACKING {
+        if keyboard.just_pressed(KeyCode::Space) {
+            player.state = State::ATTACKING;
+        }
+    } else {
+        if animation.is_last_frame() {
+            player.state = State::IDLE;
+        } else {
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame < 3 {
+                if player.facing_left {
+                    transform.translation.x -= 100. * time.delta_seconds();
+                } else {
+                    transform.translation.x += 100. * time.delta_seconds();
+                }
+            } else if animation.current_frame < 4 {
+                if player.facing_left {
+                    transform.translation.x -= 50. * time.delta_seconds();
+                } else {
+                    transform.translation.x += 50. * time.delta_seconds();
+                }
+            }
+
+            if animation.current_frame < 1 {
+                transform.translation.y += 140. * time.delta_seconds();
+            } else if animation.current_frame < 3 {
+                transform.translation.y -= 70. * time.delta_seconds();
+            }
+        }
     }
 }
