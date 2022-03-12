@@ -121,7 +121,13 @@ fn setup(
         })
         .insert(Animation::new(7. / 60., animation_map));
 
-    commands
+    commands.spawn_bundle(SpriteBundle {
+        texture: asset_server.load("preview_stage.png"),
+        transform: Transform::from_xyz(0., 0., 10.),
+        ..Default::default()
+    });
+
+    /* commands
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("background_01.png"),
             transform: Transform::from_xyz(0., 0., 4.),
@@ -143,7 +149,7 @@ fn setup(
             transform: Transform::from_xyz(0., 0., 2.),
             ..Default::default()
         })
-        .insert(Parallax);
+        .insert(Parallax); */
 }
 
 fn player_controller(
@@ -234,7 +240,7 @@ fn camera_follow_player(
 
     //TODO: Add a way to change the camera speed
     camera.translation.x += (player.x - camera.translation.x) * time.delta_seconds() * 5.;
-    camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
+    //   camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
 }
 
 fn parallax_system(
@@ -268,9 +274,9 @@ fn player_attack(
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
                 if player.facing_left {
-                    transform.translation.x -= 100. * time.delta_seconds();
+                    transform.translation.x -= 200. * time.delta_seconds();
                 } else {
-                    transform.translation.x += 100. * time.delta_seconds();
+                    transform.translation.x += 200. * time.delta_seconds();
                 }
             } else if animation.current_frame < 4 {
                 if player.facing_left {
@@ -281,9 +287,9 @@ fn player_attack(
             }
 
             if animation.current_frame < 1 {
-                transform.translation.y += 140. * time.delta_seconds();
+                transform.translation.y += 180. * time.delta_seconds();
             } else if animation.current_frame < 3 {
-                transform.translation.y -= 70. * time.delta_seconds();
+                transform.translation.y -= 90. * time.delta_seconds();
             }
         }
     }
