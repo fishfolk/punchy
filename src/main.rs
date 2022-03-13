@@ -7,6 +7,7 @@ enum State {
     IDLE,
     RUNNING,
     ATTACKING,
+    KNOCKED,
 }
 
 #[derive(Component)]
@@ -71,6 +72,8 @@ impl Animation {
     }
 }
 
+struct Direction {}
+
 #[derive(Component)]
 pub struct Parallax;
 fn main() {
@@ -105,6 +108,7 @@ fn setup(
 
     animation_map.insert(State::IDLE, 0..13);
     animation_map.insert(State::RUNNING, 14..19);
+    animation_map.insert(State::KNOCKED, 61..77);
     animation_map.insert(State::ATTACKING, 85..91);
 
     commands
@@ -119,13 +123,29 @@ fn setup(
             facing_left: false,
             state: State::IDLE,
         })
-        .insert(Animation::new(7. / 60., animation_map));
+        .insert(Animation::new(7. / 60., animation_map.clone()));
 
     commands.spawn_bundle(SpriteBundle {
         texture: asset_server.load("preview_stage.png"),
         transform: Transform::from_xyz(0., 0., 10.),
         ..Default::default()
     });
+
+    let enemy_texture_handle = asset_server.load("PlayerSharky(96x80).png");
+    let enemy_texture_atlas =
+        TextureAtlas::from_grid(enemy_texture_handle, Vec2::new(96., 80.), 14, 7);
+    let enemy_atlas_handle = texture_atlases.add(enemy_texture_atlas);
+
+    for pos in vec![(100., 35.), (300., -65.)] {
+        commands
+            .spawn_bundle(SpriteSheetBundle {
+                sprite: TextureAtlasSprite::new(0),
+                texture_atlas: enemy_atlas_handle.clone(),
+                transform: Transform::from_xyz(pos.0, pos.1, 100.),
+                ..Default::default()
+            })
+            .insert(Animation::new(7. / 60., animation_map.clone()));
+    }
 
     /* commands
         .spawn_bundle(SpriteBundle {
@@ -277,12 +297,6 @@ fn player_attack(
                     transform.translation.x -= 200. * time.delta_seconds();
                 } else {
                     transform.translation.x += 200. * time.delta_seconds();
-                }
-            } else if animation.current_frame < 4 {
-                if player.facing_left {
-                    transform.translation.x -= 50. * time.delta_seconds();
-                } else {
-                    transform.translation.x += 50. * time.delta_seconds();
                 }
             }
 
