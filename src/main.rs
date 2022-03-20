@@ -84,11 +84,20 @@ impl Animation {
 struct YSort(f32);
 
 #[derive(Component)]
+struct Stats {
+    health: i32,
+    damage: i32,
+}
+
+#[derive(Component)]
 pub struct Parallax;
 
 const PLAYER_WIDTH: f32 = 96.;
 const PLAYER_HEIGHT: f32 = 80.;
 const PLAYER_HITBOX_HEIGHT: f32 = 50.;
+
+const GROUND_HEIGHT: f32 = 130.;
+const GROUND_OFFSET: f32 = 25.;
 
 fn main() {
     App::new()
@@ -106,6 +115,7 @@ fn main() {
         .add_system(helper_camera_controller)
         .add_system(y_sort)
         .add_system(knock_enemies)
+        .add_system(kill_entities)
         .run();
 }
 
@@ -147,6 +157,10 @@ fn setup(
             facing_left: false,
             state: State::IDLE,
         })
+        .insert(Stats {
+            health: 100,
+            damage: 35,
+        })
         .insert(RigidBody::Sensor)
         .insert(CollisionShape::Cuboid {
             half_extends: Vec3::new(PLAYER_WIDTH, PLAYER_HITBOX_HEIGHT, 0.) / 8.,
@@ -175,6 +189,10 @@ fn setup(
                 texture_atlas: enemy_atlas_handle.clone(),
                 transform: Transform::from_xyz(pos.0, pos.1, 0.),
                 ..Default::default()
+            })
+            .insert(Stats {
+                health: 100,
+                damage: 35,
             })
             .insert(RigidBody::Sensor)
             .insert(CollisionShape::Cuboid {
@@ -240,10 +258,22 @@ fn player_controller(
         dir -= Vec2::Y;
     }
 
+    //Normalize direction
     dir = dir.normalize_or_zero() * player.movement_speed * time.delta_seconds();
+
+    //Restrict player to the ground
+    let new_y = transform.translation.y + dir.y;
+    let max_y = GROUND_HEIGHT / 2.;
+
+    if new_y + GROUND_OFFSET >= max_y || new_y + GROUND_OFFSET <= -max_y {
+        dir.y = 0.;
+    }
+
+    //Move the player
     transform.translation.x += dir.x;
     transform.translation.y += dir.y;
 
+    //Set the player state and direction
     if dir.x > 0. {
         player.facing_left = false;
     } else if dir.x < 0. {
@@ -396,17 +426,30 @@ fn y_sort(mut query: Query<(&mut Transform, &YSort)>) {
     }
 }
 
-fn knock_enemies(mut events: EventReader<CollisionEvent>, mut query: Query<&mut Animation>) {
+fn knock_enemies(
+    mut events: EventReader<CollisionEvent>,
+    mut query: Query<(&mut Animation, &mut Stats)>,
+) {
     events.iter().filter(|e| e.is_started()).for_each(|e| {
         let (e1, e2) = e.rigid_body_entities();
         let (l1, l2) = e.collision_layers();
 
         if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
-            let player_state = query.get(e1).unwrap().current_state;
-            if let Ok(mut anim) = query.get_mut(e2) {
-                anim.set(State::KNOCKED);
-                if player_state == Some(State::ATTACKING) {}
+            let (player_anim, player_stats) = query.get(e1).unwrap();
+            if let Ok((mut anim, mut stats)) = query.get_mut(e2) {
+                if player_anim.current_state == Some(State::ATTACKING) {
+                    stats.health = stats.health - player_stats.damage;
+                    anim.set(State::KNOCKED);
+                }
             }
         }
     })
+}
+
+fn kill_entities(mut commands: Commands, query: Query<(Entity, &Stats)>) {
+    for (entity, stats) in query.iter() {
+        if stats.health <= 0 {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
 }
