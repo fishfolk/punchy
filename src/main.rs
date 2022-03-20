@@ -1,6 +1,8 @@
 use std::ops::Range;
 
-use bevy::{prelude::*, utils::HashMap};
+use heron::{prelude::*, SensorShape};
+
+use bevy::{prelude::*, render::camera::CameraProjection, utils::HashMap};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum State {
@@ -8,6 +10,12 @@ enum State {
     RUNNING,
     ATTACKING,
     KNOCKED,
+}
+
+#[derive(PhysicsLayer)]
+enum BodyLayers {
+    Enemy,
+    Player,
 }
 
 #[derive(Component)]
@@ -72,14 +80,21 @@ impl Animation {
     }
 }
 
-struct Direction {}
+#[derive(Component)]
+struct YSort(f32);
 
 #[derive(Component)]
 pub struct Parallax;
+
+const PLAYER_WIDTH: f32 = 96.;
+const PLAYER_HEIGHT: f32 = 80.;
+const PLAYER_HITBOX_HEIGHT: f32 = 50.;
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
         .add_plugins(DefaultPlugins)
+        .add_plugin(PhysicsPlugin::default())
         .add_startup_system(setup)
         .add_system(player_controller)
         .add_system(camera_follow_player)
@@ -88,6 +103,9 @@ fn main() {
         .add_system(player_animation_state)
         .add_system(parallax_system)
         .add_system(player_attack)
+        .add_system(helper_camera_controller)
+        .add_system(y_sort)
+        .add_system(knock_enemies)
         .run();
 }
 
@@ -97,25 +115,31 @@ fn setup(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
+    // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
     camera_bundle.orthographic_projection.scale = 0.75;
     commands.spawn_bundle(camera_bundle);
 
     let texture_handle = asset_server.load("PlayerFishy(96x80).png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(96., 80.), 14, 7);
+    let texture_atlas = TextureAtlas::from_grid(
+        texture_handle,
+        Vec2::new(PLAYER_WIDTH, PLAYER_HEIGHT),
+        14,
+        7,
+    );
     let atlas_handle = texture_atlases.add(texture_atlas);
 
     let mut animation_map = HashMap::default();
 
     animation_map.insert(State::IDLE, 0..13);
     animation_map.insert(State::RUNNING, 14..19);
-    animation_map.insert(State::KNOCKED, 61..77);
+    animation_map.insert(State::KNOCKED, 71..77);
     animation_map.insert(State::ATTACKING, 85..91);
 
     commands
         .spawn_bundle(SpriteSheetBundle {
             sprite: TextureAtlasSprite::new(0),
             texture_atlas: atlas_handle,
-            transform: Transform::from_xyz(0., 0., 100.),
+            transform: Transform::from_xyz(0., 0., 0.),
             ..Default::default()
         })
         .insert(Player {
@@ -123,11 +147,19 @@ fn setup(
             facing_left: false,
             state: State::IDLE,
         })
-        .insert(Animation::new(7. / 60., animation_map.clone()));
+        .insert(RigidBody::Sensor)
+        .insert(CollisionShape::Cuboid {
+            half_extends: Vec3::new(PLAYER_WIDTH, PLAYER_HITBOX_HEIGHT, 0.) / 8.,
+            border_radius: None,
+        })
+        .insert(CollisionLayers::new(BodyLayers::Player, BodyLayers::Enemy))
+        .insert(SensorShape)
+        .insert(Animation::new(7. / 60., animation_map.clone()))
+        .insert(YSort(100.));
 
     commands.spawn_bundle(SpriteBundle {
         texture: asset_server.load("preview_stage.png"),
-        transform: Transform::from_xyz(0., 0., 10.),
+        transform: Transform::from_xyz(0., 0., 0.),
         ..Default::default()
     });
 
@@ -141,10 +173,17 @@ fn setup(
             .spawn_bundle(SpriteSheetBundle {
                 sprite: TextureAtlasSprite::new(0),
                 texture_atlas: enemy_atlas_handle.clone(),
-                transform: Transform::from_xyz(pos.0, pos.1, 100.),
+                transform: Transform::from_xyz(pos.0, pos.1, 0.),
                 ..Default::default()
             })
-            .insert(Animation::new(7. / 60., animation_map.clone()));
+            .insert(RigidBody::Sensor)
+            .insert(CollisionShape::Cuboid {
+                half_extends: Vec3::new(PLAYER_WIDTH, PLAYER_HITBOX_HEIGHT, 0.) / 8.,
+                border_radius: None,
+            })
+            .insert(CollisionLayers::new(BodyLayers::Enemy, BodyLayers::Player))
+            .insert(Animation::new(7. / 60., animation_map.clone()))
+            .insert(YSort(100.));
     }
 
     /* commands
@@ -307,4 +346,67 @@ fn player_attack(
             }
         }
     }
+}
+
+//Helper camera controller
+pub fn helper_camera_controller(
+    mut query: Query<(&mut Camera, &mut OrthographicProjection, &mut Transform)>,
+    keys: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    windows: Res<Windows>,
+) {
+    let (mut camera, mut projection, mut transform) = query.single_mut();
+
+    if keys.pressed(KeyCode::Up) {
+        transform.translation.y += 150.0 * time.delta_seconds();
+    }
+    if keys.pressed(KeyCode::Left) {
+        transform.translation.x -= 150.0 * time.delta_seconds();
+    }
+    if keys.pressed(KeyCode::Down) {
+        transform.translation.y -= 150.0 * time.delta_seconds();
+    }
+    if keys.pressed(KeyCode::Right) {
+        transform.translation.x += 150.0 * time.delta_seconds();
+    }
+
+    //println!("{:?}", transform.translation);
+
+    let scale = projection.scale;
+
+    let w = windows.get(camera.window).unwrap();
+
+    if keys.pressed(KeyCode::Z) {
+        projection.scale -= 0.55 * time.delta_seconds();
+    }
+    if keys.pressed(KeyCode::X) {
+        projection.scale += 0.55 * time.delta_seconds();
+    }
+
+    if (projection.scale - scale).abs() > f32::EPSILON {
+        projection.update(w.width(), w.height());
+        camera.projection_matrix = projection.get_projection_matrix();
+        camera.depth_calculation = projection.depth_calculation();
+    }
+}
+
+fn y_sort(mut query: Query<(&mut Transform, &YSort)>) {
+    for (mut transform, ysort) in query.iter_mut() {
+        transform.translation.z = ysort.0 - transform.translation.y;
+    }
+}
+
+fn knock_enemies(mut events: EventReader<CollisionEvent>, mut query: Query<&mut Animation>) {
+    events.iter().filter(|e| e.is_started()).for_each(|e| {
+        let (e1, e2) = e.rigid_body_entities();
+        let (l1, l2) = e.collision_layers();
+
+        if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
+            let player_state = query.get(e1).unwrap().current_state;
+            if let Ok(mut anim) = query.get_mut(e2) {
+                anim.set(State::KNOCKED);
+                if player_state == Some(State::ATTACKING) {}
+            }
+        }
+    })
 }

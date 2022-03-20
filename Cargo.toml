@@ -1,9 +1,10 @@
 [package]
+edition = "2021"
 name = "littlefighter2"
 version = "0.1.0"
-edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy="0.6.1"
+bevy = "0.6.1"
+heron = {git = "https://github.com/jcornaz/heron.git", features = ["2d", "debug-2d"]}
