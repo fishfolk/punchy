@@ -31,6 +31,7 @@ struct Animation {
     current_frame: usize,
     current_state: Option<State>,
     timer: Timer,
+    played_once: bool,
 }
 
 impl Animation {
@@ -39,7 +40,8 @@ impl Animation {
             animations,
             current_frame: 0,
             current_state: None,
-            timer: Timer::from_seconds(fps, true),
+            timer: Timer::from_seconds(fps, false),
+            played_once: false,
         }
     }
 
@@ -48,9 +50,14 @@ impl Animation {
             return;
         }
 
+        self.played_once = false;
         self.current_frame = 0;
         self.current_state = Some(state);
         self.timer.reset();
+    }
+
+    fn is_finished(&self) -> bool {
+        self.played_once
     }
 
     fn is_last_frame(&self) -> bool {
@@ -116,6 +123,7 @@ fn main() {
         .add_system(y_sort)
         .add_system(knock_enemies)
         .add_system(kill_entities)
+        .add_system(knocked_state)
         .run();
 }
 
@@ -142,8 +150,8 @@ fn setup(
 
     animation_map.insert(State::IDLE, 0..13);
     animation_map.insert(State::RUNNING, 14..19);
-    animation_map.insert(State::KNOCKED, 71..77);
-    animation_map.insert(State::ATTACKING, 85..91);
+    animation_map.insert(State::KNOCKED, 71..76);
+    animation_map.insert(State::ATTACKING, 85..90);
 
     commands
         .spawn_bundle(SpriteSheetBundle {
@@ -288,6 +296,7 @@ fn player_controller(
 }
 
 fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>, time: Res<Time>) {
+    //TODO: Add a tick method on Animation
     for (mut texture_atlas_sprite, mut animation) in query.iter_mut() {
         animation.timer.tick(time.delta());
 
@@ -295,6 +304,7 @@ fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>
             animation.timer.reset();
 
             if animation.is_last_frame() {
+                animation.played_once = true; // Check if animation player here because we need to wait the last frame
                 animation.current_frame = 0;
             } else {
                 animation.current_frame += 1;
@@ -357,7 +367,7 @@ fn player_attack(
             player.state = State::ATTACKING;
         }
     } else {
-        if animation.is_last_frame() {
+        if animation.is_finished() {
             player.state = State::IDLE;
         } else {
             //TODO: Fix hacky way to get a forward jump
@@ -450,6 +460,14 @@ fn kill_entities(mut commands: Commands, query: Query<(Entity, &Stats)>) {
     for (entity, stats) in query.iter() {
         if stats.health <= 0 {
             commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn knocked_state(mut query: Query<&mut Animation>) {
+    for mut animation in query.iter_mut() {
+        if animation.current_state == Some(State::KNOCKED) && animation.is_finished() {
+            animation.set(State::IDLE);
         }
     }
 }
