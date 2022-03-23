@@ -10,6 +10,7 @@ enum State {
     RUNNING,
     ATTACKING,
     KNOCKED,
+    DYING,
 }
 
 #[derive(PhysicsLayer)]
@@ -151,6 +152,7 @@ fn setup(
     animation_map.insert(State::IDLE, 0..13);
     animation_map.insert(State::RUNNING, 14..19);
     animation_map.insert(State::KNOCKED, 71..76);
+    animation_map.insert(State::DYING, 71..76);
     animation_map.insert(State::ATTACKING, 85..90);
 
     commands
@@ -456,9 +458,13 @@ fn knock_enemies(
     })
 }
 
-fn kill_entities(mut commands: Commands, query: Query<(Entity, &Stats)>) {
-    for (entity, stats) in query.iter() {
+fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &mut Animation)>) {
+    for (entity, stats, mut animation) in query.iter_mut() {
         if stats.health <= 0 {
+            animation.set(State::DYING);
+        }
+
+        if animation.current_state == Some(State::DYING) && animation.is_finished() {
             commands.entity(entity).despawn_recursive();
         }
     }
