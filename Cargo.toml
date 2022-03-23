@@ -8,3 +8,4 @@ version = "0.1.0"
 [dependencies]
 bevy = "0.6.1"
 heron = {git = "https://github.com/jcornaz/heron.git", features = ["2d", "debug-2d"]}
+bevy-parallax = "0.1.0"

@@ -1,8 +1,7 @@
-use std::ops::Range;
-
-use heron::{prelude::*, SensorShape};
-
 use bevy::{prelude::*, render::camera::CameraProjection, utils::HashMap};
+use bevy_parallax::*;
+use heron::{prelude::*, SensorShape};
+use std::ops::Range;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum State {
@@ -102,15 +101,51 @@ const GROUND_OFFSET: f32 = 25.;
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
+        .insert_resource(ParallaxResource {
+            layer_data: vec![
+                LayerData {
+                    speed: 0.98,
+                    path: "background_03.png".to_string(),
+                    tile_size: Vec2::new(896.0, 480.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 0.0,
+                    scale: 1.2,
+                    ..Default::default()
+                },
+                LayerData {
+                    speed: 0.9,
+                    path: "background_02.png".to_string(),
+                    tile_size: Vec2::new(896.0, 480.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 1.0,
+                    scale: 1.2,
+                    ..Default::default()
+                },
+                LayerData {
+                    speed: 0.82,
+                    path: "background_01.png".to_string(),
+                    tile_size: Vec2::new(896.0, 480.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 2.0,
+                    scale: 1.2,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(PhysicsPlugin::default())
+        .add_plugin(ParallaxPlugin)
         .add_startup_system(setup)
         .add_system(player_controller)
         .add_system(camera_follow_player)
         .add_system(animation_cycling)
         .add_system(animation_flipping)
         .add_system(player_animation_state)
-        .add_system(parallax_system)
+        //.add_system(parallax_system)
         .add_system(player_attack)
         .add_system(helper_camera_controller)
         .add_system(y_sort)
@@ -127,7 +162,9 @@ fn setup(
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
     // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
     camera_bundle.orthographic_projection.scale = 0.75;
-    commands.spawn_bundle(camera_bundle);
+    commands
+        .spawn_bundle(camera_bundle)
+        .insert(ParallaxCameraComponent);
 
     let texture_handle = asset_server.load("PlayerFishy(96x80).png");
     let texture_atlas = TextureAtlas::from_grid(
@@ -171,12 +208,6 @@ fn setup(
         .insert(Animation::new(7. / 60., animation_map.clone()))
         .insert(YSort(100.));
 
-    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("preview_stage.png"),
-        transform: Transform::from_xyz(0., 0., 0.),
-        ..Default::default()
-    });
-
     let enemy_texture_handle = asset_server.load("PlayerSharky(96x80).png");
     let enemy_texture_atlas =
         TextureAtlas::from_grid(enemy_texture_handle, Vec2::new(96., 80.), 14, 7);
@@ -203,30 +234,6 @@ fn setup(
             .insert(Animation::new(7. / 60., animation_map.clone()))
             .insert(YSort(100.));
     }
-
-    /* commands
-        .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("background_01.png"),
-            transform: Transform::from_xyz(0., 0., 4.),
-            ..Default::default()
-        })
-        .insert(Parallax);
-
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("background_02.png"),
-            transform: Transform::from_xyz(0., 0., 3.),
-            ..Default::default()
-        })
-        .insert(Parallax);
-
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: asset_server.load("background_03.png"),
-            transform: Transform::from_xyz(0., 0., 2.),
-            ..Default::default()
-        })
-        .insert(Parallax); */
 }
 
 fn player_controller(
@@ -321,15 +328,17 @@ fn player_animation_state(mut query: Query<(&Player, &mut Animation)>) {
 
 fn camera_follow_player(
     player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<&mut Transform, (With<Camera>, Without<Player>)>,
-    time: Res<Time>,
+    camera_query: Query<&Transform, (With<Camera>, Without<Player>)>,
+    mut parallax_event_writer: EventWriter<ParallaxMoveEvent>,
 ) {
     let player = player_query.single().translation;
-    let mut camera = camera_query.single_mut();
+    let camera = camera_query.single().translation;
 
     //TODO: Add a way to change the camera speed
-    camera.translation.x += (player.x - camera.translation.x) * time.delta_seconds() * 5.;
     //   camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
+    parallax_event_writer.send(ParallaxMoveEvent {
+        camera_move_speed: (player.x - camera.x) * 0.08,
+    });
 }
 
 fn parallax_system(
