@@ -200,6 +200,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy-parallax"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f7628a59902716ca0d37edd8593f5225b39189c9279a30e6fd6dfd9012ae73d"
+dependencies = [
+ "bevy",
+ "serde",
+]
+
+[[package]]
 name = "bevy_app"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1932,6 +1942,7 @@ name = "littlefighter2"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy-parallax",
  "heron",
 ]
 
