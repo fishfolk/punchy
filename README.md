@@ -6,7 +6,11 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 
 https://user-images.githubusercontent.com/583842/161245550-661200ca-dd43-4d4f-8a93-7367cdfc32cd.MOV
 
-## Concept
+## MVP Spec
+
+![861A6300-5FFD-4DDC-B4BF-0E8514F4B87C](https://user-images.githubusercontent.com/583842/161247148-0bc07089-1409-48ca-9cc8-ee1a1edddb9e.png)
+
+## Mockup
 
 Art prototype based on a modded Little Fighter 2:
 https://youtu.be/mgMFiNpgvzk
