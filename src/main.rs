@@ -35,8 +35,6 @@ pub struct Stats {
 }
 
 fn main() {
-    let tile_size = Vec2::new(896., 480.);
-
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
         .insert_resource(WindowDescriptor {
@@ -48,33 +46,33 @@ fn main() {
         .insert_resource(ParallaxResource {
             layer_data: vec![
                 LayerData {
-                    speed: -0.15,
-                    path: "background_01.png".to_string(),
-                    tile_size,
-                    cols: 2,
-                    rows: 1,
-                    z: 2.,
-                    transition_factor: 0.9,
-                    ..Default::default()
-                },
-                LayerData {
-                    speed: -0.05,
-                    path: "background_02.png".to_string(),
-                    tile_size,
-                    cols: 2,
-                    rows: 1,
-                    z: 1.,
-                    transition_factor: 0.9,
-                    ..Default::default()
-                },
-                LayerData {
-                    speed: -0.0025,
+                    speed: 0.98,
                     path: "background_03.png".to_string(),
-                    tile_size,
-                    cols: 2,
+                    tile_size: Vec2::new(896.0, 480.0),
+                    cols: 1,
                     rows: 1,
-                    z: 0.,
-                    transition_factor: 0.9,
+                    z: 0.0,
+                    scale: 1.2,
+                    ..Default::default()
+                },
+                LayerData {
+                    speed: 0.9,
+                    path: "background_02.png".to_string(),
+                    tile_size: Vec2::new(896.0, 480.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 1.0,
+                    scale: 1.2,
+                    ..Default::default()
+                },
+                LayerData {
+                    speed: 0.82,
+                    path: "background_01.png".to_string(),
+                    tile_size: Vec2::new(896.0, 480.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 2.0,
+                    scale: 1.2,
                     ..Default::default()
                 },
             ],
