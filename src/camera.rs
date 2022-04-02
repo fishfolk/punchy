@@ -56,16 +56,12 @@ pub fn camera_follow_player(
     player_query: Query<&Transform, With<Player>>,
     mut camera_query: Query<&mut Transform, (With<Camera>, Without<Player>)>,
     mut move_event_writer: EventWriter<ParallaxMoveEvent>,
-    time: Res<Time>,
 ) {
     let player = player_query.single().translation;
-    let mut camera = camera_query.single_mut();
+    let camera = camera_query.single_mut();
 
-    //TODO: Add a way to change the camera speed
     move_event_writer.send(ParallaxMoveEvent {
-        camera_move_speed: ((player.x - camera.translation.x)
-            * time.delta_seconds()
-            * consts::CAMERA_SPEED),
+        camera_move_speed: (player.x - camera.translation.x) * consts::CAMERA_SPEED,
     });
     //   camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
 }
