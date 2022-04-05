@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, render::camera::ScalingMode, utils::HashMap};
 use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use heron::{prelude::*, SensorShape};
 
@@ -101,7 +101,8 @@ fn setup(
 ) {
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
     // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
-    camera_bundle.orthographic_projection.scale = 0.65;
+    camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
+    camera_bundle.orthographic_projection.scale = 16. * 14.5;
     commands
         .spawn_bundle(camera_bundle)
         .insert(ParallaxCameraComponent);

@@ -4,7 +4,7 @@ pub const PLAYER_HITBOX_HEIGHT: f32 = 50.;
 
 pub const GROUND_Y: f32 = -170.;
 pub const GROUND_HEIGHT: f32 = 125.;
-pub const GROUND_OFFSET: f32 = -22.5;
+pub const GROUND_OFFSET: f32 = -22.;
 
 pub const CAMERA_SPEED: f32 = 0.8;
 
