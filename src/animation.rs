@@ -18,6 +18,22 @@ pub struct Animation {
     pub played_once: bool,
 }
 
+#[derive(Component, PartialEq, Eq)]
+pub enum Facing {
+    Left,
+    Right,
+}
+
+impl Facing {
+    pub fn is_left(&self) -> bool {
+        self == &Facing::Left
+    }
+
+    pub fn set(&mut self, facing: Facing) {
+        *self = facing;
+    }
+}
+
 impl Animation {
     pub fn new(fps: f32, animations: HashMap<State, Range<usize>>) -> Self {
         Self {
@@ -96,10 +112,10 @@ pub fn animation_cycling(
     }
 }
 
-pub fn animation_flipping(mut query: Query<(&mut TextureAtlasSprite, &Player)>) {
-    let (mut texture_atlas_sprite, player) = query.single_mut();
-
-    texture_atlas_sprite.flip_x = player.facing_left;
+pub fn animation_flipping(mut query: Query<(&mut TextureAtlasSprite, &Facing)>) {
+    for (mut texture_atlas_sprite, facing) in query.iter_mut() {
+        texture_atlas_sprite.flip_x = facing.is_left();
+    }
 }
 
 //TODO: Switch this to a genreic state machine

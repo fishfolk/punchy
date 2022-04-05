@@ -5,13 +5,13 @@ use heron::{prelude::*, SensorShape};
 mod animation;
 mod camera;
 mod consts;
-mod controller;
+mod movement;
 mod state;
 mod y_sort;
 
 use animation::*;
 use camera::*;
-use controller::*;
+use movement::*;
 use state::State;
 use y_sort::*;
 
@@ -24,7 +24,6 @@ enum BodyLayers {
 #[derive(Component)]
 pub struct Player {
     pub movement_speed: f32,
-    pub facing_left: bool,
     pub state: State,
 }
 
@@ -91,6 +90,7 @@ fn main() {
         .add_system(knock_enemies)
         .add_system(kill_entities)
         .add_system(knocked_state)
+        .add_system(knockback_system)
         .run();
 }
 
@@ -134,13 +134,13 @@ fn setup(
         })
         .insert(Player {
             movement_speed: 150.0,
-            facing_left: false,
             state: State::IDLE,
         })
         .insert(Stats {
             health: 100,
             damage: 35,
         })
+        .insert(Facing::Right)
         .insert(RigidBody::Sensor)
         .insert(Collisions::default())
         .insert(CollisionShape::Cuboid {
@@ -151,12 +151,6 @@ fn setup(
         .insert(SensorShape)
         .insert(Animation::new(7. / 60., animation_map.clone()))
         .insert(YSort(100.));
-
-    /*  commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("preview_stage.png"),
-        transform: Transform::from_xyz(0., 0., 10.),
-        ..Default::default()
-    }); */
 
     let enemy_texture_handle = asset_server.load("PlayerSharky(96x80).png");
     let enemy_texture_atlas =
@@ -175,6 +169,7 @@ fn setup(
                 transform: Transform::from_xyz(pos.0, pos.1, 0.),
                 ..Default::default()
             })
+            .insert(Facing::Left)
             .insert(Stats {
                 health: 100,
                 damage: 35,
@@ -199,11 +194,11 @@ fn setup(
 }
 
 fn player_attack(
-    mut query: Query<(&mut Player, &mut Transform, &Animation)>,
+    mut query: Query<(&mut Player, &mut Transform, &Animation, &Facing)>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (mut player, mut transform, animation) = query.single_mut();
+    let (mut player, mut transform, animation, facing) = query.single_mut();
 
     if player.state != State::ATTACKING {
         if keyboard.just_pressed(KeyCode::Space) {
@@ -215,7 +210,7 @@ fn player_attack(
         } else {
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
-                if player.facing_left {
+                if facing.is_left() {
                     transform.translation.x -= 200. * time.delta_seconds();
                 } else {
                     transform.translation.x += 200. * time.delta_seconds();
@@ -233,17 +228,47 @@ fn player_attack(
 
 fn knock_enemies(
     mut events: EventReader<CollisionEvent>,
-    mut query: Query<(&mut Animation, &mut Stats)>,
+    mut query: Query<(
+        &mut Animation,
+        &mut Stats,
+        &Transform,
+        Entity,
+        Option<&mut Facing>,
+    )>,
+    mut commands: Commands,
 ) {
     events.iter().filter(|e| e.is_started()).for_each(|e| {
         let (e1, e2) = e.rigid_body_entities();
         let (l1, l2) = e.collision_layers();
 
         if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
-            let (player_anim, player_stats) = query.get(e1).unwrap();
-            if let Ok((mut anim, mut stats)) = query.get_mut(e2) {
+            let (player_anim, player_stats, player_trans, _, _) = query.get(e1).unwrap();
+            if let Ok((mut anim, mut stats, trans, entity, facing)) = query.get_mut(e2) {
                 if player_anim.current_state == Some(State::ATTACKING) {
                     stats.health = stats.health - player_stats.damage;
+
+                    let force = 100.; //TODO set this to a constant
+                    let mut direction = Vec2::new(0., 0.);
+
+                    if let Some(mut facing) = facing {
+                        if player_trans.translation.x < trans.translation.x {
+                            facing.set(Facing::Left);
+                        } else {
+                            facing.set(Facing::Right);
+                        }
+
+                        if facing.is_left() {
+                            direction.x = force;
+                        } else {
+                            direction.x = -force;
+                        }
+                    }
+
+                    commands.entity(entity).insert(Knockback {
+                        direction,
+                        duration: Timer::from_seconds(0.15, false),
+                    });
+
                     anim.set(State::KNOCKED);
                 }
             }
