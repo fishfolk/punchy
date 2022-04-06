@@ -118,11 +118,12 @@ fn setup(
 
     //Layers mapping to state
     let mut animation_map = HashMap::default();
-    animation_map.insert(State::IDLE, 0..13);
-    animation_map.insert(State::RUNNING, 14..19);
-    animation_map.insert(State::KNOCKED, 71..76);
-    animation_map.insert(State::DYING, 71..76);
-    animation_map.insert(State::ATTACKING, 85..90);
+    animation_map.insert(State::Idle, 0..13);
+    animation_map.insert(State::Running, 14..19);
+    animation_map.insert(State::KnockedRight, 85..90);
+    animation_map.insert(State::KnockedLeft, 71..76);
+    animation_map.insert(State::Dying, 71..76);
+    animation_map.insert(State::Attacking, 85..90);
 
     //Insert player
     commands
@@ -134,7 +135,7 @@ fn setup(
         })
         .insert(Player {
             movement_speed: 150.0,
-            state: State::IDLE,
+            state: State::Idle,
         })
         .insert(Stats {
             health: 100,
@@ -200,13 +201,13 @@ fn player_attack(
 ) {
     let (mut player, mut transform, animation, facing) = query.single_mut();
 
-    if player.state != State::ATTACKING {
+    if player.state != State::Attacking {
         if keyboard.just_pressed(KeyCode::Space) {
-            player.state = State::ATTACKING;
+            player.state = State::Attacking;
         }
     } else {
         if animation.is_finished() {
-            player.state = State::IDLE;
+            player.state = State::Idle;
         } else {
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
@@ -228,13 +229,7 @@ fn player_attack(
 
 fn knock_enemies(
     mut events: EventReader<CollisionEvent>,
-    mut query: Query<(
-        &mut Animation,
-        &mut Stats,
-        &Transform,
-        Entity,
-        Option<&mut Facing>,
-    )>,
+    mut query: Query<(&mut Animation, &mut Stats, &Transform, Entity)>,
     mut commands: Commands,
 ) {
     events.iter().filter(|e| e.is_started()).for_each(|e| {
@@ -242,34 +237,26 @@ fn knock_enemies(
         let (l1, l2) = e.collision_layers();
 
         if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
-            let (player_anim, player_stats, player_trans, _, _) = query.get(e1).unwrap();
-            if let Ok((mut anim, mut stats, trans, entity, facing)) = query.get_mut(e2) {
-                if player_anim.current_state == Some(State::ATTACKING) {
+            let (player_anim, player_stats, player_trans, _) = query.get(e1).unwrap();
+            if let Ok((mut anim, mut stats, trans, entity)) = query.get_mut(e2) {
+                if player_anim.current_state == Some(State::Attacking) {
                     stats.health = stats.health - player_stats.damage;
 
-                    let force = 100.; //TODO set this to a constant
+                    let force = 150.; //TODO set this to a constant
                     let mut direction = Vec2::new(0., 0.);
 
-                    if let Some(mut facing) = facing {
-                        if player_trans.translation.x < trans.translation.x {
-                            facing.set(Facing::Left);
-                        } else {
-                            facing.set(Facing::Right);
-                        }
-
-                        if facing.is_left() {
-                            direction.x = force;
-                        } else {
-                            direction.x = -force;
-                        }
+                    if player_trans.translation.x < trans.translation.x {
+                        anim.set(State::KnockedLeft);
+                        direction.x = force;
+                    } else {
+                        anim.set(State::KnockedRight);
+                        direction.x = -force;
                     }
 
                     commands.entity(entity).insert(Knockback {
                         direction,
                         duration: Timer::from_seconds(0.15, false),
                     });
-
-                    anim.set(State::KNOCKED);
                 }
             }
         }
@@ -279,10 +266,10 @@ fn knock_enemies(
 fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &mut Animation)>) {
     for (entity, stats, mut animation) in query.iter_mut() {
         if stats.health <= 0 {
-            animation.set(State::DYING);
+            animation.set(State::Dying);
         }
 
-        if animation.current_state == Some(State::DYING) && animation.is_finished() {
+        if animation.current_state == Some(State::Dying) && animation.is_finished() {
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -290,8 +277,11 @@ fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &mut 
 
 fn knocked_state(mut query: Query<&mut Animation>) {
     for mut animation in query.iter_mut() {
-        if animation.current_state == Some(State::KNOCKED) && animation.is_finished() {
-            animation.set(State::IDLE);
+        if (animation.current_state == Some(State::KnockedLeft)
+            || animation.current_state == Some(State::KnockedRight))
+            && animation.is_finished()
+        {
+            animation.set(State::Idle);
         }
     }
 }

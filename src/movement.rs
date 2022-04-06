@@ -36,7 +36,7 @@ pub fn player_controller(
 ) {
     let (mut player, mut transform, facing_option) = query.single_mut();
 
-    if player.state == State::ATTACKING {
+    if player.state == State::Attacking {
         return;
     }
 
@@ -82,8 +82,8 @@ pub fn player_controller(
     }
 
     if dir == Vec2::ZERO {
-        player.state = State::IDLE;
+        player.state = State::Idle;
     } else {
-        player.state = State::RUNNING;
+        player.state = State::Running;
     }
 }

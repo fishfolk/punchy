@@ -1,8 +1,9 @@
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum State {
-    IDLE,
-    RUNNING,
-    ATTACKING,
-    KNOCKED,
-    DYING,
+    Idle,
+    Running,
+    Attacking,
+    KnockedLeft,
+    KnockedRight,
+    Dying,
 }
