@@ -237,8 +237,11 @@ fn knock_enemies(
         let (l1, l2) = e.collision_layers();
 
         if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
-            let (player_anim, player_stats, player_trans, _) = query.get(e1).unwrap();
-            if let Ok((mut anim, mut stats, trans, entity)) = query.get_mut(e2) {
+            let [
+                (player_anim, player_stats, player_trans, _),
+                 (mut anim, mut stats, trans, entity)]
+                  = query.many_mut([e1, e2]);
+                
                 if player_anim.current_state == Some(State::Attacking) {
                     stats.health = stats.health - player_stats.damage;
 
@@ -258,8 +261,7 @@ fn knock_enemies(
                         duration: Timer::from_seconds(0.15, false),
                     });
                 }
-            }
-        }
+    }
     })
 }
 

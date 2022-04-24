@@ -6,6 +6,6 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.6.1"
-bevy-parallax = "0.1.0"
-heron = {git = "https://github.com/jcornaz/heron.git", features = ["2d", "debug-2d"]}
+bevy = "0.7.0"
+bevy-parallax = "0.1.2"
+heron = {version = "3.0.0", features = ["2d", "debug-2d"]}
