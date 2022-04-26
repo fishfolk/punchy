@@ -8,18 +8,16 @@ mod consts;
 mod movement;
 mod state;
 mod y_sort;
+mod attack;
+mod collisions;
 
 use animation::*;
 use camera::*;
 use movement::*;
 use state::State;
 use y_sort::*;
-
-#[derive(PhysicsLayer)]
-enum BodyLayers {
-    Enemy,
-    Player,
-}
+use attack::AttackPlugin;
+use collisions::*;
 
 #[derive(Component)]
 pub struct Player {
@@ -42,6 +40,7 @@ fn main() {
         })
         .add_plugins(DefaultPlugins)
         .add_plugin(PhysicsPlugin::default())
+        .add_plugin(AttackPlugin)
         .insert_resource(ParallaxResource {
             layer_data: vec![
                 LayerData {
@@ -261,8 +260,8 @@ fn knock_enemies(
                         duration: Timer::from_seconds(0.15, false),
                     });
                 }
-    }
-    })
+    }    
+})
 }
 
 fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &mut Animation)>) {

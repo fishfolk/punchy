@@ -18,7 +18,7 @@ pub struct Animation {
     pub played_once: bool,
 }
 
-#[derive(Component, PartialEq, Eq)]
+#[derive(Component, PartialEq, Eq, Clone)]
 pub enum Facing {
     Left,
     Right,
