@@ -1,8 +1,62 @@
-use heron::PhysicsLayer;
+use bevy::{
+    core::Timer,
+    math::Vec2,
+    prelude::{Commands, EventReader, Query, Transform, With, Without},
+};
+use heron::{CollisionEvent, PhysicsLayer};
+
+use crate::{movement::Knockback, state::State, Enemy, Player, Stats};
 
 #[derive(PhysicsLayer)]
 pub enum BodyLayers {
     Enemy,
     Player,
     PlayerAttack,
+}
+
+pub fn player_attack_collision(
+    mut commands: Commands,
+    mut events: EventReader<CollisionEvent>,
+    mut enemy_query: Query<(&mut State, &mut Stats, &Transform), (With<Enemy>, Without<Player>)>,
+    player_query: Query<(&State, &Stats, &Transform), (With<Player>, Without<Enemy>)>,
+) {
+    events.iter().filter(|e| e.is_started()).for_each(|e| {
+        let (e1, e2) = e.rigid_body_entities();
+        let (l1, l2) = e.collision_layers();
+
+        let (player, enemy);
+        if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
+            player = e1;
+            enemy = e2;
+        } else if l2.contains_group(BodyLayers::Player) && l1.contains_group(BodyLayers::Enemy) {
+            player = e2;
+            enemy = e1;
+        } else {
+            return;
+        }
+
+        if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
+            if let Ok((p_state, p_stats, p_transform)) = player_query.get(player) {
+                if *p_state == State::Attacking {
+                    e_stats.health -= p_stats.damage;
+
+                    let force = 150.; //TODO: set this to a constant
+                    let mut direction = Vec2::new(0., 0.);
+
+                    if p_transform.translation.x < e_transform.translation.x {
+                        *e_state = State::KnockedLeft;
+                        direction.x = force;
+                    } else {
+                        *e_state = State::KnockedRight;
+                        direction.x = -force;
+                    }
+
+                    commands.entity(enemy).insert(Knockback {
+                        direction,
+                        duration: Timer::from_seconds(0.15, false),
+                    });
+                }
+            }
+        }
+    });
 }

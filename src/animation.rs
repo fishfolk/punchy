@@ -2,20 +2,21 @@ use std::ops::Range;
 
 use bevy::{
     core::{Time, Timer},
-    prelude::{Component, Query, Res},
+    prelude::{App, Changed, Component, Plugin, Query, Res},
     sprite::TextureAtlasSprite,
     utils::HashMap,
 };
 
-use crate::{state::State, Player};
+use crate::state::State;
 
-#[derive(Component)]
-pub struct Animation {
-    pub animations: HashMap<State, Range<usize>>,
-    pub current_frame: usize,
-    pub current_state: Option<State>,
-    pub timer: Timer,
-    pub played_once: bool,
+pub struct AnimationPlugin;
+
+impl Plugin for AnimationPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(animate_on_state_changed)
+            .add_system(animation_flipping)
+            .add_system(animation_cycling);
+    }
 }
 
 #[derive(Component, PartialEq, Eq, Clone)]
@@ -34,6 +35,15 @@ impl Facing {
     }
 }
 
+#[derive(Component)]
+pub struct Animation {
+    pub animations: HashMap<State, Range<usize>>,
+    pub current_frame: usize,
+    current_state: Option<State>,
+    pub timer: Timer,
+    pub played_once: bool,
+}
+
 impl Animation {
     pub fn new(fps: f32, animations: HashMap<State, Range<usize>>) -> Self {
         Self {
@@ -43,17 +53,6 @@ impl Animation {
             timer: Timer::from_seconds(fps, false),
             played_once: false,
         }
-    }
-
-    pub fn set(&mut self, state: State) {
-        if self.current_state == Some(state) {
-            return;
-        }
-
-        self.played_once = false;
-        self.current_frame = 0;
-        self.current_state = Some(state);
-        self.timer.reset();
     }
 
     pub fn is_finished(&self) -> bool {
@@ -87,10 +86,18 @@ impl Animation {
     }
 }
 
-pub fn animation_cycling(
-    mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>,
-    time: Res<Time>,
-) {
+fn animate_on_state_changed(mut query: Query<(&mut Animation, &State), Changed<State>>) {
+    for (mut animation, state) in query.iter_mut() {
+        if animation.current_state != Some(*state) {
+            animation.played_once = false;
+            animation.current_frame = 0;
+            animation.current_state = Some(*state);
+            animation.timer.reset();
+        }
+    }
+}
+
+fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>, time: Res<Time>) {
     //TODO: Add a tick method on Animation
     for (mut texture_atlas_sprite, mut animation) in query.iter_mut() {
         animation.timer.tick(time.delta());
@@ -112,15 +119,8 @@ pub fn animation_cycling(
     }
 }
 
-pub fn animation_flipping(mut query: Query<(&mut TextureAtlasSprite, &Facing)>) {
+fn animation_flipping(mut query: Query<(&mut TextureAtlasSprite, &Facing)>) {
     for (mut texture_atlas_sprite, facing) in query.iter_mut() {
         texture_atlas_sprite.flip_x = facing.is_left();
     }
-}
-
-//TODO: Switch this to a genreic state machine
-pub fn player_animation_state(mut query: Query<(&Player, &mut Animation)>) {
-    let (player, mut animation) = query.single_mut();
-
-    animation.set(player.state);
 }

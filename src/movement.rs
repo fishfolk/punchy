@@ -2,10 +2,10 @@ use bevy::{
     core::{Time, Timer},
     input::Input,
     math::Vec2,
-    prelude::{Commands, Component, Entity, KeyCode, Query, Res, Transform},
+    prelude::{Commands, Component, Entity, KeyCode, Query, Res, Transform, With},
 };
 
-use crate::{animation::Facing, consts, state::State, Player};
+use crate::{animation::Facing, consts, state::State, Player, Stats};
 
 #[derive(Component)]
 pub struct Knockback {
@@ -30,13 +30,13 @@ pub fn knockback_system(
 }
 
 pub fn player_controller(
-    mut query: Query<(&mut Player, &mut Transform, Option<&mut Facing>)>,
+    mut query: Query<(&mut State, &Stats, &mut Transform, Option<&mut Facing>), With<Player>>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (mut player, mut transform, facing_option) = query.single_mut();
+    let (mut state, stats, mut transform, facing_option) = query.single_mut();
 
-    if player.state == State::Attacking {
+    if *state == State::Attacking {
         return;
     }
 
@@ -59,7 +59,7 @@ pub fn player_controller(
     }
 
     //Normalize direction
-    dir = dir.normalize_or_zero() * player.movement_speed * time.delta_seconds();
+    dir = dir.normalize_or_zero() * stats.movement_speed * time.delta_seconds();
 
     //Restrict player to the ground
     let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
@@ -82,8 +82,8 @@ pub fn player_controller(
     }
 
     if dir == Vec2::ZERO {
-        player.state = State::Idle;
+        *state = State::Idle;
     } else {
-        player.state = State::Running;
+        *state = State::Running;
     }
 }

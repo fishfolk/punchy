@@ -1,7 +1,9 @@
 use bevy::{
     input::Input,
     math::Vec3,
-    prelude::{App, Commands, Component, KeyCode, Plugin, Query, Res, Transform, With},
+    prelude::{
+        App, Commands, Component, Deref, DerefMut, KeyCode, Plugin, Query, Res, Transform, With,
+    },
     transform::TransformBundle,
 };
 use heron::{CollisionLayers, CollisionShape, RigidBody, Velocity};
@@ -23,8 +25,11 @@ impl Plugin for AttackPlugin {
 
 #[derive(Component)]
 pub struct Attack {
-    pub damage: i32,
+    pub damage: Damage,
 }
+
+#[derive(Component, Deref, DerefMut)]
+pub struct Damage(pub i32);
 
 fn player_attack(
     query: Query<(&Transform, &Facing), With<Player>>,
@@ -57,6 +62,6 @@ fn player_attack(
                 BodyLayers::Enemy,
             ))
             .insert(Velocity::from_linear(dir * 300.))
-            .insert(Attack { damage: 10 });
+            .insert(Attack { damage: Damage(10) });
     }
 }

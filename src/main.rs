@@ -3,32 +3,33 @@ use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, Parallax
 use heron::{prelude::*, SensorShape};
 
 mod animation;
+mod attack;
 mod camera;
+mod collisions;
 mod consts;
 mod movement;
 mod state;
 mod y_sort;
-mod attack;
-mod collisions;
 
 use animation::*;
-use camera::*;
-use movement::*;
-use state::State;
-use y_sort::*;
 use attack::AttackPlugin;
+use camera::*;
 use collisions::*;
+use movement::*;
+use state::{State, StatePlugin};
+use y_sort::*;
 
 #[derive(Component)]
-pub struct Player {
-    pub movement_speed: f32,
-    pub state: State,
-}
+pub struct Player;
+
+#[derive(Component)]
+pub struct Enemy;
 
 #[derive(Component)]
 pub struct Stats {
     pub health: i32,
     pub damage: i32,
+    pub movement_speed: f32,
 }
 
 fn main() {
@@ -41,6 +42,8 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(PhysicsPlugin::default())
         .add_plugin(AttackPlugin)
+        .add_plugin(AnimationPlugin)
+        .add_plugin(StatePlugin)
         .insert_resource(ParallaxResource {
             layer_data: vec![
                 LayerData {
@@ -80,15 +83,12 @@ fn main() {
         .add_startup_system(setup)
         .add_system(player_controller)
         .add_system(camera_follow_player)
-        .add_system(animation_cycling)
-        .add_system(animation_flipping)
-        .add_system(player_animation_state)
         .add_system(player_attack)
         .add_system(helper_camera_controller)
         .add_system(y_sort)
-        .add_system(knock_enemies)
+        // .add_system(knock_enemies)
+        .add_system(player_attack_collision)
         .add_system(kill_entities)
-        .add_system(knocked_state)
         .add_system(knockback_system)
         .run();
 }
@@ -132,13 +132,13 @@ fn setup(
             transform: Transform::from_xyz(0., consts::GROUND_Y, 0.),
             ..Default::default()
         })
-        .insert(Player {
-            movement_speed: 150.0,
-            state: State::Idle,
-        })
+        .insert(Player)
+        .insert(State::Idle)
         .insert(Stats {
+            //TODO: Store default stats in consts
             health: 100,
             damage: 35,
+            movement_speed: 150.0,
         })
         .insert(Facing::Right)
         .insert(RigidBody::Sensor)
@@ -169,10 +169,13 @@ fn setup(
                 transform: Transform::from_xyz(pos.0, pos.1, 0.),
                 ..Default::default()
             })
+            .insert(Enemy)
+            .insert(State::Idle)
             .insert(Facing::Left)
             .insert(Stats {
                 health: 100,
                 damage: 35,
+                movement_speed: 120.0,
             })
             .insert(RigidBody::Sensor)
             .insert(Collisions::default())
@@ -194,19 +197,19 @@ fn setup(
 }
 
 fn player_attack(
-    mut query: Query<(&mut Player, &mut Transform, &Animation, &Facing)>,
+    mut query: Query<(&mut State, &mut Transform, &Animation, &Facing), With<Player>>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (mut player, mut transform, animation, facing) = query.single_mut();
+    let (mut state, mut transform, animation, facing) = query.single_mut();
 
-    if player.state != State::Attacking {
+    if *state != State::Attacking {
         if keyboard.just_pressed(KeyCode::Space) {
-            player.state = State::Attacking;
+            *state = State::Attacking;
         }
     } else {
         if animation.is_finished() {
-            player.state = State::Idle;
+            *state = State::Idle;
         } else {
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
@@ -226,63 +229,45 @@ fn player_attack(
     }
 }
 
-fn knock_enemies(
-    mut events: EventReader<CollisionEvent>,
-    mut query: Query<(&mut Animation, &mut Stats, &Transform, Entity)>,
-    mut commands: Commands,
-) {
-    events.iter().filter(|e| e.is_started()).for_each(|e| {
-        let (e1, e2) = e.rigid_body_entities();
-        let (l1, l2) = e.collision_layers();
+/* fn damage_on_collision( mut events: EventReader<CollisionEvent>,
+    mut set: ParamSet<(Query<&mut Stats>, Query<&Damage>)>,
+    mut commands: Commands){
+        events.iter().filter(|e| e.is_started()).for_each(|e| {
+            let ( stats_entity,  damage_entity) = e.rigid_body_entities();
 
-        if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
-            let [
-                (player_anim, player_stats, player_trans, _),
-                 (mut anim, mut stats, trans, entity)]
-                  = query.many_mut([e1, e2]);
-                
-                if player_anim.current_state == Some(State::Attacking) {
-                    stats.health = stats.health - player_stats.damage;
+         /*    if set.p0().contains(damage_entity) && set.p1().contains(stats_entity){
+                let temp = stats_entity;
+                stats_entity = damage_entity;
+                damage_entity = temp;
+            }  */
+            let p0 = set.p0();
+            let p1 = set.p1();
+           let stats = p0.get_mut(stats_entity);
+           let damage = p1.get(damage_entity);
 
-                    let force = 150.; //TODO set this to a constant
-                    let mut direction = Vec2::new(0., 0.);
-
-                    if player_trans.translation.x < trans.translation.x {
-                        anim.set(State::KnockedLeft);
-                        direction.x = force;
-                    } else {
-                        anim.set(State::KnockedRight);
-                        direction.x = -force;
+            if let Ok(stats) = stats {
+                if let Ok(damage) = damage{
+                    stats.health -= damage.0;
+                    if stats.health <= 0 {
+                        commands.entity(stats_entity).despawn_recursive();
                     }
-
-                    commands.entity(entity).insert(Knockback {
-                        direction,
-                        duration: Timer::from_seconds(0.15, false),
-                    });
                 }
-    }    
-})
-}
+            }
 
-fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &mut Animation)>) {
-    for (entity, stats, mut animation) in query.iter_mut() {
+        });
+} */
+
+fn kill_entities(
+    mut commands: Commands,
+    mut query: Query<(Entity, &Stats, &Animation, &mut State)>,
+) {
+    for (entity, stats, animation, mut state) in query.iter_mut() {
         if stats.health <= 0 {
-            animation.set(State::Dying);
+            *state = State::Dying;
         }
 
-        if animation.current_state == Some(State::Dying) && animation.is_finished() {
+        if *state == State::Dying && animation.is_finished() {
             commands.entity(entity).despawn_recursive();
-        }
-    }
-}
-
-fn knocked_state(mut query: Query<&mut Animation>) {
-    for mut animation in query.iter_mut() {
-        if (animation.current_state == Some(State::KnockedLeft)
-            || animation.current_state == Some(State::KnockedRight))
-            && animation.is_finished()
-        {
-            animation.set(State::Idle);
         }
     }
 }
