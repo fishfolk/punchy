@@ -2,10 +2,13 @@ use bevy::{
     core::{Time, Timer},
     input::Input,
     math::Vec2,
-    prelude::{Commands, Component, Entity, KeyCode, Query, Res, Transform, With},
+    prelude::{Commands, Component, Deref, DerefMut, Entity, KeyCode, Query, Res, Transform, With},
 };
 
 use crate::{animation::Facing, consts, state::State, Player, Stats};
+
+#[derive(Component, Deref, DerefMut)]
+pub struct MoveInDirection(pub Vec2);
 
 #[derive(Component)]
 pub struct Knockback {
@@ -85,5 +88,14 @@ pub fn player_controller(
         *state = State::Idle;
     } else {
         *state = State::Running;
+    }
+}
+
+pub fn move_direction_system(
+    mut query: Query<(&mut Transform, &MoveInDirection)>,
+    time: Res<Time>,
+) {
+    for (mut transform, dir) in &mut query.iter_mut() {
+        transform.translation += dir.0.extend(0.) * time.delta_seconds();
     }
 }

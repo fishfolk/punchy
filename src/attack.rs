@@ -1,17 +1,18 @@
 use bevy::{
     input::Input,
-    math::Vec3,
+    math::{Vec2, Vec3},
     prelude::{
         App, Commands, Component, Deref, DerefMut, KeyCode, Plugin, Query, Res, Transform, With,
     },
     transform::TransformBundle,
 };
-use heron::{CollisionLayers, CollisionShape, RigidBody, Velocity};
+use heron::{CollisionLayers, CollisionShape, RigidBody};
 
 use crate::{
     animation::Facing,
     collisions::BodyLayers,
     consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH},
+    movement::MoveInDirection,
     Player,
 };
 
@@ -39,7 +40,7 @@ fn player_attack(
 ) {
     if keyboard.just_pressed(KeyCode::Return) {
         let (transform, facing) = query.single();
-        let mut dir = Vec3::X;
+        let mut dir = Vec2::X;
 
         if facing.is_left() {
             dir = -dir;
@@ -51,7 +52,7 @@ fn player_attack(
                 transform.translation.y,
                 ATTACK_LAYER,
             )))
-            .insert(RigidBody::KinematicVelocityBased)
+            .insert(RigidBody::Sensor)
             .insert(CollisionShape::Cuboid {
                 half_extends: Vec3::new(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2., 0.),
                 border_radius: None,
@@ -61,7 +62,8 @@ fn player_attack(
                 BodyLayers::PlayerAttack,
                 BodyLayers::Enemy,
             ))
-            .insert(Velocity::from_linear(dir * 300.))
+            .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
+            // .insert(Velocity::from_linear(dir * 300.))
             .insert(Attack { damage: Damage(10) });
     }
 }

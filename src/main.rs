@@ -86,10 +86,11 @@ fn main() {
         .add_system(player_attack)
         .add_system(helper_camera_controller)
         .add_system(y_sort)
-        // .add_system(knock_enemies)
-        .add_system(player_attack_collision)
+        .add_system(player_attack_enemy_collision)
+        .add_system(player_enemy_collision)
         .add_system(kill_entities)
         .add_system(knockback_system)
+        .add_system(move_direction_system)
         .run();
 }
 
@@ -147,7 +148,7 @@ fn setup(
             half_extends: Vec3::new(consts::PLAYER_WIDTH, consts::PLAYER_HITBOX_HEIGHT, 0.) / 8.,
             border_radius: None,
         })
-        .insert(CollisionLayers::new(BodyLayers::Player, BodyLayers::Enemy))
+        .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Player))
         .insert(SensorShape)
         .insert(Animation::new(7. / 60., animation_map.clone()))
         .insert(YSort(100.));
@@ -184,7 +185,7 @@ fn setup(
                     / 8.,
                 border_radius: None,
             })
-            .insert(CollisionLayers::new(BodyLayers::Enemy, BodyLayers::Player))
+            .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Enemy))
             .insert(Animation::new(7. / 60., animation_map.clone()))
             .insert(YSort(100.));
     }
@@ -228,34 +229,6 @@ fn player_attack(
         }
     }
 }
-
-/* fn damage_on_collision( mut events: EventReader<CollisionEvent>,
-    mut set: ParamSet<(Query<&mut Stats>, Query<&Damage>)>,
-    mut commands: Commands){
-        events.iter().filter(|e| e.is_started()).for_each(|e| {
-            let ( stats_entity,  damage_entity) = e.rigid_body_entities();
-
-         /*    if set.p0().contains(damage_entity) && set.p1().contains(stats_entity){
-                let temp = stats_entity;
-                stats_entity = damage_entity;
-                damage_entity = temp;
-            }  */
-            let p0 = set.p0();
-            let p1 = set.p1();
-           let stats = p0.get_mut(stats_entity);
-           let damage = p1.get(damage_entity);
-
-            if let Ok(stats) = stats {
-                if let Ok(damage) = damage{
-                    stats.health -= damage.0;
-                    if stats.health <= 0 {
-                        commands.entity(stats_entity).despawn_recursive();
-                    }
-                }
-            }
-
-        });
-} */
 
 fn kill_entities(
     mut commands: Commands,

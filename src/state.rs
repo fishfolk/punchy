@@ -1,6 +1,6 @@
-use bevy::prelude::{App, Component, Plugin, Query};
+use bevy::prelude::{App, Component, Plugin, Query, Without};
 
-use crate::animation::Animation;
+use crate::{animation::Animation, movement::Knockback};
 
 pub struct StatePlugin;
 
@@ -20,7 +20,7 @@ pub enum State {
     Dying,
 }
 
-fn exit_knocked_state(mut query: Query<(&mut State, &Animation)>) {
+fn exit_knocked_state(mut query: Query<(&mut State, &Animation), Without<Knockback>>) {
     for (mut state, animation) in query.iter_mut() {
         if (*state == State::KnockedLeft || *state == State::KnockedRight)
             && animation.is_finished()
