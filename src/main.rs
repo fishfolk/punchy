@@ -7,6 +7,7 @@ mod attack;
 mod camera;
 mod collisions;
 mod consts;
+mod item;
 mod movement;
 mod state;
 mod y_sort;
@@ -15,6 +16,7 @@ use animation::*;
 use attack::AttackPlugin;
 use camera::*;
 use collisions::*;
+use item::{spawn_throwable_items, ThrowItemEvent};
 use movement::*;
 use state::{State, StatePlugin};
 use y_sort::*;
@@ -39,6 +41,7 @@ fn main() {
             title: "Fish Fight Punchy".to_string(),
             ..Default::default()
         })
+        .add_event::<ThrowItemEvent>()
         .add_plugins(DefaultPlugins)
         .add_plugin(PhysicsPlugin::default())
         .add_plugin(AttackPlugin)
@@ -81,6 +84,7 @@ fn main() {
         })
         .add_plugin(ParallaxPlugin)
         .add_startup_system(setup)
+        .add_system(spawn_throwable_items)
         .add_system(player_controller)
         .add_system(camera_follow_player)
         .add_system(player_attack)
@@ -91,6 +95,10 @@ fn main() {
         .add_system(kill_entities)
         .add_system(knockback_system)
         .add_system(move_direction_system)
+        .add_system(move_in_arc_system)
+        .add_system(throw_item_system)
+        .add_system(item_attacks_enemy_collision)
+        .add_system(rotate_system)
         .run();
 }
 
@@ -110,7 +118,7 @@ fn setup(
     let texture_handle = asset_server.load("PlayerFishy(96x80).png");
     let texture_atlas = TextureAtlas::from_grid(
         texture_handle,
-        Vec2::new(consts::PLAYER_WIDTH, consts::PLAYER_HEIGHT),
+        Vec2::new(consts::PLAYER_SPRITE_WIDTH, consts::PLAYER_SPRITE_HEIGHT),
         14,
         7,
     );
@@ -145,7 +153,11 @@ fn setup(
         .insert(RigidBody::Sensor)
         .insert(Collisions::default())
         .insert(CollisionShape::Cuboid {
-            half_extends: Vec3::new(consts::PLAYER_WIDTH, consts::PLAYER_HITBOX_HEIGHT, 0.) / 8.,
+            half_extends: Vec3::new(
+                consts::PLAYER_SPRITE_WIDTH,
+                consts::PLAYER_HITBOX_HEIGHT,
+                0.,
+            ) / 8.,
             border_radius: None,
         })
         .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Player))
@@ -181,8 +193,11 @@ fn setup(
             .insert(RigidBody::Sensor)
             .insert(Collisions::default())
             .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(consts::PLAYER_WIDTH, consts::PLAYER_HITBOX_HEIGHT, 0.)
-                    / 8.,
+                half_extends: Vec3::new(
+                    consts::PLAYER_SPRITE_WIDTH,
+                    consts::PLAYER_HITBOX_HEIGHT,
+                    0.,
+                ) / 8.,
                 border_radius: None,
             })
             .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Enemy))
@@ -206,11 +221,11 @@ fn player_attack(
 
     if *state != State::Attacking {
         if keyboard.just_pressed(KeyCode::Space) {
-            *state = State::Attacking;
+            state.set(State::Attacking);
         }
     } else {
         if animation.is_finished() {
-            *state = State::Idle;
+            state.set(State::Idle);
         } else {
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
@@ -236,7 +251,7 @@ fn kill_entities(
 ) {
     for (entity, stats, animation, mut state) in query.iter_mut() {
         if stats.health <= 0 {
-            *state = State::Dying;
+            state.set(State::Dying);
         }
 
         if *state == State::Dying && animation.is_finished() {

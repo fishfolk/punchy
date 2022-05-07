@@ -1,11 +1,14 @@
 use bevy::{
     core::{Time, Timer},
     input::Input,
-    math::Vec2,
-    prelude::{Commands, Component, Deref, DerefMut, Entity, KeyCode, Query, Res, Transform, With},
+    math::{Quat, Vec2, Vec3Swizzles},
+    prelude::{
+        Commands, Component, Deref, DerefMut, Entity, EventWriter, KeyCode, Query, Res, Transform,
+        With,
+    },
 };
 
-use crate::{animation::Facing, consts, state::State, Player, Stats};
+use crate::{animation::Facing, consts, item::ThrowItemEvent, state::State, Player, Stats};
 
 #[derive(Component, Deref, DerefMut)]
 pub struct MoveInDirection(pub Vec2);
@@ -85,9 +88,40 @@ pub fn player_controller(
     }
 
     if dir == Vec2::ZERO {
-        *state = State::Idle;
+        state.set(State::Idle);
     } else {
-        *state = State::Running;
+        state.set(State::Running);
+    }
+}
+
+pub fn throw_item_system(
+    query: Query<(&Transform, Option<&Facing>), With<Player>>,
+    mut ev_throw_item: EventWriter<ThrowItemEvent>,
+    keyboard: Res<Input<KeyCode>>,
+) {
+    for (transform, facing_option) in query.iter() {
+        if keyboard.just_pressed(KeyCode::T) {
+            let facing = match facing_option {
+                Some(f) => f.clone(),
+                None => Facing::Right,
+            };
+
+            let mut position = transform.translation.xy();
+
+            //Offset the position depending on the facing
+            if facing.is_left() {
+                position.x -= consts::THROW_ITEM_X_OFFSET;
+            } else {
+                position.x += consts::THROW_ITEM_X_OFFSET;
+            }
+
+            position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
+
+            ev_throw_item.send(ThrowItemEvent {
+                position,
+                facing: facing.clone(),
+            })
+        }
     }
 }
 
@@ -97,5 +131,67 @@ pub fn move_direction_system(
 ) {
     for (mut transform, dir) in &mut query.iter_mut() {
         transform.translation += dir.0.extend(0.) * time.delta_seconds();
+    }
+}
+
+#[derive(Component)]
+pub struct MoveInArc {
+    pub radius: Vec2,
+    pub speed: f32,
+    pub angle: f32,
+    pub end_angle: f32,
+    pub inverse_direction: bool,
+    pub origin: Vec2,
+}
+
+pub fn move_in_arc_system(
+    mut query: Query<(&mut Transform, &mut MoveInArc, Entity)>,
+    time: Res<Time>,
+    mut commands: Commands,
+) {
+    for (mut transform, mut arc, entity) in &mut query.iter_mut() {
+        if arc.inverse_direction {
+            arc.angle += time.delta_seconds() * arc.speed;
+
+            if arc.angle >= arc.end_angle {
+                //TODO: Choose between removing the entity or the component
+                commands.entity(entity).despawn();
+                // commands.entity(entity).remove::<MoveInArc>();
+            }
+        } else {
+            arc.angle -= time.delta_seconds() * arc.speed;
+            if arc.angle <= arc.end_angle {
+                commands.entity(entity).despawn();
+                // commands.entity(entity).remove::<MoveInArc>();
+            }
+        }
+
+        let dir = Vec2::new(
+            arc.angle.to_radians().cos(),
+            arc.angle.to_radians().sin(),
+        )
+        // .normalize()
+            * arc.radius;
+
+        transform.translation.x = arc.origin.x + dir.x;
+        transform.translation.y = arc.origin.y + dir.y;
+    }
+}
+
+#[derive(Component)]
+pub struct Rotate {
+    pub speed: f32,
+    pub to_right: bool,
+}
+
+pub fn rotate_system(mut query: Query<(&mut Transform, &Rotate)>, time: Res<Time>) {
+    for (mut transform, rotate) in &mut query.iter_mut() {
+        let rotation_factor = match rotate.to_right {
+            true => -1.,
+            false => 1.,
+        };
+
+        transform.rotation *=
+            Quat::from_rotation_z(rotation_factor * rotate.speed * time.delta_seconds());
     }
 }

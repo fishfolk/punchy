@@ -20,12 +20,23 @@ pub enum State {
     Dying,
 }
 
+impl State {
+    pub fn set(&mut self, state: State) {
+        *self = state;
+    }
+
+    pub fn is_knocked(&self) -> bool {
+        match self {
+            State::KnockedLeft | State::KnockedRight => true,
+            _ => false,
+        }
+    }
+}
+
 fn exit_knocked_state(mut query: Query<(&mut State, &Animation), Without<Knockback>>) {
     for (mut state, animation) in query.iter_mut() {
-        if (*state == State::KnockedLeft || *state == State::KnockedRight)
-            && animation.is_finished()
-        {
-            *state = State::Idle;
+        if state.is_knocked() && animation.is_finished() {
+            state.set(State::Idle);
         }
     }
 }
