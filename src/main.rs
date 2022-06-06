@@ -57,7 +57,7 @@ fn main() {
                     rows: 1,
                     z: 0.0,
                     scale: 0.9,
-                    ..Default::default()
+                    transition_factor: 0.9,
                 },
                 LayerData {
                     speed: 0.9,
@@ -67,7 +67,7 @@ fn main() {
                     rows: 1,
                     z: 1.0,
                     scale: 0.9,
-                    ..Default::default()
+                    transition_factor: 0.9,
                 },
                 LayerData {
                     speed: 0.82,
@@ -77,7 +77,7 @@ fn main() {
                     rows: 1,
                     z: 2.0,
                     scale: 0.9,
-                    ..Default::default()
+                    transition_factor: 0.9,
                 },
                 LayerData {
                     speed: 0.74,
@@ -87,7 +87,7 @@ fn main() {
                     rows: 1,
                     z: 3.0,
                     scale: 0.9,
-                    ..Default::default()
+                    transition_factor: 0.9,
                 },
                 LayerData {
                     speed: 0.,
@@ -97,7 +97,7 @@ fn main() {
                     rows: 1,
                     z: 4.0,
                     scale: 0.9,
-                    ..Default::default()
+                    transition_factor: 0.9,
                 },
             ],
             ..Default::default()
