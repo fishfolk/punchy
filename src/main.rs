@@ -51,32 +51,52 @@ fn main() {
             layer_data: vec![
                 LayerData {
                     speed: 0.98,
-                    path: "background_03.png".to_string(),
-                    tile_size: Vec2::new(896.0, 480.0),
+                    path: "beach/background_01.png".to_string(),
+                    tile_size: Vec2::new(960.0, 540.0),
                     cols: 1,
                     rows: 1,
                     z: 0.0,
-                    scale: 1.2,
+                    scale: 0.9,
                     ..Default::default()
                 },
                 LayerData {
                     speed: 0.9,
-                    path: "background_02.png".to_string(),
-                    tile_size: Vec2::new(896.0, 480.0),
+                    path: "beach/background_02.2.png".to_string(),
+                    tile_size: Vec2::new(960.0, 540.0),
                     cols: 1,
                     rows: 1,
                     z: 1.0,
-                    scale: 1.2,
+                    scale: 0.9,
                     ..Default::default()
                 },
                 LayerData {
                     speed: 0.82,
-                    path: "background_01.png".to_string(),
-                    tile_size: Vec2::new(896.0, 480.0),
+                    path: "beach/background_03.png".to_string(),
+                    tile_size: Vec2::new(960.0, 540.0),
                     cols: 1,
                     rows: 1,
                     z: 2.0,
-                    scale: 1.2,
+                    scale: 0.9,
+                    ..Default::default()
+                },
+                LayerData {
+                    speed: 0.74,
+                    path: "beach/background_04.2.png".to_string(),
+                    tile_size: Vec2::new(960.0, 540.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 3.0,
+                    scale: 0.9,
+                    ..Default::default()
+                },
+                LayerData {
+                    speed: 0.,
+                    path: "beach/background_05.2.png".to_string(),
+                    tile_size: Vec2::new(960.0, 540.0),
+                    cols: 1,
+                    rows: 1,
+                    z: 4.0,
+                    scale: 0.9,
                     ..Default::default()
                 },
             ],
@@ -110,7 +130,7 @@ fn setup(
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
     // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
     camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
-    camera_bundle.orthographic_projection.scale = 16. * 14.5;
+    camera_bundle.orthographic_projection.scale = 16. * 14.;
     commands
         .spawn_bundle(camera_bundle)
         .insert(ParallaxCameraComponent);
@@ -205,11 +225,11 @@ fn setup(
             .insert(YSort(100.));
     }
 
-    commands.spawn_bundle(SpriteBundle {
+    /*    commands.spawn_bundle(SpriteBundle {
         texture: asset_server.load("floor.png"),
         transform: Transform::from_xyz(0., consts::GROUND_Y, 5.),
         ..Default::default()
-    });
+    }); */
 }
 
 fn player_attack(
