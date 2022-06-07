@@ -1,6 +1,5 @@
 use bevy::{prelude::*, render::camera::ScalingMode, utils::HashMap};
 use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
-// use heron::{prelude::*, SensorShape};
 use bevy_rapier2d::prelude::*;
 
 mod animation;
@@ -44,7 +43,6 @@ fn main() {
         })
         .add_event::<ThrowItemEvent>()
         .add_plugins(DefaultPlugins)
-        // .add_plugin(PhysicsPlugin::default())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(AttackPlugin)
@@ -102,8 +100,15 @@ fn main() {
         .add_system(throw_item_system)
         .add_system(item_attacks_enemy_collision)
         .add_system(rotate_system)
+        // .add_system_to_stage(CoreStage::PostUpdate, collision_evt_test)
         .run();
 }
+
+// fn collision_evt_test(mut collision_events: EventReader<CollisionEvent>) {
+//     for evt in collision_events.iter() {
+//         println! {"{:?}", evt};
+//     }
+// }
 
 fn setup(
     mut commands: Commands,
@@ -153,16 +158,14 @@ fn setup(
             movement_speed: 150.0,
         })
         .insert(Facing::Right)
-        .insert(Sensor(true))
-        // .insert(Collisions::default())
-        .insert(CollidingEntities::default())
+        // .insert(CollidingEntities::default()) //this is for the bevy change detection query approach
         .insert(Collider::cuboid(
             consts::PLAYER_SPRITE_WIDTH / 8.,
             consts::PLAYER_HITBOX_HEIGHT / 8.,
         ))
-        // return and figure out mask bitset
-        // .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Player))
-        // .insert(SensorShape)
+        .insert(Sensor(true))
+        .insert(ActiveEvents::COLLISION_EVENTS)
+        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
         .insert(CollisionGroups::new(BodyLayers::Player as u32, 0b1111))
         .insert(Animation::new(7. / 60., animation_map.clone()))
         .insert(YSort(100.));
@@ -192,15 +195,15 @@ fn setup(
                 damage: 35,
                 movement_speed: 120.0,
             })
-            // .insert(RigidBody::Sensor)
-            .insert(Sensor(true))
-            // .insert(Collisions::default())
-            .insert(CollidingEntities::default())
+            // .insert(CollidingEntities::default())
             .insert(Collider::cuboid(
                 consts::PLAYER_SPRITE_WIDTH / 8.,
                 consts::PLAYER_HITBOX_HEIGHT / 8.,
             ))
-            // .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Enemy))
+            .insert(Sensor(true))
+            .insert(ActiveEvents::COLLISION_EVENTS)
+            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+            .insert(CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111))
             .insert(Animation::new(7. / 60., animation_map.clone()))
             .insert(YSort(100.));
     }

@@ -48,19 +48,15 @@ fn player_attack(
                 transform.translation.y,
                 ATTACK_LAYER,
             )))
-            .insert(Sensor(true))
-            // .insert(RigidBody::Sensor)
             .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
-            .insert(facing.clone())
-            //does it need CollidingEntities?
+            .insert(Sensor(true))
+            .insert(ActiveEvents::COLLISION_EVENTS)
+            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
             .insert(CollisionGroups::new(
                 BodyLayers::PlayerAttack as u32,
                 BodyLayers::Enemy as u32,
             ))
-            // .insert(CollisionLayers::new(
-            //     BodyLayers::PlayerAttack,
-            //     BodyLayers::Enemy,
-            // ))
+            .insert(facing.clone())
             .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
             // .insert(Velocity::from_linear(dir * 300.))
             .insert(Attack { damage: 10 });

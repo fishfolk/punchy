@@ -5,11 +5,9 @@ use bevy::{
     prelude::{Commands, EventReader, Query, Transform, With, Without},
 };
 use bevy_rapier2d::prelude::*;
-// use heron::{CollisionEvent, PhysicsLayer};
 
 use crate::{attack::Attack, item::Item, movement::Knockback, state::State, Enemy, Player, Stats};
 
-// #[derive(PhysicsLayer)]
 pub enum BodyLayers {
     Enemy = 0b0001,
     Player = 0b0010,
@@ -25,30 +23,12 @@ pub fn player_enemy_collision(
 ) {
     for event in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = event {
-            //     }
-            // }
-
-            // events
-            //     .iter()
-            //     .filter(|e| matches!(e, CollisionEvent::Started { .. }))
-            //     .for_each(|e| {
-            //         // let entity1 = e.
-            // let (e1, e2) = (e.0, e.1);
-            // let (e1, e2) = e.rigid_body_entities();
-            // let (l1, l2) = e.collision_layers();
-
-            // let (player, enemy);
-            // if l1.contains_group(BodyLayers::Player) && l2.contains_group(BodyLayers::Enemy) {
-            //     player = e1;
-            //     enemy = e2;
-            // } else if l2.contains_group(BodyLayers::Player) && l1.contains_group(BodyLayers::Enemy)
-            // {
-            //     player = e2;
-            //     enemy = e1;
-            // } else {
-            //     return;
-            // }
-            let (player, enemy) = (*e1, *e2);
+            let (player, enemy);
+            if player_query.contains(*e1) && enemy_query.contains(*e2) {
+                (player, enemy) = (*e1, *e2);
+            } else {
+                (player, enemy) = (*e2, *e1);
+            }
 
             if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
                 if let Ok((p_state, p_stats, p_transform)) = player_query.get(player) {
@@ -74,7 +54,6 @@ pub fn player_enemy_collision(
                     }
                 }
             }
-            // });
         }
     }
 }
@@ -87,24 +66,12 @@ pub fn player_attack_enemy_collision(
 ) {
     for event in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = event {
-            // events.iter().filter(|e| e.is_started()).for_each(|e| {
-            //     let (e1, e2) = e.rigid_body_entities();
-            //     let (l1, l2) = e.collision_layers();
-
-            //     let (attack, enemy);
-            //     if l1.contains_group(BodyLayers::PlayerAttack) && l2.contains_group(BodyLayers::Enemy) {
-            //         attack = e1;
-            //         enemy = e2;
-            //     } else if l2.contains_group(BodyLayers::PlayerAttack)
-            //         && l1.contains_group(BodyLayers::Enemy)
-            //     {
-            //         attack = e2;
-            //         enemy = e1;
-            //     } else {
-            //         return;
-            //     }
-
-            let (attack, enemy) = (*e1, *e2);
+            let (attack, enemy);
+            if attack_query.contains(*e1) && enemy_query.contains(*e2) {
+                (attack, enemy) = (*e1, *e2);
+            } else {
+                (attack, enemy) = (*e2, *e1);
+            }
 
             if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
                 if let Ok((a_attack, a_transform)) = attack_query.get(attack) {
@@ -129,7 +96,6 @@ pub fn player_attack_enemy_collision(
                     commands.entity(attack).despawn_recursive();
                 }
             }
-            // });
         }
     }
 }
@@ -142,22 +108,12 @@ pub fn item_attacks_enemy_collision(
 ) {
     for event in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = event {
-            // events.iter().filter(|e| e.is_started()).for_each(|e| {
-            //     let (e1, e2) = e.rigid_body_entities();
-            //     let (l1, l2) = e.collision_layers();
-
-            //     let (item, enemy);
-            //     if l1.contains_group(BodyLayers::Item) && l2.contains_group(BodyLayers::Enemy) {
-            //         item = e1;
-            //         enemy = e2;
-            //     } else if l2.contains_group(BodyLayers::Item) && l1.contains_group(BodyLayers::Enemy) {
-            //         item = e2;
-            //         enemy = e1;
-            //     } else {
-            //         return;
-            //     }
-            let (item, enemy) = (*e1, *e2);
-
+            let (item, enemy);
+            if item_query.contains(*e1) && enemy_query.contains(*e2) {
+                (item, enemy) = (*e1, *e2);
+            } else {
+                (item, enemy) = (*e2, *e1);
+            }
             if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
                 if let Ok((a_attack, a_transform)) = item_query.get(item) {
                     e_stats.health -= a_attack.damage;
@@ -181,7 +137,6 @@ pub fn item_attacks_enemy_collision(
                     commands.entity(item).despawn_recursive();
                 };
             };
-            // });
         }
     }
 }
