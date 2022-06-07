@@ -3,7 +3,8 @@ use bevy::{
     prelude::{default, AssetServer, Commands, Component, EventReader, Res, Transform},
     sprite::SpriteBundle,
 };
-use heron::{CollisionLayers, CollisionShape, RigidBody};
+// use heron::{CollisionLayers, CollisionShape, RigidBody};
+use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
@@ -43,12 +44,18 @@ pub fn spawn_throwable_items(
             })
             .insert(Item)
             .insert(Pickable)
-            .insert(RigidBody::Sensor)
-            .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(ITEM_WIDTH / 2., ITEM_HEIGHT / 2., 0.),
-                border_radius: None,
-            })
-            .insert(CollisionLayers::new(BodyLayers::Item, BodyLayers::Enemy))
+            // .insert(RigidBody::Sensor)
+            .insert(Sensor(true))
+            // .insert(CollisionShape::Cuboid {
+            //     half_extends: Vec3::new(ITEM_WIDTH / 2., ITEM_HEIGHT / 2., 0.),
+            //     border_radius: None,
+            // })
+            .insert(Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.))
+            .insert(CollisionGroups::new(
+                BodyLayers::Item as u32,
+                BodyLayers::Enemy as u32,
+            ))
+            // .insert(CollisionLayers::new(BodyLayers::Item, BodyLayers::Enemy))
             .insert(Attack {
                 damage: consts::THROW_ITEM_DAMAGE,
             })

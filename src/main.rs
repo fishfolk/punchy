@@ -1,6 +1,7 @@
 use bevy::{prelude::*, render::camera::ScalingMode, utils::HashMap};
 use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
-use heron::{prelude::*, SensorShape};
+// use heron::{prelude::*, SensorShape};
+use bevy_rapier2d::prelude::*;
 
 mod animation;
 mod attack;
@@ -43,7 +44,9 @@ fn main() {
         })
         .add_event::<ThrowItemEvent>()
         .add_plugins(DefaultPlugins)
-        .add_plugin(PhysicsPlugin::default())
+        // .add_plugin(PhysicsPlugin::default())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
@@ -150,18 +153,17 @@ fn setup(
             movement_speed: 150.0,
         })
         .insert(Facing::Right)
-        .insert(RigidBody::Sensor)
-        .insert(Collisions::default())
-        .insert(CollisionShape::Cuboid {
-            half_extends: Vec3::new(
-                consts::PLAYER_SPRITE_WIDTH,
-                consts::PLAYER_HITBOX_HEIGHT,
-                0.,
-            ) / 8.,
-            border_radius: None,
-        })
-        .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Player))
-        .insert(SensorShape)
+        .insert(Sensor(true))
+        // .insert(Collisions::default())
+        .insert(CollidingEntities::default())
+        .insert(Collider::cuboid(
+            consts::PLAYER_SPRITE_WIDTH / 8.,
+            consts::PLAYER_HITBOX_HEIGHT / 8.,
+        ))
+        // return and figure out mask bitset
+        // .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Player))
+        // .insert(SensorShape)
+        .insert(CollisionGroups::new(BodyLayers::Player as u32, 0b1111))
         .insert(Animation::new(7. / 60., animation_map.clone()))
         .insert(YSort(100.));
 
@@ -190,17 +192,15 @@ fn setup(
                 damage: 35,
                 movement_speed: 120.0,
             })
-            .insert(RigidBody::Sensor)
-            .insert(Collisions::default())
-            .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(
-                    consts::PLAYER_SPRITE_WIDTH,
-                    consts::PLAYER_HITBOX_HEIGHT,
-                    0.,
-                ) / 8.,
-                border_radius: None,
-            })
-            .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Enemy))
+            // .insert(RigidBody::Sensor)
+            .insert(Sensor(true))
+            // .insert(Collisions::default())
+            .insert(CollidingEntities::default())
+            .insert(Collider::cuboid(
+                consts::PLAYER_SPRITE_WIDTH / 8.,
+                consts::PLAYER_HITBOX_HEIGHT / 8.,
+            ))
+            // .insert(CollisionLayers::all_masks::<BodyLayers>().with_group(BodyLayers::Enemy))
             .insert(Animation::new(7. / 60., animation_map.clone()))
             .insert(YSort(100.));
     }
