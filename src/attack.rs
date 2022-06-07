@@ -4,7 +4,7 @@ use bevy::{
     prelude::{App, Commands, Component, KeyCode, Plugin, Query, Res, Transform, With},
     transform::TransformBundle,
 };
-use heron::{CollisionLayers, CollisionShape, RigidBody};
+use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
@@ -47,16 +47,15 @@ fn player_attack(
                 transform.translation.y,
                 ATTACK_LAYER,
             )))
-            .insert(RigidBody::Sensor)
-            .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2., 0.),
-                border_radius: None,
-            })
-            .insert(facing.clone())
-            .insert(CollisionLayers::new(
-                BodyLayers::PlayerAttack,
-                BodyLayers::Enemy,
+            .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
+            .insert(Sensor(true))
+            .insert(ActiveEvents::COLLISION_EVENTS)
+            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+            .insert(CollisionGroups::new(
+                BodyLayers::PlayerAttack as u32,
+                BodyLayers::Enemy as u32,
             ))
+            .insert(facing.clone())
             .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
             // .insert(Velocity::from_linear(dir * 300.))
             .insert(Attack { damage: 10 });
