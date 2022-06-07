@@ -100,15 +100,8 @@ fn main() {
         .add_system(throw_item_system)
         .add_system(item_attacks_enemy_collision)
         .add_system(rotate_system)
-        // .add_system_to_stage(CoreStage::PostUpdate, collision_evt_test)
         .run();
 }
-
-// fn collision_evt_test(mut collision_events: EventReader<CollisionEvent>) {
-//     for evt in collision_events.iter() {
-//         println! {"{:?}", evt};
-//     }
-// }
 
 fn setup(
     mut commands: Commands,
@@ -158,7 +151,6 @@ fn setup(
             movement_speed: 150.0,
         })
         .insert(Facing::Right)
-        // .insert(CollidingEntities::default()) //this is for the bevy change detection query approach
         .insert(Collider::cuboid(
             consts::PLAYER_SPRITE_WIDTH / 8.,
             consts::PLAYER_HITBOX_HEIGHT / 8.,
@@ -195,7 +187,6 @@ fn setup(
                 damage: 35,
                 movement_speed: 120.0,
             })
-            // .insert(CollidingEntities::default())
             .insert(Collider::cuboid(
                 consts::PLAYER_SPRITE_WIDTH / 8.,
                 consts::PLAYER_HITBOX_HEIGHT / 8.,

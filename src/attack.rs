@@ -4,7 +4,6 @@ use bevy::{
     prelude::{App, Commands, Component, KeyCode, Plugin, Query, Res, Transform, With},
     transform::TransformBundle,
 };
-// use heron::{CollisionLayers, CollisionShape, RigidBody};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
