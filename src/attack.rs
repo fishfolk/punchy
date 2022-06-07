@@ -1,6 +1,6 @@
 use bevy::{
     input::Input,
-    math::{Vec2, Vec3},
+    math::Vec2,
     prelude::{App, Commands, Component, KeyCode, Plugin, Query, Res, Transform, With},
     transform::TransformBundle,
 };

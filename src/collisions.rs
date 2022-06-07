@@ -34,8 +34,6 @@ pub fn player_enemy_collision(
                 if let Ok((p_state, p_stats, p_transform)) = player_query.get(player) {
                     if *p_state == State::Attacking {
                         e_stats.health -= p_stats.damage;
-                        println! {"e_stats.health {:?}", e_stats.health};
-
                         let force = 150.; //TODO: set this to a constant
                         let mut direction = Vec2::new(0., 0.);
 
