@@ -34,6 +34,9 @@ pub struct Stats {
     pub movement_speed: f32,
 }
 
+#[derive(Component)]
+pub struct DespawnMarker;
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
@@ -107,7 +110,8 @@ fn main() {
         .add_startup_system(setup)
         .add_system(spawn_throwable_items)
         .add_system(player_controller)
-        .add_system(camera_follow_player)
+        // .add_system(camera_follow_player)
+        .add_system_to_stage(CoreStage::PostUpdate, camera_follow_player)
         .add_system(player_attack)
         .add_system(helper_camera_controller)
         .add_system(y_sort)
@@ -120,6 +124,7 @@ fn main() {
         .add_system(throw_item_system)
         .add_system(item_attacks_enemy_collision)
         .add_system(rotate_system)
+        .add_system_to_stage(CoreStage::Last, despawn_entities)
         .run();
 }
 
@@ -269,7 +274,14 @@ fn kill_entities(
         }
 
         if *state == State::Dying && animation.is_finished() {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).insert(DespawnMarker);
+            // commands.entity(entity).despawn_recursive();
         }
+    }
+}
+
+fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMarker>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
