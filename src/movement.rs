@@ -8,7 +8,9 @@ use bevy::{
     },
 };
 
-use crate::{animation::Facing, consts, item::ThrowItemEvent, state::State, Player, Stats};
+use crate::{
+    animation::Facing, consts, item::ThrowItemEvent, state::State, DespawnMarker, Player, Stats,
+};
 
 #[derive(Component, Deref, DerefMut)]
 pub struct MoveInDirection(pub Vec2);
@@ -155,13 +157,15 @@ pub fn move_in_arc_system(
 
             if arc.angle >= arc.end_angle {
                 //TODO: Choose between removing the entity or the component
-                commands.entity(entity).despawn();
+                // commands.entity(entity).despawn();
+                commands.entity(entity).insert(DespawnMarker);
                 // commands.entity(entity).remove::<MoveInArc>();
             }
         } else {
             arc.angle -= time.delta_seconds() * arc.speed;
             if arc.angle <= arc.end_angle {
-                commands.entity(entity).despawn();
+                // commands.entity(entity).despawn();
+                commands.entity(entity).insert(DespawnMarker);
                 // commands.entity(entity).remove::<MoveInArc>();
             }
         }
