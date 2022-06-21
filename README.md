@@ -16,7 +16,7 @@ https://user-images.githubusercontent.com/1379590/174692929-20b74e9a-1eba-4fbb-8
 |T| Throw Item|
 |Enter| Shoot|
 |Space| Flop Attack|
-|Z,X| Zoom camera|
+|Z,X| Zoom Camera|
 |↑↓←→ | Pan Camera|
 
 
