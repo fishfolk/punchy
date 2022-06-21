@@ -42,6 +42,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
         .insert_resource(WindowDescriptor {
             title: "Fish Fight Punchy".to_string(),
+            scale_factor_override: Some(1.0),
             ..Default::default()
         })
         .add_event::<ThrowItemEvent>()
