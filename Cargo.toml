@@ -10,3 +10,6 @@ bevy = "0.7.0"
 bevy-parallax = "0.1.2"
 bevy_rapier2d = { version = "0.14.1", features = ["debug-render"] }
 # bevy_egui = "0.14.0"
+
+#TODO turn this into a debug feature
+# bevy_mod_debugdump = "0.4"

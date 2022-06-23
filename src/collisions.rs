@@ -70,7 +70,6 @@ pub fn player_attack_enemy_collision(
             } else {
                 (attack, enemy) = (*e2, *e1);
             }
-
             if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
                 if let Ok((a_attack, a_transform)) = attack_query.get(attack) {
                     e_stats.health -= a_attack.damage;

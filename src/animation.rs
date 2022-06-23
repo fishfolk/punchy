@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use bevy::{
     core::{Time, Timer},
-    prelude::{App, Changed, Component, Plugin, Query, Res},
+    prelude::{App, Changed, Component, CoreStage, Plugin, Query, Res, SystemSet},
     sprite::TextureAtlasSprite,
     utils::HashMap,
 };
@@ -13,9 +13,13 @@ pub struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(animate_on_state_changed)
-            .add_system(animation_flipping)
-            .add_system(animation_cycling);
+        app.add_system_set_to_stage(
+            CoreStage::PostUpdate,
+            SystemSet::new()
+                .with_system(animate_on_state_changed)
+                .with_system(animation_flipping)
+                .with_system(animation_cycling),
+        );
     }
 }
 
