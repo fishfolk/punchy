@@ -6,8 +6,7 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 
 ![EA469655-50B7-487F-84EA-A4A06938356A](https://user-images.githubusercontent.com/583842/161245719-7b587a2a-dd02-4edc-8640-b26ae6f7eafb.gif)
 
-https://user-images.githubusercontent.com/1379590/174692929-20b74e9a-1eba-4fbb-8518-432deafdc960.mp4
-
+https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a124-b07bce1db0cb.mp4
 
 ## Controls
 | Key | Action |
@@ -24,9 +23,7 @@ https://user-images.githubusercontent.com/1379590/174692929-20b74e9a-1eba-4fbb-8
 
 Anyone involved in the Fish Fight community must follow our [code of conduct](https://github.com/fishfight/FishFight/blob/main/CODE_OF_CONDUCT.md).
 
-Punchy is currently at an early stage of development, if you want to contribute the best way to get started is to join [Spicy Lobster Discord](https://discord.gg/4smxjcheE5)
-
-If you want to look at something further along, check out the [help-wanted](https://github.com/fishfight/FishFight/labels/help%20wanted) issues for the original Fish Fight.
+Punchy is currently at an early stage of development, if you want to contribute the best way to get started is to join us at the [Spicy Lobster Discord](https://discord.gg/4smxjcheE5) and check out our [help-wanted](https://github.com/fishfight/punchy/labels/help%20wanted) issues. 
 
 Before committing and opening a PR, please run the following commands and follow their instructions:
 1. `cargo clippy -- -W clippy::correctness -D warnings`
