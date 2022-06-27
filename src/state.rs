@@ -1,4 +1,4 @@
-use bevy::prelude::{App, Component, Plugin, Query, Without};
+use bevy::prelude::{App, Component, CoreStage, Plugin, Query, Without};
 
 use crate::{animation::Animation, movement::Knockback};
 
@@ -6,7 +6,7 @@ pub struct StatePlugin;
 
 impl Plugin for StatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(exit_knocked_state);
+        app.add_system_to_stage(CoreStage::PreUpdate, exit_knocked_state);
     }
 }
 
