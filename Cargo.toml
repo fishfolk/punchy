@@ -11,5 +11,17 @@ bevy-parallax = "0.1.2"
 bevy_rapier2d = { version = "0.14.1", features = ["debug-render"] }
 # bevy_egui = "0.14.0"
 
+# Enable optimizations for dependencies but not for our code
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+lto = true
+codegen-units = 1 # Improves physics performance for release builds
+
 #TODO turn this into a debug feature
 # bevy_mod_debugdump = "0.4"
