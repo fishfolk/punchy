@@ -8,11 +8,21 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{attack::Attack, item::Item, movement::Knockback, state::State, Enemy, Player, Stats};
 
-pub enum BodyLayers {
-    Enemy = 0b0001,
-    Player = 0b0010,
-    PlayerAttack = 0b0100,
-    Item = 0b1000,
+#[derive(Copy, Clone)]
+pub struct BodyLayers;
+
+impl BodyLayers {
+    // Each successive layer represents a different bit in the 32-bit u32 type.
+    //
+    // The layer is represented by 1 shifted 0 places to the left:          0b0001.
+    // The second layer is represented by 1 shifted one place to the left:  0b0010.
+    // And so on for the rest of the layers.
+    pub const ENEMY: u32 = 1 << 0;
+    pub const PLAYER: u32 = 1 << 1;
+    pub const PLAYER_ATTACK: u32 = 1 << 2;
+    pub const ITEM: u32 = 1 << 3;
+    // u32::MAX is a u32 with all of it's bits set to 1, so this will contain all of the layers.
+    pub const ALL: u32 = u32::MAX;
 }
 
 pub fn player_enemy_collision(

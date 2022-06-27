@@ -281,7 +281,7 @@ fn setup(
         })
         .insert_bundle(CharacterBundle { ..default() })
         .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::Player as u32, 0b1111),
+            collision_groups: CollisionGroups::new(BodyLayers::PLAYER, BodyLayers::ALL),
             ..default()
         });
 
@@ -299,7 +299,7 @@ fn setup(
         })
         .insert_bundle(CharacterBundle { ..default() })
         .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111),
+            collision_groups: CollisionGroups::new(BodyLayers::ENEMY, BodyLayers::ALL),
             ..default()
         });
 
@@ -317,7 +317,7 @@ fn setup(
         })
         .insert_bundle(CharacterBundle { ..default() })
         .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111),
+            collision_groups: CollisionGroups::new(BodyLayers::ENEMY, BodyLayers::ALL),
             ..default()
         });
 
@@ -334,7 +334,7 @@ fn setup(
         })
         .insert_bundle(CharacterBundle { ..default() })
         .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111),
+            collision_groups: CollisionGroups::new(BodyLayers::ENEMY, BodyLayers::ALL),
             ..default()
         });
     /*    commands.spawn_bundle(SpriteBundle {
