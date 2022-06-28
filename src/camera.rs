@@ -1,9 +1,10 @@
 use bevy::{
     core::Time,
     input::Input,
+    math::Vec2,
     prelude::{
-        Camera, EventWriter, KeyCode, OrthographicProjection, Query, Res, ResMut, Transform, With,
-        Without,
+        Camera, Component, EventWriter, KeyCode, OrthographicProjection, Query, Res, ResMut,
+        Transform, With, Without,
     },
     render::camera::CameraProjection,
     window::Windows,
@@ -12,30 +13,31 @@ use bevy_parallax::ParallaxMoveEvent;
 
 use crate::{consts, Player};
 
+#[derive(Component)]
+pub struct Panning {
+    pub offset: Vec2,
+}
+
 pub fn helper_camera_controller(
-    mut query: Query<(&mut Camera, &mut OrthographicProjection, &mut Transform)>,
+    mut query: Query<(&mut Camera, &mut OrthographicProjection, &mut Panning)>,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
     mut windows: ResMut<Windows>,
 ) {
-    let (mut camera, mut projection, mut transform) = query.single_mut();
+    let (mut camera, mut projection, mut panning) = query.single_mut();
 
     if keys.pressed(KeyCode::Up) {
-        transform.translation.y += 150.0 * time.delta_seconds();
+        panning.offset.y += 150.0 * time.delta_seconds();
     }
     if keys.pressed(KeyCode::Left) {
-        transform.translation.x -= 150.0 * time.delta_seconds();
+        panning.offset.x -= 150.0 * time.delta_seconds();
     }
     if keys.pressed(KeyCode::Down) {
-        transform.translation.y -= 150.0 * time.delta_seconds();
+        panning.offset.y -= 150.0 * time.delta_seconds();
     }
     if keys.pressed(KeyCode::Right) {
-        transform.translation.x += 150.0 * time.delta_seconds();
+        panning.offset.x += 150.0 * time.delta_seconds();
     }
-
-    let scale = projection.scale;
-
-    let w = windows.primary_mut();
 
     if keys.pressed(KeyCode::Z) {
         projection.scale = f32::clamp(
@@ -48,8 +50,11 @@ pub fn helper_camera_controller(
         projection.scale += 150. * time.delta_seconds();
     }
 
+    let scale = projection.scale;
+    let window = windows.primary_mut();
+
     if (projection.scale - scale).abs() > f32::EPSILON {
-        projection.update(w.width(), w.height());
+        projection.update(window.width(), window.height());
         camera.projection_matrix = projection.get_projection_matrix();
         camera.depth_calculation = projection.depth_calculation();
     }
@@ -57,14 +62,18 @@ pub fn helper_camera_controller(
 
 pub fn camera_follow_player(
     player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<&mut Transform, (With<Camera>, Without<Player>)>,
+    mut camera_query: Query<(&mut Transform, &Panning), (With<Camera>, Without<Player>)>,
     mut move_event_writer: EventWriter<ParallaxMoveEvent>,
 ) {
     let player = player_query.single().translation;
-    let camera = camera_query.single_mut();
+    let (mut camera, panning) = camera_query.single_mut();
+
+    let diff = player.x - (camera.translation.x - panning.offset.x);
+
+    camera.translation.x = player.x + panning.offset.x;
+    camera.translation.y = consts::GROUND_Y + panning.offset.y;
 
     move_event_writer.send(ParallaxMoveEvent {
-        camera_move_speed: (player.x - camera.translation.x) * consts::CAMERA_SPEED,
+        camera_move_speed: diff * consts::CAMERA_SPEED,
     });
-    //   camera.translation.y += (player.y - camera.translation.y) * time.delta_seconds() * 5.;
 }
