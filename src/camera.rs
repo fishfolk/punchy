@@ -38,10 +38,14 @@ pub fn helper_camera_controller(
     let w = windows.primary_mut();
 
     if keys.pressed(KeyCode::Z) {
-        projection.scale -= 1. /* * time.delta_seconds() */;
+        projection.scale = f32::clamp(
+            projection.scale - 150. * time.delta_seconds(),
+            1.,
+            projection.scale,
+        );
     }
     if keys.pressed(KeyCode::X) {
-        projection.scale += 1. /* * time.delta_seconds() */;
+        projection.scale += 150. * time.delta_seconds();
     }
 
     if (projection.scale - scale).abs() > f32::EPSILON {
