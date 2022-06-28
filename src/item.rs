@@ -47,10 +47,7 @@ pub fn spawn_throwable_items(
             .insert(Sensor(true))
             .insert(ActiveEvents::COLLISION_EVENTS)
             .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-            .insert(CollisionGroups::new(
-                BodyLayers::Item as u32,
-                BodyLayers::Enemy as u32,
-            ))
+            .insert(CollisionGroups::new(BodyLayers::ITEM, BodyLayers::ENEMY))
             .insert(Attack {
                 damage: consts::THROW_ITEM_DAMAGE,
             })

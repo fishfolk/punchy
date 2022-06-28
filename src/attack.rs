@@ -52,8 +52,8 @@ fn player_attack(
             .insert(ActiveEvents::COLLISION_EVENTS)
             .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
             .insert(CollisionGroups::new(
-                BodyLayers::PlayerAttack as u32,
-                BodyLayers::Enemy as u32,
+                BodyLayers::PLAYER_ATTACK,
+                BodyLayers::ENEMY,
             ))
             .insert(facing.clone())
             .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
