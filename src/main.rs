@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::camera::ScalingMode, utils::HashMap};
+use bevy::{ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode, utils::HashMap};
 use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 
@@ -34,8 +34,84 @@ pub struct Stats {
     pub movement_speed: f32,
 }
 
+impl Default for Stats {
+    fn default() -> Self {
+        Stats {
+            health: 100,
+            damage: 35,
+            movement_speed: 150.,
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct DespawnMarker;
+
+#[derive(Bundle, Default)]
+struct CharacterBundle {
+    state: State,
+    stats: Stats,
+    ysort: YSort,
+}
+
+#[derive(Bundle)]
+struct AnimatedSpriteSheetBundle {
+    #[bundle]
+    sprite_sheet: SpriteSheetBundle,
+    animation: Animation,
+}
+
+#[derive(Bundle)]
+struct PhysicsBundle {
+    collider: Collider,
+    sensor: Sensor,
+    active_events: ActiveEvents,
+    active_collision_types: ActiveCollisionTypes,
+    collision_groups: CollisionGroups,
+}
+impl Default for PhysicsBundle {
+    fn default() -> Self {
+        PhysicsBundle {
+            collider: (Collider::cuboid(
+                consts::PLAYER_SPRITE_WIDTH / 8.,
+                consts::PLAYER_HITBOX_HEIGHT / 8.,
+            )),
+            sensor: Sensor(true),
+            active_events: ActiveEvents::COLLISION_EVENTS,
+            active_collision_types: ActiveCollisionTypes::default()
+                | ActiveCollisionTypes::STATIC_STATIC,
+            collision_groups: CollisionGroups::default(),
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct PlayerBundle {
+    player: Player,
+    facing: Facing,
+}
+impl Default for PlayerBundle {
+    fn default() -> Self {
+        PlayerBundle {
+            player: Player,
+            facing: Facing::Right,
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct EnemyBundle {
+    enemy: Enemy,
+    facing: Facing,
+}
+impl Default for EnemyBundle {
+    fn default() -> Self {
+        EnemyBundle {
+            enemy: Enemy,
+            facing: Facing::Left,
+        }
+    }
+}
 
 fn main() {
     let mut app = App::new();
@@ -193,114 +269,74 @@ fn setup(
 
     //Insert player
     commands
-        .spawn_bundle(SpriteSheetBundle {
-            sprite: TextureAtlasSprite::new(0),
-            texture_atlas: atlas_handle,
-            transform: Transform::from_xyz(0., consts::GROUND_Y, 0.),
-            ..Default::default()
+        .spawn_bundle(PlayerBundle { ..default() })
+        .insert_bundle(AnimatedSpriteSheetBundle {
+            sprite_sheet: SpriteSheetBundle {
+                sprite: TextureAtlasSprite::new(0),
+                texture_atlas: atlas_handle,
+                transform: Transform::from_xyz(0., consts::GROUND_Y, 0.),
+                ..Default::default()
+            },
+            animation: Animation::new(7. / 60., player_animation_map.clone()),
         })
-        .insert(Player)
-        .insert(State::Idle)
-        .insert(Stats {
-            //TODO: Store default stats in consts
-            health: 100,
-            damage: 35,
-            movement_speed: 150.0,
-        })
-        .insert(Facing::Right)
-        .insert(Collider::cuboid(
-            consts::PLAYER_SPRITE_WIDTH / 8.,
-            consts::PLAYER_HITBOX_HEIGHT / 8.,
-        ))
-        .insert(Sensor(true))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-        .insert(CollisionGroups::new(BodyLayers::Player as u32, 0b1111))
-        .insert(Animation::new(7. / 60., player_animation_map.clone()))
-        .insert(YSort(100.));
+        .insert_bundle(CharacterBundle { ..default() })
+        .insert_bundle(PhysicsBundle {
+            collision_groups: CollisionGroups::new(BodyLayers::Player as u32, 0b1111),
+            ..default()
+        });
 
-    //TODO: enemy and player component bundles?
     //Insert sharky "enemy"
     commands
-        .spawn_bundle(SpriteSheetBundle {
-            sprite: TextureAtlasSprite::new(0),
-            texture_atlas: sharky_atlas_handle.clone(),
-            transform: Transform::from_xyz(100., consts::GROUND_Y + 25., 0.),
-            ..Default::default()
+        .spawn_bundle(EnemyBundle { ..default() })
+        .insert_bundle(AnimatedSpriteSheetBundle {
+            sprite_sheet: SpriteSheetBundle {
+                sprite: TextureAtlasSprite::new(0),
+                texture_atlas: sharky_atlas_handle.clone(),
+                transform: Transform::from_xyz(100., consts::GROUND_Y + 20., 0.),
+                ..Default::default()
+            },
+            animation: Animation::new(7. / 60., player_animation_map.clone()),
         })
-        .insert(Enemy)
-        .insert(State::Idle)
-        .insert(Facing::Left)
-        .insert(Stats {
-            health: 100,
-            damage: 35,
-            movement_speed: 120.0,
-        })
-        .insert(Collider::cuboid(
-            consts::PLAYER_SPRITE_WIDTH / 8.,
-            consts::PLAYER_HITBOX_HEIGHT / 8.,
-        ))
-        .insert(Sensor(true))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-        .insert(CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111))
-        .insert(Animation::new(7. / 60., player_animation_map.clone()))
-        .insert(YSort(100.));
+        .insert_bundle(CharacterBundle { ..default() })
+        .insert_bundle(PhysicsBundle {
+            collision_groups: CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111),
+            ..default()
+        });
 
     //Insert slinger enemy
     commands
-        .spawn_bundle(SpriteSheetBundle {
-            sprite: TextureAtlasSprite::new(0),
-            texture_atlas: slinger_atlas_handle.clone(),
-            transform: Transform::from_xyz(250., consts::GROUND_Y + 35., 0.),
-            ..Default::default()
+        .spawn_bundle(EnemyBundle { ..default() })
+        .insert_bundle(AnimatedSpriteSheetBundle {
+            sprite_sheet: SpriteSheetBundle {
+                sprite: TextureAtlasSprite::new(0),
+                texture_atlas: slinger_atlas_handle.clone(),
+                transform: Transform::from_xyz(250., consts::GROUND_Y + 45., 0.),
+                ..Default::default()
+            },
+            animation: Animation::new(7. / 60., slinger_animation_map.clone()),
         })
-        .insert(Enemy)
-        .insert(State::Idle)
-        .insert(Facing::Left)
-        .insert(Stats {
-            health: 100,
-            damage: 35,
-            movement_speed: 120.0,
-        })
-        .insert(Collider::cuboid(
-            consts::PLAYER_SPRITE_WIDTH / 8.,
-            consts::PLAYER_HITBOX_HEIGHT / 8.,
-        ))
-        .insert(Sensor(true))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-        .insert(CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111))
-        .insert(Animation::new(7. / 60., slinger_animation_map.clone()))
-        .insert(YSort(100.));
+        .insert_bundle(CharacterBundle { ..default() })
+        .insert_bundle(PhysicsBundle {
+            collision_groups: CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111),
+            ..default()
+        });
 
-    //Insert bandit enemy
     commands
-        .spawn_bundle(SpriteSheetBundle {
-            sprite: TextureAtlasSprite::new(0),
-            texture_atlas: bandit_atlas_handle.clone(),
-            transform: Transform::from_xyz(400., consts::GROUND_Y - 15., 0.),
-            ..Default::default()
+        .spawn_bundle(EnemyBundle { ..default() })
+        .insert_bundle(AnimatedSpriteSheetBundle {
+            sprite_sheet: SpriteSheetBundle {
+                sprite: TextureAtlasSprite::new(0),
+                texture_atlas: bandit_atlas_handle.clone(),
+                transform: Transform::from_xyz(400., consts::GROUND_Y - 15., 0.),
+                ..Default::default()
+            },
+            animation: Animation::new(7. / 60., bandit_animation_map.clone()),
         })
-        .insert(Enemy)
-        .insert(State::Idle)
-        .insert(Facing::Left)
-        .insert(Stats {
-            health: 100,
-            damage: 35,
-            movement_speed: 120.0,
-        })
-        .insert(Collider::cuboid(
-            consts::PLAYER_SPRITE_WIDTH / 8.,
-            consts::PLAYER_HITBOX_HEIGHT / 8.,
-        ))
-        .insert(Sensor(true))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-        .insert(CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111))
-        .insert(Animation::new(7. / 60., bandit_animation_map.clone()))
-        .insert(YSort(100.));
-
+        .insert_bundle(CharacterBundle { ..default() })
+        .insert_bundle(PhysicsBundle {
+            collision_groups: CollisionGroups::new(BodyLayers::Enemy as u32, 0b1111),
+            ..default()
+        });
     /*    commands.spawn_bundle(SpriteBundle {
         texture: asset_server.load("floor.png"),
         transform: Transform::from_xyz(0., consts::GROUND_Y, 5.),

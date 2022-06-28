@@ -33,6 +33,12 @@ impl State {
     }
 }
 
+impl Default for State {
+    fn default() -> Self {
+        State::Idle
+    }
+}
+
 fn exit_knocked_state(mut query: Query<(&mut State, &Animation), Without<Knockback>>) {
     for (mut state, animation) in query.iter_mut() {
         if state.is_knocked() && animation.is_finished() {
