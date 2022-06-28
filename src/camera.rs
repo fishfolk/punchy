@@ -65,15 +65,16 @@ pub fn camera_follow_player(
     mut camera_query: Query<(&mut Transform, &Panning), (With<Camera>, Without<Player>)>,
     mut move_event_writer: EventWriter<ParallaxMoveEvent>,
 ) {
-    let player = player_query.single().translation;
-    let (mut camera, panning) = camera_query.single_mut();
+    if let Ok(player) = player_query.get_single() {
+        let (mut camera, panning) = camera_query.single_mut();
 
-    let diff = player.x - (camera.translation.x - panning.offset.x);
+        let diff = player.translation.x - (camera.translation.x - panning.offset.x);
 
-    camera.translation.x = player.x + panning.offset.x;
-    camera.translation.y = consts::GROUND_Y + panning.offset.y;
+        camera.translation.x = player.translation.x + panning.offset.x;
+        camera.translation.y = consts::GROUND_Y + panning.offset.y;
 
-    move_event_writer.send(ParallaxMoveEvent {
-        camera_move_speed: diff * consts::CAMERA_SPEED,
-    });
+        move_event_writer.send(ParallaxMoveEvent {
+            camera_move_speed: diff * consts::CAMERA_SPEED,
+        });
+    }
 }

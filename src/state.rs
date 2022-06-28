@@ -1,4 +1,5 @@
 use bevy::prelude::{App, Component, CoreStage, Plugin, Query, Without};
+use serde::Deserialize;
 
 use crate::{animation::Animation, movement::Knockback};
 
@@ -10,7 +11,8 @@ impl Plugin for StatePlugin {
     }
 }
 
-#[derive(Component, Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Component, Debug, PartialEq, Eq, Hash, Clone, Copy, Deserialize)]
+#[serde(try_from = "String")]
 pub enum State {
     Idle,
     Running,
@@ -18,6 +20,24 @@ pub enum State {
     KnockedLeft,
     KnockedRight,
     Dying,
+}
+
+impl TryFrom<String> for State {
+    type Error = &'static str;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Ok(match value.as_str() {
+            "idle" => State::Idle,
+            "running" => State::Running,
+            "attacking" => State::Attacking,
+            "knocked_left" => State::KnockedLeft,
+            "knocked_right" => State::KnockedRight,
+            "dying" => State::Dying,
+            _ => {
+                return Err("invalid value");
+            }
+        })
+    }
 }
 
 impl State {
