@@ -26,10 +26,7 @@ impl State {
     }
 
     pub fn is_knocked(&self) -> bool {
-        match self {
-            State::KnockedLeft | State::KnockedRight => true,
-            _ => false,
-        }
+        matches!(self, State::KnockedLeft | State::KnockedRight)
     }
 }
 

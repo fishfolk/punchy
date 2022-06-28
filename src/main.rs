@@ -1,6 +1,7 @@
 use bevy::{ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode, utils::HashMap};
 use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
+use iyes_loopless::prelude::*;
 
 mod animation;
 mod attack;
@@ -10,6 +11,7 @@ mod consts;
 mod item;
 mod movement;
 mod state;
+mod ui;
 mod y_sort;
 
 use animation::*;
@@ -19,6 +21,7 @@ use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
 use movement::*;
 use state::{State, StatePlugin};
+use ui::UIPlugin;
 use y_sort::*;
 
 #[derive(Component)]
@@ -42,6 +45,15 @@ impl Default for Stats {
             movement_speed: 150.,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum GameState {
+    MainMenu,
+    InGame,
+    Paused,
+    //Loading,
+    //Editor,
 }
 
 #[derive(Component)]
@@ -128,6 +140,7 @@ fn main() {
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
+        .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource {
             layer_data: vec![
                 LayerData {
@@ -185,21 +198,29 @@ fn main() {
         })
         .add_plugin(ParallaxPlugin)
         .add_startup_system(setup)
-        .add_system(spawn_throwable_items)
-        .add_system(player_controller)
+        .add_loopless_state(GameState::InGame)
+        .add_system_set(
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(spawn_throwable_items)
+                .with_system(player_controller)
+                .with_system(player_attack)
+                .with_system(helper_camera_controller)
+                .with_system(y_sort)
+                .with_system(player_attack_enemy_collision)
+                .with_system(player_enemy_collision)
+                .with_system(kill_entities)
+                .with_system(knockback_system)
+                .with_system(move_direction_system)
+                .with_system(move_in_arc_system)
+                .with_system(throw_item_system)
+                .with_system(item_attacks_enemy_collision)
+                .with_system(rotate_system)
+                .with_system(pause)
+                .into(),
+        )
+        .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_to_stage(CoreStage::PostUpdate, camera_follow_player)
-        .add_system(player_attack)
-        .add_system(helper_camera_controller)
-        .add_system(y_sort)
-        .add_system(player_attack_enemy_collision)
-        .add_system(player_enemy_collision)
-        .add_system(kill_entities)
-        .add_system(knockback_system)
-        .add_system(move_direction_system)
-        .add_system(move_in_arc_system)
-        .add_system(throw_item_system)
-        .add_system(item_attacks_enemy_collision)
-        .add_system(rotate_system)
         .add_system_to_stage(CoreStage::Last, despawn_entities);
     app.run();
 }
@@ -347,6 +368,17 @@ fn setup(
     }); */
 }
 
+fn pause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
+    if keyboard.just_pressed(KeyCode::P) {
+        commands.insert_resource(NextState(GameState::Paused));
+    }
+}
+
+fn unpause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
+    if keyboard.just_pressed(KeyCode::P) {
+        commands.insert_resource(NextState(GameState::InGame));
+    }
+}
 fn player_attack(
     mut query: Query<(&mut State, &mut Transform, &Animation, &Facing), With<Player>>,
     keyboard: Res<Input<KeyCode>>,
@@ -358,24 +390,22 @@ fn player_attack(
         if keyboard.just_pressed(KeyCode::Space) {
             state.set(State::Attacking);
         }
+    } else if animation.is_finished() {
+        state.set(State::Idle);
     } else {
-        if animation.is_finished() {
-            state.set(State::Idle);
-        } else {
-            //TODO: Fix hacky way to get a forward jump
-            if animation.current_frame < 3 {
-                if facing.is_left() {
-                    transform.translation.x -= 200. * time.delta_seconds();
-                } else {
-                    transform.translation.x += 200. * time.delta_seconds();
-                }
+        //TODO: Fix hacky way to get a forward jump
+        if animation.current_frame < 3 {
+            if facing.is_left() {
+                transform.translation.x -= 200. * time.delta_seconds();
+            } else {
+                transform.translation.x += 200. * time.delta_seconds();
             }
+        }
 
-            if animation.current_frame < 1 {
-                transform.translation.y += 180. * time.delta_seconds();
-            } else if animation.current_frame < 3 {
-                transform.translation.y -= 90. * time.delta_seconds();
-            }
+        if animation.current_frame < 1 {
+            transform.translation.y += 180. * time.delta_seconds();
+        } else if animation.current_frame < 3 {
+            transform.translation.y -= 90. * time.delta_seconds();
         }
     }
 }

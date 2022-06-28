@@ -1,13 +1,13 @@
 use std::ops::Range;
 
+use crate::{state::State, GameState};
 use bevy::{
     core::{Time, Timer},
-    prelude::{App, Changed, Component, CoreStage, Plugin, Query, Res, SystemSet},
+    prelude::{App, Changed, Component, CoreStage, Plugin, Query, Res},
     sprite::TextureAtlasSprite,
     utils::HashMap,
 };
-
-use crate::state::State;
+use iyes_loopless::condition::ConditionSet;
 
 pub struct AnimationPlugin;
 
@@ -15,10 +15,12 @@ impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
             CoreStage::PostUpdate,
-            SystemSet::new()
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
                 .with_system(animate_on_state_changed)
                 .with_system(animation_flipping)
-                .with_system(animation_cycling),
+                .with_system(animation_cycling)
+                .into(),
         );
     }
 }
