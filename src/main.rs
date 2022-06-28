@@ -215,6 +215,9 @@ fn setup(
     camera_bundle.orthographic_projection.scale = 16. * 14.;
     commands
         .spawn_bundle(camera_bundle)
+        .insert(Panning {
+            offset: Vec2::new(0., -consts::GROUND_Y),
+        })
         .insert(ParallaxCameraComponent);
 
     let texture_handle = asset_server.load("PlayerFishy(96x80).png");
