@@ -72,7 +72,7 @@ impl Animation {
             }
         }
 
-        return false;
+        false
     }
 
     pub fn get_current_indices(&self) -> Option<&Range<usize>> {

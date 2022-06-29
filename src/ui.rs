@@ -1,4 +1,4 @@
-use bevy::prelude::{App, Component, Plugin, Query, ResMut};
+use bevy::prelude::{App, Plugin, ResMut};
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 use iyes_loopless::condition::ConditionSet;
 
