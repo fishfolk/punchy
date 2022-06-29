@@ -14,6 +14,7 @@ iyes_loopless = "0.6.1"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_yaml = "0.8.24"
 thiserror = "1.0.31"
+structopt = "0.3.26"
 
 # Enable optimizations for dependencies but not for our code
 [profile.dev.package."*"]
