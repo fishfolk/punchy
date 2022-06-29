@@ -42,57 +42,57 @@ pub fn player_controller(
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (mut state, stats, mut transform, facing_option) = query.single_mut();
-
-    if *state == State::Attacking {
-        return;
-    }
-
-    let mut dir = Vec2::ZERO;
-
-    if keyboard.pressed(KeyCode::A) {
-        dir -= Vec2::X;
-    }
-
-    if keyboard.pressed(KeyCode::D) {
-        dir += Vec2::X;
-    }
-
-    if keyboard.pressed(KeyCode::W) {
-        dir += Vec2::Y;
-    }
-
-    if keyboard.pressed(KeyCode::S) {
-        dir -= Vec2::Y;
-    }
-
-    //Normalize direction
-    dir = dir.normalize_or_zero() * stats.movement_speed * time.delta_seconds();
-
-    //Restrict player to the ground
-    let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
-
-    if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
-        dir.y = 0.;
-    }
-
-    //Move the player
-    transform.translation.x += dir.x;
-    transform.translation.y += dir.y;
-
-    //Set the player state and direction
-    if let Some(mut facing) = facing_option {
-        if dir.x < 0. {
-            facing.set(Facing::Left);
-        } else if dir.x > 0. {
-            facing.set(Facing::Right);
+    if let Ok((mut state, stats, mut transform, facing_option)) = query.get_single_mut() {
+        if *state == State::Attacking {
+            return;
         }
-    }
 
-    if dir == Vec2::ZERO {
-        state.set(State::Idle);
-    } else {
-        state.set(State::Running);
+        let mut dir = Vec2::ZERO;
+
+        if keyboard.pressed(KeyCode::A) {
+            dir -= Vec2::X;
+        }
+
+        if keyboard.pressed(KeyCode::D) {
+            dir += Vec2::X;
+        }
+
+        if keyboard.pressed(KeyCode::W) {
+            dir += Vec2::Y;
+        }
+
+        if keyboard.pressed(KeyCode::S) {
+            dir -= Vec2::Y;
+        }
+
+        //Normalize direction
+        dir = dir.normalize_or_zero() * stats.movement_speed * time.delta_seconds();
+
+        //Restrict player to the ground
+        let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
+
+        if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
+            dir.y = 0.;
+        }
+
+        //Move the player
+        transform.translation.x += dir.x;
+        transform.translation.y += dir.y;
+
+        //Set the player state and direction
+        if let Some(mut facing) = facing_option {
+            if dir.x < 0. {
+                facing.set(Facing::Left);
+            } else if dir.x > 0. {
+                facing.set(Facing::Right);
+            }
+        }
+
+        if dir == Vec2::ZERO {
+            state.set(State::Idle);
+        } else {
+            state.set(State::Running);
+        }
     }
 }
 

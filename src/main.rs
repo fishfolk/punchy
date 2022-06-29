@@ -1,14 +1,16 @@
-use bevy::{ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode, utils::HashMap};
-use bevy_parallax::{LayerData, ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
+use bevy::{ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode};
+use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 mod animation;
+mod assets;
 mod attack;
 mod camera;
 mod collisions;
 mod consts;
 mod item;
+mod metadata;
 mod movement;
 mod state;
 mod ui;
@@ -19,7 +21,9 @@ use attack::AttackPlugin;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
+use metadata::{Fighter, Game, Level};
 use movement::*;
+use serde::Deserialize;
 use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
@@ -30,7 +34,8 @@ pub struct Player;
 #[derive(Component)]
 pub struct Enemy;
 
-#[derive(Component)]
+#[derive(Component, Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Stats {
     pub health: i32,
     pub damage: i32,
@@ -49,7 +54,9 @@ impl Default for Stats {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GameState {
+    LoadingGame,
     MainMenu,
+    LoadingLevel,
     InGame,
     Paused,
     //Loading,
@@ -127,6 +134,7 @@ impl Default for EnemyBundle {
 
 fn main() {
     let mut app = App::new();
+
     app.insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
         .insert_resource(WindowDescriptor {
             title: "Fish Fight Punchy".to_string(),
@@ -140,68 +148,17 @@ fn main() {
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
-        .add_plugin(UIPlugin)
-        .insert_resource(ParallaxResource {
-            layer_data: vec![
-                LayerData {
-                    speed: 0.98,
-                    path: "beach/background_01.png".to_string(),
-                    tile_size: Vec2::new(960.0, 540.0),
-                    cols: 1,
-                    rows: 1,
-                    z: 0.0,
-                    scale: 0.9,
-                    transition_factor: 0.9,
-                },
-                LayerData {
-                    speed: 0.9,
-                    path: "beach/background_02.2.png".to_string(),
-                    tile_size: Vec2::new(960.0, 540.0),
-                    cols: 1,
-                    rows: 1,
-                    z: 1.0,
-                    scale: 0.9,
-                    transition_factor: 0.9,
-                },
-                LayerData {
-                    speed: 0.82,
-                    path: "beach/background_03.png".to_string(),
-                    tile_size: Vec2::new(960.0, 540.0),
-                    cols: 1,
-                    rows: 1,
-                    z: 2.0,
-                    scale: 0.9,
-                    transition_factor: 0.9,
-                },
-                LayerData {
-                    speed: 0.74,
-                    path: "beach/background_04.2.png".to_string(),
-                    tile_size: Vec2::new(960.0, 540.0),
-                    cols: 1,
-                    rows: 1,
-                    z: 3.0,
-                    scale: 0.9,
-                    transition_factor: 0.9,
-                },
-                LayerData {
-                    speed: 0.,
-                    path: "beach/background_05.2.png".to_string(),
-                    tile_size: Vec2::new(960.0, 540.0),
-                    cols: 1,
-                    rows: 1,
-                    z: 4.0,
-                    scale: 0.9,
-                    transition_factor: 0.9,
-                },
-            ],
-            ..Default::default()
-        })
         .add_plugin(ParallaxPlugin)
-        .add_startup_system(setup)
-        .add_loopless_state(GameState::InGame)
+        .add_plugin(UIPlugin)
+        .insert_resource(ParallaxResource::default())
+        .add_startup_system(spawn_camera)
+        .add_loopless_state(GameState::LoadingGame)
+        .add_system(load_game.run_in_state(GameState::LoadingGame))
+        .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
+                .with_system(load_fighters)
                 .with_system(spawn_throwable_items)
                 .with_system(player_controller)
                 .with_system(player_attack)
@@ -220,16 +177,29 @@ fn main() {
                 .into(),
         )
         .add_system(unpause.run_in_state(GameState::Paused))
-        .add_system_to_stage(CoreStage::PostUpdate, camera_follow_player)
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            camera_follow_player.run_in_state(GameState::InGame),
+        )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
+
+    assets::register(&mut app);
+
+    // Insert the game handle
+    let asset_server = app.world.get_resource::<AssetServer>().unwrap();
+    let game_path = std::env::args()
+        .nth(1)
+        .unwrap_or("default.game.yaml".into());
+
+    debug!(%game_path, "Starting game");
+
+    let handle: Handle<Game> = asset_server.load(&game_path);
+    app.world.insert_resource(handle);
+
     app.run();
 }
 
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-) {
+fn spawn_camera(mut commands: Commands) {
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
     // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
     camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
@@ -240,132 +210,126 @@ fn setup(
             offset: Vec2::new(0., -consts::GROUND_Y),
         })
         .insert(ParallaxCameraComponent);
+}
 
-    let texture_handle = asset_server.load("PlayerFishy(96x80).png");
-    let texture_atlas = TextureAtlas::from_grid(
-        texture_handle,
-        Vec2::new(consts::PLAYER_SPRITE_WIDTH, consts::PLAYER_SPRITE_HEIGHT),
-        14,
-        7,
-    );
-    let atlas_handle = texture_atlases.add(texture_atlas);
+fn load_game(
+    mut commands: Commands,
+    game_handle: Res<Handle<Game>>,
+    mut assets: ResMut<Assets<Game>>,
+) {
+    if let Some(game) = assets.remove(game_handle.clone_weak()) {
+        debug!("Loaded game");
+        commands.insert_resource(game.start_level.clone());
+        commands.insert_resource(game);
+        commands.insert_resource(NextState(GameState::LoadingLevel));
+    } else {
+        trace!("Awaiting game load")
+    }
+}
 
-    let sharky_texture_handle = asset_server.load("PlayerSharky(96x80).png");
-    let sharky_texture_atlas =
-        TextureAtlas::from_grid(sharky_texture_handle, Vec2::new(96., 80.), 14, 7);
-    let sharky_atlas_handle = texture_atlases.add(sharky_texture_atlas);
+fn load_level(
+    level_handle: Res<Handle<Level>>,
+    mut commands: Commands,
+    mut assets: ResMut<Assets<Level>>,
+    mut parallax: ResMut<ParallaxResource>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    asset_server: Res<AssetServer>,
+    windows: Res<Windows>,
+) {
+    if let Some(level) = assets.remove(level_handle.clone_weak()) {
+        debug!("Loaded level");
+        let window = windows.primary();
 
-    let bandit_texture_handle = asset_server.load("FishFight_BanditAnimation_skin2.png");
-    let bandit_texture_atlas =
-        TextureAtlas::from_grid(bandit_texture_handle, Vec2::new(64., 64.), 8, 6);
-    let bandit_atlas_handle = texture_atlases.add(bandit_texture_atlas);
+        // Setup the parallax background
+        *parallax = level.meta.parallax_background.get_resource();
+        parallax.despawn_layers(&mut commands);
+        parallax.window_size = Vec2::new(window.width(), window.height());
+        parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
 
-    let slinger_texture_handle =
-        asset_server.load("FishFight_SlingerAnimation_Idle_Walk_Shot_Run_Falling.png");
-    let slinger_texture_atlas =
-        TextureAtlas::from_grid(slinger_texture_handle, Vec2::new(80., 80.), 8, 6);
-    let slinger_atlas_handle = texture_atlases.add(slinger_texture_atlas);
+        // Spawn the player
+        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
+        let player_pos = level.meta.player_spawn.location + ground_offset;
+        commands
+            .spawn_bundle(TransformBundle::from_transform(
+                Transform::from_translation(player_pos),
+            ))
+            .insert(level.player_fighter_handle.clone())
+            .insert_bundle(PlayerBundle::default());
 
-    //Layers mapping to state
-    let mut player_animation_map = HashMap::default();
-    player_animation_map.insert(State::Idle, 0..13);
-    player_animation_map.insert(State::Running, 14..19);
-    player_animation_map.insert(State::KnockedRight, 85..90);
-    player_animation_map.insert(State::KnockedLeft, 71..76);
-    player_animation_map.insert(State::Dying, 71..76);
-    player_animation_map.insert(State::Attacking, 85..90);
+        // Spawn the enemies
+        for (enemy, enemy_handle) in level
+            .meta
+            .enemies
+            .iter()
+            .zip(level.enemy_fighter_handles.iter())
+        {
+            let enemy_pos = enemy.location + ground_offset;
+            commands
+                .spawn_bundle(TransformBundle::from_transform(
+                    Transform::from_translation(enemy_pos),
+                ))
+                .insert(enemy_handle.clone())
+                .insert_bundle(EnemyBundle::default());
+        }
 
-    let mut bandit_animation_map = HashMap::default();
-    bandit_animation_map.insert(State::Idle, 0..7);
-    bandit_animation_map.insert(State::Running, 8..15);
-    bandit_animation_map.insert(State::KnockedRight, 40..46);
-    bandit_animation_map.insert(State::KnockedLeft, 40..46);
-    bandit_animation_map.insert(State::Dying, 40..46);
-    bandit_animation_map.insert(State::Attacking, 16..23);
+        commands.insert_resource(level);
+        commands.insert_resource(NextState(GameState::InGame));
+    } else {
+        trace!("Awaiting level load");
+    }
+}
 
-    let mut slinger_animation_map = HashMap::default();
-    slinger_animation_map.insert(State::Idle, 0..3);
-    slinger_animation_map.insert(State::Running, 8..11);
-    slinger_animation_map.insert(State::KnockedRight, 40..46);
-    slinger_animation_map.insert(State::KnockedLeft, 40..46);
-    slinger_animation_map.insert(State::Dying, 40..46);
-    slinger_animation_map.insert(State::Attacking, 16..20);
+/// Load all fighters that have their handles spawned
+fn load_fighters(
+    mut commands: Commands,
+    // All fighters that haven't been fully loaded yet
+    fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &Handle<Fighter>,
+            Option<&Player>,
+            Option<&Enemy>,
+        ),
+        Without<Stats>,
+    >,
+    fighter_assets: Res<Assets<Fighter>>,
+) {
+    for (entity, transform, fighter_handle, player, enemy) in fighters.iter() {
+        if let Some(fighter) = fighter_assets.get(fighter_handle) {
+            let body_layers = if player.is_some() {
+                BodyLayers::PLAYER
+            } else if enemy.is_some() {
+                BodyLayers::ENEMY
+            } else {
+                unreachable!();
+            };
 
-    //Insert player
-    commands
-        .spawn_bundle(PlayerBundle { ..default() })
-        .insert_bundle(AnimatedSpriteSheetBundle {
-            sprite_sheet: SpriteSheetBundle {
-                sprite: TextureAtlasSprite::new(0),
-                texture_atlas: atlas_handle,
-                transform: Transform::from_xyz(0., consts::GROUND_Y, 0.),
-                ..Default::default()
-            },
-            animation: Animation::new(7. / 60., player_animation_map.clone()),
-        })
-        .insert_bundle(CharacterBundle { ..default() })
-        .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::PLAYER, BodyLayers::ALL),
-            ..default()
-        });
-
-    //Insert sharky "enemy"
-    commands
-        .spawn_bundle(EnemyBundle { ..default() })
-        .insert_bundle(AnimatedSpriteSheetBundle {
-            sprite_sheet: SpriteSheetBundle {
-                sprite: TextureAtlasSprite::new(0),
-                texture_atlas: sharky_atlas_handle.clone(),
-                transform: Transform::from_xyz(100., consts::GROUND_Y + 20., 0.),
-                ..Default::default()
-            },
-            animation: Animation::new(7. / 60., player_animation_map.clone()),
-        })
-        .insert_bundle(CharacterBundle { ..default() })
-        .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::ENEMY, BodyLayers::ALL),
-            ..default()
-        });
-
-    //Insert slinger enemy
-    commands
-        .spawn_bundle(EnemyBundle { ..default() })
-        .insert_bundle(AnimatedSpriteSheetBundle {
-            sprite_sheet: SpriteSheetBundle {
-                sprite: TextureAtlasSprite::new(0),
-                texture_atlas: slinger_atlas_handle.clone(),
-                transform: Transform::from_xyz(250., consts::GROUND_Y + 45., 0.),
-                ..Default::default()
-            },
-            animation: Animation::new(7. / 60., slinger_animation_map.clone()),
-        })
-        .insert_bundle(CharacterBundle { ..default() })
-        .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::ENEMY, BodyLayers::ALL),
-            ..default()
-        });
-
-    commands
-        .spawn_bundle(EnemyBundle { ..default() })
-        .insert_bundle(AnimatedSpriteSheetBundle {
-            sprite_sheet: SpriteSheetBundle {
-                sprite: TextureAtlasSprite::new(0),
-                texture_atlas: bandit_atlas_handle.clone(),
-                transform: Transform::from_xyz(400., consts::GROUND_Y - 15., 0.),
-                ..Default::default()
-            },
-            animation: Animation::new(7. / 60., bandit_animation_map.clone()),
-        })
-        .insert_bundle(CharacterBundle { ..default() })
-        .insert_bundle(PhysicsBundle {
-            collision_groups: CollisionGroups::new(BodyLayers::ENEMY, BodyLayers::ALL),
-            ..default()
-        });
-    /*    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("floor.png"),
-        transform: Transform::from_xyz(0., consts::GROUND_Y, 5.),
-        ..Default::default()
-    }); */
+            commands
+                .entity(entity)
+                .insert(Name::new(fighter.meta.name.clone()))
+                .insert_bundle(AnimatedSpriteSheetBundle {
+                    sprite_sheet: SpriteSheetBundle {
+                        sprite: TextureAtlasSprite::new(0),
+                        texture_atlas: fighter.atlas_handle.clone(),
+                        transform: transform.clone(),
+                        ..Default::default()
+                    },
+                    animation: Animation::new(
+                        fighter.meta.spritesheet.animation_fps,
+                        fighter.meta.spritesheet.animations.clone(),
+                    ),
+                })
+                .insert_bundle(CharacterBundle {
+                    stats: fighter.meta.stats.clone(),
+                    ..default()
+                })
+                .insert_bundle(PhysicsBundle {
+                    collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
+                    ..default()
+                });
+        }
+    }
 }
 
 fn pause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
@@ -384,28 +348,28 @@ fn player_attack(
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (mut state, mut transform, animation, facing) = query.single_mut();
-
-    if *state != State::Attacking {
-        if keyboard.just_pressed(KeyCode::Space) {
-            state.set(State::Attacking);
-        }
-    } else if animation.is_finished() {
-        state.set(State::Idle);
-    } else {
-        //TODO: Fix hacky way to get a forward jump
-        if animation.current_frame < 3 {
-            if facing.is_left() {
-                transform.translation.x -= 200. * time.delta_seconds();
-            } else {
-                transform.translation.x += 200. * time.delta_seconds();
+    if let Ok((mut state, mut transform, animation, facing)) = query.get_single_mut() {
+        if *state != State::Attacking {
+            if keyboard.just_pressed(KeyCode::Space) {
+                state.set(State::Attacking);
             }
-        }
+        } else if animation.is_finished() {
+            state.set(State::Idle);
+        } else {
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame < 3 {
+                if facing.is_left() {
+                    transform.translation.x -= 200. * time.delta_seconds();
+                } else {
+                    transform.translation.x += 200. * time.delta_seconds();
+                }
+            }
 
-        if animation.current_frame < 1 {
-            transform.translation.y += 180. * time.delta_seconds();
-        } else if animation.current_frame < 3 {
-            transform.translation.y -= 90. * time.delta_seconds();
+            if animation.current_frame < 1 {
+                transform.translation.y += 180. * time.delta_seconds();
+            } else if animation.current_frame < 3 {
+                transform.translation.y -= 90. * time.delta_seconds();
+            }
         }
     }
 }
