@@ -9,6 +9,9 @@ use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 use structopt::StructOpt;
 
+#[cfg(feature = "debug")]
+use bevy_inspector_egui::WorldInspectorPlugin;
+
 mod animation;
 mod assets;
 mod attack;
@@ -165,7 +168,7 @@ fn main() {
         .add_event::<ThrowItemEvent>()
         .add_plugins(DefaultPlugins)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
-        .add_plugin(RapierDebugRenderPlugin::default())
+        // .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
@@ -203,6 +206,10 @@ fn main() {
             camera_follow_player.run_in_state(GameState::InGame),
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
+
+    #[cfg(feature = "debug")]
+    app.add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(WorldInspectorPlugin::new());
 
     assets::register(&mut app);
 

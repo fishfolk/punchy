@@ -16,6 +16,13 @@ serde_yaml = "0.8.24"
 thiserror = "1.0.31"
 structopt = "0.3.26"
 
+bevy_mod_debugdump = { version = "0.4", optional = true }
+bevy-inspector-egui = { version = "0.11", optional = true }
+
+[features]
+default = []
+debug = ["bevy-inspector-egui", "bevy_mod_debugdump"]
+
 # Enable optimizations for dependencies but not for our code
 [profile.dev.package."*"]
 opt-level = 3
@@ -29,4 +36,3 @@ lto = true
 codegen-units = 1 # Improves physics performance for release builds
 
 #TODO turn this into a debug feature
-# bevy_mod_debugdump = "0.4"
