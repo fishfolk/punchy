@@ -1,16 +1,20 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::forget_non_drop)]
 
-use bevy::{ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode};
+use bevy::{
+    asset::AssetServerSettings, ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode,
+};
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
+use structopt::StructOpt;
 
 mod animation;
 mod assets;
 mod attack;
 mod camera;
 mod collisions;
+mod config;
 mod consts;
 mod item;
 mod metadata;
@@ -30,6 +34,8 @@ use serde::Deserialize;
 use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
+
+use crate::config::EngineConfig;
 
 #[derive(Component)]
 pub struct Player;
@@ -136,9 +142,22 @@ impl Default for EnemyBundle {
 }
 
 fn main() {
+    let engine_config = EngineConfig::from_args();
+
     let mut app = App::new();
 
-    app.insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
+    let mut asset_server_settings = AssetServerSettings {
+        watch_for_changes: engine_config.hot_reload,
+        ..default()
+    };
+
+    if let Some(asset_dir) = &engine_config.asset_dir {
+        asset_server_settings.asset_folder = asset_dir.clone();
+    }
+
+    app.insert_resource(engine_config.clone())
+        .insert_resource(asset_server_settings)
+        .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
         .insert_resource(WindowDescriptor {
             title: "Fish Fight Punchy".to_string(),
             scale_factor_override: Some(1.0),
@@ -188,15 +207,12 @@ fn main() {
 
     assets::register(&mut app);
 
+    debug!(?engine_config, "Starting game");
+
     // Insert the game handle
     let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-    let game_path = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "default.game.yaml".into());
-
-    debug!(%game_path, "Starting game");
-
-    let handle: Handle<Game> = asset_server.load(&game_path);
+    let game_asset = engine_config.game_asset;
+    let handle: Handle<Game> = asset_server.load(&game_asset);
     app.world.insert_resource(handle);
 
     app.run();
