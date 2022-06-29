@@ -2,7 +2,10 @@
 #![allow(clippy::forget_non_drop)]
 
 use bevy::{
-    asset::AssetServerSettings, ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode,
+    asset::{AssetServerSettings, AssetStage},
+    ecs::bundle::Bundle,
+    prelude::*,
+    render::camera::ScalingMode,
 };
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
@@ -59,6 +62,11 @@ impl Default for Stats {
             movement_speed: 150.,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
+enum GameStage {
+    HotReload,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -205,6 +213,21 @@ fn main() {
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
 
+    if engine_config.hot_reload {
+        app.add_stage_after(
+            AssetStage::LoadAssets,
+            GameStage::HotReload,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::HotReload,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(hot_reload_level)
+                .into(),
+        );
+    }
+
     assets::register(&mut app);
 
     debug!(?engine_config, "Starting game");
@@ -249,19 +272,18 @@ fn load_game(
 fn load_level(
     level_handle: Res<Handle<Level>>,
     mut commands: Commands,
-    mut assets: ResMut<Assets<Level>>,
+    assets: Res<Assets<Level>>,
     mut parallax: ResMut<ParallaxResource>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
     windows: Res<Windows>,
 ) {
-    if let Some(level) = assets.remove(level_handle.clone_weak()) {
+    if let Some(level) = assets.get(level_handle.clone_weak()) {
         debug!("Loaded level");
         let window = windows.primary();
 
         // Setup the parallax background
         *parallax = level.meta.parallax_background.get_resource();
-        parallax.despawn_layers(&mut commands);
         parallax.window_size = Vec2::new(window.width(), window.height());
         parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
 
@@ -291,10 +313,35 @@ fn load_level(
                 .insert_bundle(EnemyBundle::default());
         }
 
-        commands.insert_resource(level);
+        commands.insert_resource(level.clone());
         commands.insert_resource(NextState(GameState::InGame));
     } else {
         trace!("Awaiting level load");
+    }
+}
+
+fn hot_reload_level(
+    mut commands: Commands,
+    mut parallax: ResMut<ParallaxResource>,
+    mut events: EventReader<AssetEvent<Level>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    level_handle: Res<Handle<Level>>,
+    assets: Res<Assets<Level>>,
+    asset_server: Res<AssetServer>,
+    windows: Res<Windows>,
+) {
+    for event in events.iter() {
+        if let AssetEvent::Modified { handle } = event {
+            let level = assets.get(handle).unwrap();
+            if handle == &*level_handle {
+                // Update the level background
+                let window = windows.primary();
+                parallax.despawn_layers(&mut commands);
+                *parallax = level.meta.parallax_background.get_resource();
+                parallax.window_size = Vec2::new(window.width(), window.height());
+                parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
+            }
+        }
     }
 }
 
