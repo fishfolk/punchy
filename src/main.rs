@@ -165,7 +165,7 @@ fn main() {
 
     app.insert_resource(engine_config.clone())
         .insert_resource(asset_server_settings)
-        .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
+        .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(WindowDescriptor {
             title: "Fish Fight Punchy".to_string(),
             scale_factor_override: Some(1.0),
@@ -288,6 +288,9 @@ fn load_level(
         parallax.window_size = Vec2::new(window.width(), window.height());
         parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
 
+        // Set the clear color
+        commands.insert_resource(ClearColor(level.meta.background_color()));
+
         // Spawn the player
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
         let player_pos = level.meta.player_spawn.location + ground_offset;
@@ -341,6 +344,8 @@ fn hot_reload_level(
                 *parallax = level.meta.parallax_background.get_resource();
                 parallax.window_size = Vec2::new(window.width(), window.height());
                 parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
+
+                commands.insert_resource(ClearColor(level.meta.background_color()));
             }
         }
     }
