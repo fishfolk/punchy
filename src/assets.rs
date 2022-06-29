@@ -25,10 +25,10 @@ pub enum AssetLoaderError {
 }
 
 fn relative_asset_path(asset_path: &Path, relative: &str) -> PathBuf {
-    let is_relative = !relative.starts_with("/");
+    let is_relative = !relative.starts_with('/');
 
     if is_relative {
-        let base = asset_path.parent().unwrap_or(&Path::new(""));
+        let base = asset_path.parent().unwrap_or_else(|| Path::new(""));
         base.join(relative)
     } else {
         Path::new(relative).strip_prefix("/").unwrap().to_owned()
@@ -92,7 +92,7 @@ impl AssetLoader for LevelLoader {
 
             let player_fighter_file_path =
                 relative_asset_path(self_path, &meta.player_spawn.fighter);
-            let player_fighter_path = AssetPath::new(player_fighter_file_path.clone(), None);
+            let player_fighter_path = AssetPath::new(player_fighter_file_path, None);
             let player_fighter_handle = load_context.get_handle(player_fighter_path.clone());
 
             let mut enemy_fighter_handles = Vec::new();

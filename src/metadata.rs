@@ -99,17 +99,17 @@ pub struct ParallaxLayerMeta {
     pub transition_factor: f32,
 }
 
-impl Into<LayerData> for ParallaxLayerMeta {
-    fn into(self) -> LayerData {
-        LayerData {
-            speed: self.speed,
-            path: self.path,
-            tile_size: self.tile_size,
-            cols: self.cols,
-            rows: self.rows,
-            scale: self.scale,
-            z: self.z,
-            transition_factor: self.transition_factor,
+impl From<ParallaxLayerMeta> for LayerData {
+    fn from(meta: ParallaxLayerMeta) -> Self {
+        Self {
+            speed: meta.speed,
+            path: meta.path,
+            tile_size: meta.tile_size,
+            cols: meta.cols,
+            rows: meta.rows,
+            scale: meta.scale,
+            z: meta.z,
+            transition_factor: meta.transition_factor,
         }
     }
 }

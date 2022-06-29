@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::forget_non_drop)]
+
 use bevy::{ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode};
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
@@ -189,7 +192,7 @@ fn main() {
     let asset_server = app.world.get_resource::<AssetServer>().unwrap();
     let game_path = std::env::args()
         .nth(1)
-        .unwrap_or("default.game.yaml".into());
+        .unwrap_or_else(|| "default.game.yaml".into());
 
     debug!(%game_path, "Starting game");
 
@@ -312,7 +315,7 @@ fn load_fighters(
                     sprite_sheet: SpriteSheetBundle {
                         sprite: TextureAtlasSprite::new(0),
                         texture_atlas: fighter.atlas_handle.clone(),
-                        transform: transform.clone(),
+                        transform: *transform,
                         ..Default::default()
                     },
                     animation: Animation::new(
