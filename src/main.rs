@@ -224,6 +224,7 @@ fn main() {
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(hot_reload_level)
+                .with_system(hot_reload_fighters)
                 .into(),
         );
     }
@@ -394,6 +395,38 @@ fn load_fighters(
                     collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
                     ..default()
                 });
+        }
+    }
+}
+
+fn hot_reload_fighters(
+    mut fighters: Query<(
+        &Handle<Fighter>,
+        &mut Name,
+        &mut Handle<TextureAtlas>,
+        &mut Animation,
+        &mut Stats,
+    )>,
+    mut events: EventReader<AssetEvent<Fighter>>,
+    assets: Res<Assets<Fighter>>,
+) {
+    for event in events.iter() {
+        if let AssetEvent::Modified { handle } = event {
+            for (fighter_handle, mut name, mut atlas_handle, mut animation, mut stats) in
+                fighters.iter_mut()
+            {
+                if fighter_handle == handle {
+                    let fighter = assets.get(fighter_handle).unwrap();
+
+                    *name = Name::new(fighter.meta.name.clone());
+                    *atlas_handle = fighter.atlas_handle.clone();
+                    *animation = Animation::new(
+                        fighter.meta.spritesheet.animation_fps,
+                        fighter.meta.spritesheet.animations.clone(),
+                    );
+                    *stats = fighter.meta.stats.clone();
+                }
+            }
         }
     }
 }
