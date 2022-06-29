@@ -68,7 +68,6 @@ enum GameState {
     LoadingLevel,
     InGame,
     Paused,
-    //Loading,
     //Editor,
 }
 
