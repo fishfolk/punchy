@@ -1,0 +1,46 @@
+name: Publish Web Demo
+
+on:
+  push:
+    tags:
+      - web-demo
+      - v*.*.*
+jobs:
+  publish-web-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Just ⚙️
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
+
+      - name: Cargo Registry Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-registry
+
+      - name: Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - uses: jetli/wasm-bindgen-action@v0.1.0
+        with:
+          version: '0.2.81'
+
+      - name: Build WASM Dist 🔨
+        run: just build-release-web /punchy/demo
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@4.1.3
+        with:
+          branch: gh-pages
+          folder: target/wasm-dist
+          target-folder: demo
+          ssh-key: ${{ secrets.MASTER_GH_PAGES_DEPLOY_KEY }}
