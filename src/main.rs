@@ -30,6 +30,7 @@ mod consts;
 mod item;
 mod metadata;
 mod movement;
+mod platform;
 mod state;
 mod ui;
 mod y_sort;
@@ -186,6 +187,7 @@ fn main() {
             ..Default::default()
         })
         .add_event::<ThrowItemEvent>()
+        .add_plugin(platform::PlatformPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)

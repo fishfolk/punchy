@@ -2149,6 +2149,7 @@ dependencies = [
  "serde_yaml",
  "structopt",
  "thiserror",
+ "web-sys",
 ]
 
 [[package]]

@@ -19,6 +19,10 @@ structopt = "0.3.26"
 bevy_mod_debugdump = { version = "0.4", optional = true }
 bevy-inspector-egui = { version = "0.11", optional = true }
 bevy-inspector-egui-rapier = { version = "0.4", optional = true, features = ["rapier2d"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features=["Window"] }
+
 [features]
 default = []
 debug = ["bevy-inspector-egui", "bevy-inspector-egui-rapier"]
