@@ -245,6 +245,7 @@ dependencies = [
  "bevy-inspector-egui-derive",
  "bevy_egui",
  "image",
+ "nalgebra",
  "pretty-type-name",
 ]
 
@@ -257,6 +258,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "bevy-inspector-egui-rapier"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28252b5958ec6d31b7308cc1a70c0b3999fbe6f7a66dece2afc17c0dfcb0e69a"
+dependencies = [
+ "bevy",
+ "bevy-inspector-egui",
+ "bevy_rapier2d",
 ]
 
 [[package]]
@@ -2127,6 +2139,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy-inspector-egui",
+ "bevy-inspector-egui-rapier",
  "bevy-parallax",
  "bevy_egui",
  "bevy_mod_debugdump",

@@ -10,7 +10,9 @@ use iyes_loopless::prelude::*;
 use structopt::StructOpt;
 
 #[cfg(feature = "debug")]
-use bevy_inspector_egui::WorldInspectorPlugin;
+use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
+#[cfg(feature = "debug")]
+use bevy_inspector_egui_rapier::InspectableRapierPlugin;
 
 #[cfg(feature = "schedule_graph")]
 use bevy::log::LogPlugin;
@@ -30,7 +32,7 @@ mod ui;
 mod y_sort;
 
 use animation::*;
-use attack::AttackPlugin;
+use attack::{Attack, AttackPlugin};
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
@@ -49,6 +51,7 @@ pub struct Player;
 #[derive(Component)]
 pub struct Enemy;
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Stats {
@@ -216,7 +219,17 @@ fn main() {
 
     #[cfg(feature = "debug")]
     app.add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(WorldInspectorPlugin::new());
+        .add_plugin(InspectableRapierPlugin)
+        .add_plugin(WorldInspectorPlugin::new())
+        .register_inspectable::<Stats>()
+        .register_inspectable::<State>()
+        .register_inspectable::<MoveInDirection>()
+        .register_inspectable::<MoveInArc>()
+        .register_inspectable::<Rotate>()
+        .register_inspectable::<Attack>()
+        .register_inspectable::<YSort>()
+        .register_inspectable::<Facing>()
+        .register_inspectable::<Panning>();
 
     assets::register(&mut app);
 
