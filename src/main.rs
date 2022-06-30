@@ -2,7 +2,10 @@
 #![allow(clippy::forget_non_drop)]
 
 use bevy::{
-    asset::AssetServerSettings, ecs::bundle::Bundle, prelude::*, render::camera::ScalingMode,
+    asset::{AssetServerSettings, AssetStage},
+    ecs::bundle::Bundle,
+    prelude::*,
+    render::camera::ScalingMode,
 };
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
@@ -68,6 +71,11 @@ impl Default for Stats {
             movement_speed: 150.,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
+enum GameStage {
+    HotReload,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -171,7 +179,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.insert_resource(engine_config.clone())
         .insert_resource(asset_server_settings)
-        .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
+        .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(WindowDescriptor {
             title: "Fish Fight Punchy".to_string(),
             scale_factor_override: Some(1.0),
@@ -217,6 +225,23 @@ fn main() {
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
 
+
+    if engine_config.hot_reload {
+        app.add_stage_after(
+            AssetStage::LoadAssets,
+            GameStage::HotReload,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::HotReload,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(hot_reload_level)
+                .with_system(hot_reload_fighters)
+                .into(),
+        );
+    }
+
     #[cfg(feature = "debug")]
     app.add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(InspectableRapierPlugin)
@@ -230,6 +255,7 @@ fn main() {
         .register_inspectable::<YSort>()
         .register_inspectable::<Facing>()
         .register_inspectable::<Panning>();
+
 
     assets::register(&mut app);
 
@@ -278,21 +304,23 @@ fn load_game(
 fn load_level(
     level_handle: Res<Handle<Level>>,
     mut commands: Commands,
-    mut assets: ResMut<Assets<Level>>,
+    assets: Res<Assets<Level>>,
     mut parallax: ResMut<ParallaxResource>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
     windows: Res<Windows>,
 ) {
-    if let Some(level) = assets.remove(level_handle.clone_weak()) {
+    if let Some(level) = assets.get(level_handle.clone_weak()) {
         debug!("Loaded level");
         let window = windows.primary();
 
         // Setup the parallax background
         *parallax = level.meta.parallax_background.get_resource();
-        parallax.despawn_layers(&mut commands);
         parallax.window_size = Vec2::new(window.width(), window.height());
         parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
+
+        // Set the clear color
+        commands.insert_resource(ClearColor(level.meta.background_color()));
 
         // Spawn the player
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
@@ -320,10 +348,37 @@ fn load_level(
                 .insert_bundle(EnemyBundle::default());
         }
 
-        commands.insert_resource(level);
+        commands.insert_resource(level.clone());
         commands.insert_resource(NextState(GameState::InGame));
     } else {
         trace!("Awaiting level load");
+    }
+}
+
+fn hot_reload_level(
+    mut commands: Commands,
+    mut parallax: ResMut<ParallaxResource>,
+    mut events: EventReader<AssetEvent<Level>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    level_handle: Res<Handle<Level>>,
+    assets: Res<Assets<Level>>,
+    asset_server: Res<AssetServer>,
+    windows: Res<Windows>,
+) {
+    for event in events.iter() {
+        if let AssetEvent::Modified { handle } = event {
+            let level = assets.get(handle).unwrap();
+            if handle == &*level_handle {
+                // Update the level background
+                let window = windows.primary();
+                parallax.despawn_layers(&mut commands);
+                *parallax = level.meta.parallax_background.get_resource();
+                parallax.window_size = Vec2::new(window.width(), window.height());
+                parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
+
+                commands.insert_resource(ClearColor(level.meta.background_color()));
+            }
+        }
     }
 }
 
@@ -376,6 +431,38 @@ fn load_fighters(
                     collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
                     ..default()
                 });
+        }
+    }
+}
+
+fn hot_reload_fighters(
+    mut fighters: Query<(
+        &Handle<Fighter>,
+        &mut Name,
+        &mut Handle<TextureAtlas>,
+        &mut Animation,
+        &mut Stats,
+    )>,
+    mut events: EventReader<AssetEvent<Fighter>>,
+    assets: Res<Assets<Fighter>>,
+) {
+    for event in events.iter() {
+        if let AssetEvent::Modified { handle } = event {
+            for (fighter_handle, mut name, mut atlas_handle, mut animation, mut stats) in
+                fighters.iter_mut()
+            {
+                if fighter_handle == handle {
+                    let fighter = assets.get(fighter_handle).unwrap();
+
+                    *name = Name::new(fighter.meta.name.clone());
+                    *atlas_handle = fighter.atlas_handle.clone();
+                    *animation = Animation::new(
+                        fighter.meta.spritesheet.animation_fps,
+                        fighter.meta.spritesheet.animations.clone(),
+                    );
+                    *stats = fighter.meta.stats.clone();
+                }
+            }
         }
     }
 }

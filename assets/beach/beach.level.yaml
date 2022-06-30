@@ -1,3 +1,4 @@
+background_color: [101, 131, 162]
 parallax_background:
   layers:
     - speed: 0.98

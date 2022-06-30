@@ -1,6 +1,6 @@
 use bevy::{
     math::{UVec2, Vec2, Vec3},
-    prelude::{Component, Handle},
+    prelude::{Color, Component, Handle},
     reflect::TypeUuid,
     sprite::TextureAtlas,
     utils::HashMap,
@@ -34,10 +34,21 @@ pub struct Level {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct LevelMeta {
+    pub background_color: [u8; 3],
     pub parallax_background: ParallaxMeta,
     pub player_spawn: FighterSpawnMeta,
     #[serde(default)]
     pub enemies: Vec<FighterSpawnMeta>,
+}
+
+impl LevelMeta {
+    pub fn background_color(&self) -> Color {
+        Color::rgb_u8(
+            self.background_color[0],
+            self.background_color[1],
+            self.background_color[2],
+        )
+    }
 }
 
 #[derive(TypeUuid, Clone, Debug)]
