@@ -21,7 +21,8 @@ bevy-inspector-egui = { version = "0.11", optional = true }
 
 [features]
 default = []
-debug = ["bevy-inspector-egui", "bevy_mod_debugdump"]
+debug = ["bevy-inspector-egui"]
+schedule_graph = ["bevy_mod_debugdump"]
 
 # Enable optimizations for dependencies but not for our code
 [profile.dev.package."*"]

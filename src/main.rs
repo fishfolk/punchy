@@ -12,6 +12,9 @@ use structopt::StructOpt;
 #[cfg(feature = "debug")]
 use bevy_inspector_egui::WorldInspectorPlugin;
 
+#[cfg(feature = "schedule_graph")]
+use bevy::log::LogPlugin;
+
 mod animation;
 mod assets;
 mod attack;
@@ -157,6 +160,12 @@ fn main() {
         asset_server_settings.asset_folder = asset_dir.clone();
     }
 
+    #[cfg(feature = "schedule_graph")]
+    app.add_plugins_with(DefaultPlugins, |plugins| {
+        plugins.disable::<bevy::log::LogPlugin>()
+    });
+    #[cfg(not(feature = "schedule_graph"))]
+    app.add_plugins(DefaultPlugins);
     app.insert_resource(engine_config.clone())
         .insert_resource(asset_server_settings)
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
@@ -166,9 +175,7 @@ fn main() {
             ..Default::default()
         })
         .add_event::<ThrowItemEvent>()
-        .add_plugins(DefaultPlugins)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
-        // .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
@@ -220,6 +227,9 @@ fn main() {
     let game_asset = engine_config.game_asset;
     let handle: Handle<Game> = asset_server.load(&game_asset);
     app.world.insert_resource(handle);
+
+    #[cfg(feature = "schedule_graph")]
+    bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
 }
