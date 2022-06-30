@@ -10,7 +10,7 @@ use iyes_loopless::prelude::*;
 use structopt::StructOpt;
 
 #[cfg(feature = "debug")]
-use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
+use bevy_inspector_egui::{RegisterInspectable, WorldInspectorPlugin};
 #[cfg(feature = "debug")]
 use bevy_inspector_egui_rapier::InspectableRapierPlugin;
 
