@@ -1,0 +1,21 @@
+name: Fishy
+
+stats:
+  health: 100
+  damage: 35
+  movement_speed: 150
+
+spritesheet:
+  image: PlayerFishy(96x80).png
+  tile_size: [96, 80]
+  columns: 14
+  rows: 7
+
+  animation_fps: 0.12
+  animations:
+    idle: [0, 13]
+    running: [14, 19]
+    knocked_right: [85, 90]
+    knocked_left: [71, 76]
+    dying: [71, 76]
+    attacking: [85, 90]

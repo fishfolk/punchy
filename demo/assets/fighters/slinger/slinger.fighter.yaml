@@ -1,0 +1,21 @@
+name: Slinger
+
+stats:
+  health: 100
+  damage: 35
+  movement_speed: 150
+
+spritesheet:
+  image: FishFight_SlingerAnimation_Idle_Walk_Shot_Run_Falling.png
+  tile_size: [80, 80]
+  columns: 8
+  rows: 6
+
+  animation_fps: 0.12
+  animations:
+    idle: [0, 3]
+    running: [8, 11]
+    knocked_right: [40, 46]
+    knocked_left: [40, 46]
+    dying: [40, 46]
+    attacking: [16, 20]

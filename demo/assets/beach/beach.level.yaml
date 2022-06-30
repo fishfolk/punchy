@@ -1,0 +1,57 @@
+background_color: [101, 131, 162]
+parallax_background:
+  layers:
+    - speed: 0.98
+      path: background_01.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 0
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0.9
+      path: background_02.2.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 1
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0.82
+      path: background_03.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 2
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0.74
+      path: background_04.2.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 3
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0
+      path: background_05.2.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 4
+      scale: 0.9
+      transition_factor: 0.9
+
+player_spawn:
+  fighter: /fighters/fishy/fishy.fighter.yaml
+  location: [0, 0, 0]
+
+enemies:
+  - fighter: /fighters/sharky/sharky.fighter.yaml
+    location: [200, 50, 0]
+  - fighter: &bandit /fighters/bandit/bandit.fighter.yaml
+    location: [200, -10, 0]
+  - fighter: *bandit
+    location: [250, -50, 0]
+  - fighter: /fighters/slinger/slinger.fighter.yaml
+    location: [300, 0, 0]

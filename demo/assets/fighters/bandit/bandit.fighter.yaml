@@ -1,0 +1,21 @@
+name: Bandit
+
+stats:
+  health: 100
+  damage: 35
+  movement_speed: 150
+
+spritesheet:
+  image: FishFight_BanditAnimation_skin2.png
+  tile_size: [64, 64]
+  columns: 8
+  rows: 6
+
+  animation_fps: 0.12
+  animations:
+    idle: [0, 7]
+    running: [8, 15]
+    knocked_right: [40, 46]
+    knocked_left: [40, 46]
+    dying: [40, 46]
+    attacking: [16, 23]
