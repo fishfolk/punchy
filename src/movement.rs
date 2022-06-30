@@ -12,6 +12,7 @@ use crate::{
     animation::Facing, consts, item::ThrowItemEvent, state::State, DespawnMarker, Player, Stats,
 };
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deref, DerefMut)]
 pub struct MoveInDirection(pub Vec2);
 
@@ -136,6 +137,7 @@ pub fn move_direction_system(
     }
 }
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
 pub struct MoveInArc {
     pub radius: Vec2,
@@ -182,6 +184,7 @@ pub fn move_in_arc_system(
     }
 }
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
 pub struct Rotate {
     pub speed: f32,

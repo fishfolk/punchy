@@ -9,6 +9,14 @@ use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 use structopt::StructOpt;
 
+#[cfg(feature = "debug")]
+use bevy_inspector_egui::{Inspectable, RegisterInspectable, WorldInspectorPlugin};
+#[cfg(feature = "debug")]
+use bevy_inspector_egui_rapier::InspectableRapierPlugin;
+
+#[cfg(feature = "schedule_graph")]
+use bevy::log::LogPlugin;
+
 mod animation;
 mod assets;
 mod attack;
@@ -24,7 +32,7 @@ mod ui;
 mod y_sort;
 
 use animation::*;
-use attack::AttackPlugin;
+use attack::{Attack, AttackPlugin};
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
@@ -43,6 +51,7 @@ pub struct Player;
 #[derive(Component)]
 pub struct Enemy;
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Stats {
@@ -154,6 +163,12 @@ fn main() {
         asset_server_settings.asset_folder = asset_dir.clone();
     }
 
+    #[cfg(feature = "schedule_graph")]
+    app.add_plugins_with(DefaultPlugins, |plugins| {
+        plugins.disable::<bevy::log::LogPlugin>()
+    });
+    #[cfg(not(feature = "schedule_graph"))]
+    app.add_plugins(DefaultPlugins);
     app.insert_resource(engine_config.clone())
         .insert_resource(asset_server_settings)
         .insert_resource(ClearColor(Color::rgb(0.494, 0.658, 0.650)))
@@ -163,9 +178,7 @@ fn main() {
             ..Default::default()
         })
         .add_event::<ThrowItemEvent>()
-        .add_plugins(DefaultPlugins)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
-        .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
@@ -204,6 +217,20 @@ fn main() {
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
 
+    #[cfg(feature = "debug")]
+    app.add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(InspectableRapierPlugin)
+        .add_plugin(WorldInspectorPlugin::new())
+        .register_inspectable::<Stats>()
+        .register_inspectable::<State>()
+        .register_inspectable::<MoveInDirection>()
+        .register_inspectable::<MoveInArc>()
+        .register_inspectable::<Rotate>()
+        .register_inspectable::<Attack>()
+        .register_inspectable::<YSort>()
+        .register_inspectable::<Facing>()
+        .register_inspectable::<Panning>();
+
     assets::register(&mut app);
 
     debug!(?engine_config, "Starting game");
@@ -213,6 +240,9 @@ fn main() {
     let game_asset = engine_config.game_asset;
     let handle: Handle<Game> = asset_server.load(&game_asset);
     app.world.insert_resource(handle);
+
+    #[cfg(feature = "schedule_graph")]
+    bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
 }

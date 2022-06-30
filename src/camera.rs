@@ -13,6 +13,7 @@ use bevy_parallax::ParallaxMoveEvent;
 
 use crate::{consts, Player};
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
 pub struct Panning {
     pub offset: Vec2,
