@@ -21,7 +21,7 @@ build-release-web basepath='':
     cargo build --target wasm32-unknown-unknown --release
     wasm-bindgen --out-dir target/wasm-dist --no-typescript --target web target/wasm32-unknown-unknown/release/littlefighter2.wasm
     cat wasm_resources/index.html | sed "s/\$BASEPATH/$(printf {{basepath}} | sed 's/\//\\\//g')/g" > target/wasm-dist/index.html
-    cp -r assets target/wasm/
+    cp -r assets target/wasm-dist/
 
 run *args:
     cargo run -- {{args}}
