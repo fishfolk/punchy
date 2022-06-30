@@ -1,5 +1,6 @@
 use bevy::prelude::{Component, Query, Transform};
 
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Default)]
 pub struct YSort(f32);
 

@@ -17,6 +17,7 @@ https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a
 |Space| Flop Attack|
 |Z,X| Zoom Camera|
 |↑↓←→ | Pan Camera|
+|P| Pause/Unpause|
 
 
 ## Contributing
