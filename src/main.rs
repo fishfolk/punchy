@@ -225,7 +225,6 @@ fn main() {
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
 
-
     if engine_config.hot_reload {
         app.add_stage_after(
             AssetStage::LoadAssets,
@@ -255,7 +254,6 @@ fn main() {
         .register_inspectable::<YSort>()
         .register_inspectable::<Facing>()
         .register_inspectable::<Panning>();
-
 
     assets::register(&mut app);
 
