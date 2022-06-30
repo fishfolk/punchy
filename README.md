@@ -8,6 +8,9 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 
 https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a124-b07bce1db0cb.mp4
 
+## Web Build
+https://fishfight.github.io/punchy/demo/
+
 ## Controls
 | Key | Action |
 |-----|--------|
