@@ -8,7 +8,7 @@ use bevy::{
 use bevy_parallax::{LayerData, ParallaxResource};
 use serde::Deserialize;
 
-use crate::{state::State, Stats};
+use crate::{animation::Clip, state::State, Stats};
 
 #[derive(TypeUuid, Clone, Debug)]
 #[uuid = "eb28180f-ef68-44a0-8479-a299a3cef66e"]
@@ -74,7 +74,7 @@ pub struct FighterSpritesheetMeta {
     pub columns: usize,
     pub rows: usize,
     pub animation_fps: f32,
-    pub animations: HashMap<State, std::ops::Range<usize>>,
+    pub animations: HashMap<State, Clip>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
