@@ -13,9 +13,17 @@ spritesheet:
 
   animation_fps: 0.12
   animations:
-    idle: [0, 3]
-    running: [8, 11]
-    knocked_right: [40, 46]
-    knocked_left: [40, 46]
-    dying: [40, 46]
-    attacking: [16, 20]
+    idle: 
+      frames: [0, 3]
+      repeat: true
+    running: 
+      frames: [8, 11]
+      repeat: true
+    knocked_right: 
+      frames: [40, 46]
+    knocked_left:
+      frames: [40, 46]
+    dying:
+      frames: [40, 46]
+    attacking:
+      frames: [16, 20]
