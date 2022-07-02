@@ -109,8 +109,92 @@ fn update_ui_scale(
     }
 }
 
-fn pause_menu(mut egui_context: ResMut<EguiContext>) {
-    egui::Window::new("Paused").show(egui_context.ctx_mut(), |_ui| {});
+fn pause_menu(
+    mut commands: Commands,
+    mut egui_context: ResMut<EguiContext>,
+    game: Res<GameMeta>,
+    non_camera_entities: Query<Entity, Without<Camera>>,
+) {
+    let ui_theme = &game.ui_theme;
+
+    egui::CentralPanel::default()
+        .frame(egui::Frame::none())
+        .show(egui_context.ctx_mut(), |ui| {
+            let screen_rect = ui.max_rect();
+
+            let pause_menu_width = 300.0;
+            let x_margin = (screen_rect.width() - pause_menu_width) / 2.0;
+            let outer_margin = egui::style::Margin::symmetric(x_margin, screen_rect.height() * 0.2);
+
+            BorderedFrame::new(&ui_theme.panel.border)
+                .margin(outer_margin)
+                .padding(ui_theme.panel.padding.into())
+                .show(ui, |ui| {
+                    let text_color = ui_theme.panel.text_color;
+
+                    ui.set_min_width(ui.available_width());
+
+                    ui.vertical_centered(|ui| {
+                        ui.label(
+                            RichText::new("Paused")
+                                .font(egui::FontId::new(
+                                    ui_theme.font_sizes.big,
+                                    egui::FontFamily::Name(
+                                        game.main_menu.title_font.clone().into(),
+                                    ),
+                                ))
+                                .color(text_color),
+                        );
+
+                        ui.add_space(10.0);
+
+                        let width = ui.available_width();
+
+                        if BorderedButton::new(
+                            RichText::new("Continue")
+                                .font(egui::FontId::new(
+                                    ui_theme.font_sizes.normal,
+                                    egui::FontFamily::Name(ui_theme.button.font.clone().into()),
+                                ))
+                                .color(ui_theme.button.text_color),
+                        )
+                        .min_size(egui::Vec2::new(width, 0.0))
+                        .padding(ui_theme.button.padding.into())
+                        .border(&ui_theme.button.borders.default)
+                        .on_click_border(ui_theme.button.borders.clicked.as_ref())
+                        .on_hover_border(ui_theme.button.borders.hovered.as_ref())
+                        .show(ui)
+                        .clicked()
+                        {
+                            commands.insert_resource(NextState(GameState::InGame));
+                        }
+
+                        if BorderedButton::new(
+                            RichText::new("Main Menu")
+                                .font(egui::FontId::new(
+                                    ui_theme.font_sizes.normal,
+                                    egui::FontFamily::Name(ui_theme.button.font.clone().into()),
+                                ))
+                                .color(ui_theme.button.text_color),
+                        )
+                        .min_size(egui::Vec2::new(width, 0.0))
+                        .padding(ui_theme.button.padding.into())
+                        .border(&ui_theme.button.borders.default)
+                        .on_click_border(ui_theme.button.borders.clicked.as_ref())
+                        .on_hover_border(ui_theme.button.borders.hovered.as_ref())
+                        .show(ui)
+                        .clicked()
+                        {
+                            // Clean up all entities other than the camera
+                            for entity in non_camera_entities.iter() {
+                                commands.entity(entity).despawn();
+                            }
+                            // Show the main menu
+                            commands.insert_resource(NextState(GameState::MainMenu));
+                        }
+                    });
+                })
+        });
 }
 
 #[derive(Component)]
@@ -180,7 +264,7 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
                         ui.label(
                             RichText::new(&game.main_menu.title)
                                 .font(egui::FontId::new(
-                                    game.main_menu.title_size,
+                                    ui_theme.font_sizes.jumbo,
                                     egui::FontFamily::Name(
                                         game.main_menu.title_font.clone().into(),
                                     ),
@@ -194,7 +278,7 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
                             if BorderedButton::new(
                                 RichText::new("Start Game")
                                     .font(egui::FontId::new(
-                                        ui_theme.button.font_size,
+                                        ui_theme.font_sizes.big,
                                         egui::FontFamily::Name(ui_theme.button.font.clone().into()),
                                     ))
                                     .color(ui_theme.button.text_color),

@@ -3,7 +3,6 @@ camera_height: 448
 
 main_menu:
   title: "Fish Fight\nPunchy"
-  title_size: 45
   title_font: ark
 
   background_image:
@@ -13,6 +12,12 @@ main_menu:
 ui_theme:
   fonts:
     ark: ui/ark-pixel-16px-latin.ttf
+
+  font_sizes:
+    jumbo: 45
+    big: 35
+    normal: 15
+    small: 10
 
   panel:
     text_color: [51, 40, 40]
@@ -33,13 +38,13 @@ ui_theme:
 
   button:
     text_color: [255, 255, 255]
-    font_size: 30
+
     font: ark
     padding:
       top: 12
       left: 12
       right: 12
-      bottom: 12
+      bottom: 16
     borders:
       default:
         image: ui/green-button.png
