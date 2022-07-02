@@ -214,6 +214,7 @@ fn main() {
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource::default())
+        .add_system(toggle_fullscreen)
         .add_system(
             not_hot_reload
                 .chain(load_game)
@@ -301,6 +302,20 @@ fn main() {
     bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
+}
+
+/// Toggle's fullscreen window when pressing F11
+fn toggle_fullscreen(mut windows: ResMut<Windows>, keyboard_input: Res<Input<KeyCode>>) {
+    use bevy::window::WindowMode;
+
+    if keyboard_input.just_pressed(KeyCode::F11) {
+        if let Some(window) = windows.get_primary_mut() {
+            window.set_mode(match window.mode() {
+                WindowMode::BorderlessFullscreen => WindowMode::Windowed,
+                _ => WindowMode::BorderlessFullscreen,
+            });
+        }
+    }
 }
 
 /// Loads the main [`GameMeta`] resource and then transitions to the main menu

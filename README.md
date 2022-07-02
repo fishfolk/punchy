@@ -21,6 +21,7 @@ https://fishfight.github.io/punchy/demo/
 |Z,X| Zoom Camera|
 |↑↓←→ | Pan Camera|
 |Esc| Pause/Unpause|
+|F11| Toggle Fullscreen|
 
 
 ## Contributing
