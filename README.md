@@ -20,7 +20,7 @@ https://fishfight.github.io/punchy/demo/
 |Space| Flop Attack|
 |Z,X| Zoom Camera|
 |↑↓←→ | Pan Camera|
-|P| Pause/Unpause|
+|Esc| Pause/Unpause|
 
 
 ## Contributing

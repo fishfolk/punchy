@@ -585,14 +585,14 @@ fn hot_reload_fighters(
 
 /// Transition game to pause state
 fn pause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
-    if keyboard.just_pressed(KeyCode::P) {
+    if keyboard.just_pressed(KeyCode::Escape) {
         commands.insert_resource(NextState(GameState::Paused));
     }
 }
 
 // Transition game out of paused state
 fn unpause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
-    if keyboard.just_pressed(KeyCode::P) {
+    if keyboard.just_pressed(KeyCode::Escape) {
         commands.insert_resource(NextState(GameState::InGame));
     }
 }
