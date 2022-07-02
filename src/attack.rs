@@ -5,20 +5,21 @@ use bevy::{
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::*;
+use iyes_loopless::prelude::*;
 
 use crate::{
     animation::Facing,
     collisions::BodyLayers,
     consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH},
     movement::MoveInDirection,
-    Player,
+    GameState, Player,
 };
 
 pub struct AttackPlugin;
 
 impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(player_attack);
+        app.add_system(player_attack.run_in_state(GameState::InGame));
     }
 }
 
