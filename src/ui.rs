@@ -114,6 +114,7 @@ fn pause_menu(
     mut egui_context: ResMut<EguiContext>,
     game: Res<GameMeta>,
     non_camera_entities: Query<Entity, Without<Camera>>,
+    mut camera_transform: Query<&mut Transform, With<Camera>>,
 ) {
     let ui_theme = &game.ui_theme;
 
@@ -189,6 +190,8 @@ fn pause_menu(
                             for entity in non_camera_entities.iter() {
                                 commands.entity(entity).despawn();
                             }
+                            // Reset camera position
+                            *camera_transform.single_mut() = Transform::default();
                             // Show the main menu
                             commands.insert_resource(NextState(GameState::MainMenu));
                         }
