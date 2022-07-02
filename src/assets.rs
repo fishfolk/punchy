@@ -1,61 +1,108 @@
 use std::path::{Path, PathBuf};
 
 use bevy::{
-    asset::{AssetLoader, AssetPath, LoadedAsset},
+    asset::{Asset, AssetLoader, AssetPath, LoadedAsset},
     prelude::AddAsset,
     prelude::*,
+    reflect::TypeUuid,
 };
+use bevy_egui::egui;
 
 use crate::metadata::*;
 
+/// Register game asset and loaders
 pub fn register(app: &mut bevy::prelude::App) {
     app.register_type::<TextureAtlasSprite>()
-        .add_asset::<Game>()
-        .add_asset_loader(GameLoader)
-        .add_asset::<Level>()
-        .add_asset_loader(LevelLoader)
+        .add_asset::<GameMeta>()
+        .add_asset_loader(GameMetaLoader)
+        .add_asset::<LevelMeta>()
+        .add_asset_loader(LevelMetaLoader)
         .add_asset::<Fighter>()
-        .add_asset_loader(FighterLoader);
+        .add_asset_loader(FighterLoader)
+        .add_asset::<EguiFont>()
+        .add_asset_loader(EguiFontLoader);
 }
 
+// An error that could ocurr during asset processing
 #[derive(thiserror::Error, Debug)]
 pub enum AssetLoaderError {
     #[error("Could not parse YAML asset: {0}")]
     DeserializationError(#[from] serde_yaml::Error),
 }
 
-fn relative_asset_path(asset_path: &Path, relative: &str) -> PathBuf {
-    let is_relative = !relative.starts_with('/');
+/// Calculate an asset's full path relative to another asset
+fn relative_asset_path(asset_path: &Path, relative_path: &str) -> PathBuf {
+    let is_relative = !relative_path.starts_with('/');
 
     if is_relative {
         let base = asset_path.parent().unwrap_or_else(|| Path::new(""));
-        base.join(relative)
+        base.join(relative_path)
     } else {
-        Path::new(relative).strip_prefix("/").unwrap().to_owned()
+        Path::new(relative_path)
+            .strip_prefix("/")
+            .unwrap()
+            .to_owned()
     }
 }
 
 #[derive(Default)]
-pub struct GameLoader;
+pub struct GameMetaLoader;
 
-impl AssetLoader for GameLoader {
+impl AssetLoader for GameMetaLoader {
     fn load<'a>(
         &'a self,
         bytes: &'a [u8],
         load_context: &'a mut bevy::asset::LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<(), anyhow::Error>> {
         Box::pin(async move {
-            let meta: GameMeta = serde_yaml::from_slice(bytes)?;
+            let mut meta: GameMeta = serde_yaml::from_slice(bytes)?;
             trace!(?meta, "Loaded game asset");
 
-            let self_path = load_context.path();
+            let self_path = load_context.path().to_owned();
 
-            let start_level_path = relative_asset_path(self_path, &meta.start_level);
-            let start_level_path = AssetPath::new(start_level_path, None);
-            let start_level = load_context.get_handle(start_level_path.clone());
+            /// Helper to get relative asset paths and handles
+            fn get_relative_asset<T: Asset>(
+                load_context: &mut bevy::asset::LoadContext,
+                self_path: &Path,
+                relative_path: &str,
+            ) -> (AssetPath<'static>, Handle<T>) {
+                let asset_path = relative_asset_path(self_path, relative_path);
+                let asset_path = AssetPath::new(asset_path, None);
+                let handle = load_context.get_handle(asset_path.clone());
+
+                (asset_path, handle)
+            }
+
+            // Load the start level asset
+            let (start_level_path, start_level_handle) =
+                get_relative_asset(load_context, &self_path, &meta.start_level);
+            meta.start_level_handle = start_level_handle;
+
+            // Load the main menu background
+            let (main_menu_background_path, main_menu_background) = get_relative_asset(
+                load_context,
+                &self_path,
+                &meta.main_menu.background_image.image,
+            );
+            meta.main_menu.background_image.handle = main_menu_background;
+
+            // Load UI fonts
+            let mut font_paths = Vec::new();
+            for (font_name, font_relative_path) in &meta.ui_theme.fonts {
+                let (font_path, font_handle) =
+                    get_relative_asset(load_context, &self_path, font_relative_path);
+
+                font_paths.push(font_path);
+
+                meta.ui_theme
+                    .font_handles
+                    .insert(font_name.clone(), font_handle);
+            }
 
             load_context.set_default_asset(
-                LoadedAsset::new(Game { meta, start_level }).with_dependency(start_level_path),
+                LoadedAsset::new(meta)
+                    .with_dependencies(vec![start_level_path, main_menu_background_path])
+                    .with_dependencies(font_paths),
             );
 
             Ok(())
@@ -67,9 +114,9 @@ impl AssetLoader for GameLoader {
     }
 }
 
-pub struct LevelLoader;
+pub struct LevelMetaLoader;
 
-impl AssetLoader for LevelLoader {
+impl AssetLoader for LevelMetaLoader {
     fn load<'a>(
         &'a self,
         bytes: &'a [u8],
@@ -90,31 +137,27 @@ impl AssetLoader for LevelLoader {
                     .to_owned();
             }
 
-            let player_fighter_file_path =
-                relative_asset_path(self_path, &meta.player_spawn.fighter);
+            // Load the player
+            let player_fighter_file_path = relative_asset_path(self_path, &meta.player.fighter);
             let player_fighter_path = AssetPath::new(player_fighter_file_path, None);
             let player_fighter_handle = load_context.get_handle(player_fighter_path.clone());
+            meta.player.fighter_handle = player_fighter_handle;
 
-            let mut enemy_fighter_handles = Vec::new();
+            // Load the enemies
             let mut enemy_asset_paths = Vec::new();
-
-            for enemy in &meta.enemies {
+            for enemy in &mut meta.enemies {
                 let enemy_fighter_file_path = relative_asset_path(self_path, &enemy.fighter);
                 let enemy_fighter_path = AssetPath::new(enemy_fighter_file_path.clone(), None);
                 let enemy_fighter_handle = load_context.get_handle(enemy_fighter_path.clone());
                 enemy_asset_paths.push(enemy_fighter_path);
 
-                enemy_fighter_handles.push(enemy_fighter_handle);
+                enemy.fighter_handle = enemy_fighter_handle;
             }
 
             load_context.set_default_asset(
-                LoadedAsset::new(Level {
-                    meta,
-                    player_fighter_handle,
-                    enemy_fighter_handles,
-                })
-                .with_dependency(player_fighter_path)
-                .with_dependencies(enemy_asset_paths),
+                LoadedAsset::new(meta)
+                    .with_dependency(player_fighter_path)
+                    .with_dependencies(enemy_asset_paths),
             );
 
             Ok(())
@@ -161,5 +204,33 @@ impl AssetLoader for FighterLoader {
 
     fn extensions(&self) -> &[&str] {
         &["fighter.yml", "fighter.yaml"]
+    }
+}
+
+#[derive(Debug, Clone, TypeUuid)]
+#[uuid = "da277340-574f-4069-907c-7571b8756200"]
+pub struct EguiFont(pub egui::FontData);
+
+pub struct EguiFontLoader;
+
+impl AssetLoader for EguiFontLoader {
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::utils::BoxedFuture<'a, Result<(), anyhow::Error>> {
+        Box::pin(async move {
+            let path = load_context.path();
+            let data = egui::FontData::from_owned(bytes.to_vec());
+            debug!(?path, "Loaded font asset");
+
+            load_context.set_default_asset(LoadedAsset::new(EguiFont(data)));
+
+            Ok(())
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["ttf"]
     }
 }

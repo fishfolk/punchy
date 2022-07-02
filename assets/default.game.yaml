@@ -1,1 +1,61 @@
 start_level: beach/beach.level.yaml
+camera_height: 448
+
+main_menu:
+  title: "Fish Fight\nPunchy"
+  title_size: 45
+  title_font: ark
+
+  background_image:
+    image: ui/main-menu-background.png
+    size: [1919, 1027]
+
+ui_theme:
+  fonts:
+    ark: ui/ark-pixel-16px-latin.ttf
+
+  panel:
+    text_color: [51, 40, 40]
+    padding:
+      top: 30
+      bottom: 30
+      left: 30
+      right: 30
+    border:
+      image: ui/paper.png
+      image_size: [38, 34]
+      border_size:
+        top: 11
+        bottom: 11
+        left: 11
+        right: 11
+      scale: 4.0
+
+  button:
+    text_color: [255, 255, 255]
+    font_size: 30
+    font: ark
+    padding:
+      top: 12
+      left: 12
+      right: 12
+      bottom: 12
+    borders:
+      default:
+        image: ui/green-button.png
+        image_size: [14, 14]
+        border_size:
+          top: 5
+          bottom: 5
+          right: 5
+          left: 5
+        scale: 3
+      clicked:
+        image: ui/green-button-down.png
+        image_size: [14, 14]
+        border_size:
+          top: 5
+          bottom: 5
+          right: 5
+          left: 5
+        scale: 3
