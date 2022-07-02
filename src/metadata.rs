@@ -27,7 +27,6 @@ pub struct GameMeta {
 #[serde(deny_unknown_fields)]
 pub struct MainMenuMeta {
     pub title: String,
-    pub title_size: f32,
     pub title_font: String,
     pub background_image: ImageMeta,
 }
@@ -141,8 +140,18 @@ pub struct UIThemeMeta {
     pub fonts: HashMap<String, String>,
     #[serde(skip)]
     pub font_handles: HashMap<String, Handle<EguiFont>>,
+    pub font_sizes: FontSizesMeta,
     pub panel: UIPanelThemeMeta,
     pub button: UIButtonThemeMeta,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct FontSizesMeta {
+    pub jumbo: f32,
+    pub big: f32,
+    pub normal: f32,
+    pub small: f32,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -160,7 +169,6 @@ pub struct UIPanelThemeMeta {
 pub struct UIButtonThemeMeta {
     #[serde(default)]
     pub text_color: ColorMeta,
-    pub font_size: f32,
     pub font: String,
     #[serde(default)]
     pub padding: MarginMeta,
