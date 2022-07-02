@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::forget_non_drop)]
+#![allow(clippy::too_many_arguments)]
 
 use bevy::{
     asset::{AssetServerSettings, AssetStage},
@@ -7,6 +8,7 @@ use bevy::{
     prelude::*,
     render::camera::ScalingMode,
 };
+use bevy_egui::{egui, EguiContext};
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
@@ -37,18 +39,18 @@ mod ui;
 mod y_sort;
 
 use animation::*;
-use attack::{Attack, AttackPlugin};
+use attack::AttackPlugin;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
-use metadata::{Fighter, Game, Level};
+use metadata::{Fighter, GameMeta, LevelMeta};
 use movement::*;
 use serde::Deserialize;
 use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
 
-use crate::config::EngineConfig;
+use crate::{config::EngineConfig, metadata::UIBorderImageMeta};
 
 #[derive(Component)]
 pub struct Player;
@@ -159,28 +161,43 @@ impl Default for EnemyBundle {
     }
 }
 
+/// Used as a system In<IsHotReload> parameter to indicate whether the system is being called to
+/// host reload an asset.
+struct IsHotReload(bool);
+/// Helper to create a system chain, i.e.: `not_hot_reload.chain(my_system)`
+fn not_hot_reload() -> IsHotReload {
+    IsHotReload(false)
+}
+/// Helper to create a system chain, i.e.: `is_hot_reload.chain(my_system)`
+fn is_hot_reload() -> IsHotReload {
+    IsHotReload(true)
+}
+
 fn main() {
     let engine_config = EngineConfig::from_args();
 
     let mut app = App::new();
 
+    // Configure asset server
     let mut asset_server_settings = AssetServerSettings {
         watch_for_changes: engine_config.hot_reload,
         ..default()
     };
-
     if let Some(asset_dir) = &engine_config.asset_dir {
         asset_server_settings.asset_folder = asset_dir.clone();
     }
+    app.insert_resource(asset_server_settings);
 
+    // Add default plugins
     #[cfg(feature = "schedule_graph")]
     app.add_plugins_with(DefaultPlugins, |plugins| {
         plugins.disable::<bevy::log::LogPlugin>()
     });
     #[cfg(not(feature = "schedule_graph"))]
     app.add_plugins(DefaultPlugins);
+
+    // Add other systems and resources
     app.insert_resource(engine_config.clone())
-        .insert_resource(asset_server_settings)
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(WindowDescriptor {
             title: "Fish Fight Punchy".to_string(),
@@ -188,6 +205,7 @@ fn main() {
             ..Default::default()
         })
         .add_event::<ThrowItemEvent>()
+        .add_loopless_state(GameState::LoadingGame)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(AttackPlugin)
@@ -196,9 +214,11 @@ fn main() {
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource::default())
-        .add_startup_system(spawn_camera)
-        .add_loopless_state(GameState::LoadingGame)
-        .add_system(load_game.run_in_state(GameState::LoadingGame))
+        .add_system(
+            not_hot_reload
+                .chain(load_game)
+                .run_in_state(GameState::LoadingGame),
+        )
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
             ConditionSet::new()
@@ -230,12 +250,39 @@ fn main() {
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
 
+    // Add debug plugins
+    #[cfg(feature = "debug")]
+    app.add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(InspectableRapierPlugin)
+        .add_plugin(WorldInspectorPlugin::new())
+        .register_inspectable::<Stats>()
+        .register_inspectable::<State>()
+        .register_inspectable::<MoveInDirection>()
+        .register_inspectable::<MoveInArc>()
+        .register_inspectable::<Rotate>()
+        .register_inspectable::<attack::Attack>()
+        .register_inspectable::<YSort>()
+        .register_inspectable::<Facing>()
+        .register_inspectable::<Panning>();
+
+    // Register assets and loaders
+    assets::register(&mut app);
+
+    debug!(?engine_config, "Starting game");
+
+    // Get the game handle
+    let asset_server = app.world.get_resource::<AssetServer>().unwrap();
+    let game_asset = engine_config.game_asset;
+    let game_handle: Handle<GameMeta> = asset_server.load(&game_asset);
+
+    // Configure hot reload
     if engine_config.hot_reload {
         app.add_stage_after(
             AssetStage::LoadAssets,
             GameStage::HotReload,
             SystemStage::parallel(),
         )
+        .add_system_to_stage(GameStage::HotReload, is_hot_reload.chain(load_game))
         .add_system_set_to_stage(
             GameStage::HotReload,
             ConditionSet::new()
@@ -246,68 +293,133 @@ fn main() {
         );
     }
 
-    #[cfg(feature = "debug")]
-    app.add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(InspectableRapierPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
-        .register_inspectable::<Stats>()
-        .register_inspectable::<State>()
-        .register_inspectable::<MoveInDirection>()
-        .register_inspectable::<MoveInArc>()
-        .register_inspectable::<Rotate>()
-        .register_inspectable::<Attack>()
-        .register_inspectable::<YSort>()
-        .register_inspectable::<Facing>()
-        .register_inspectable::<Panning>();
+    // Insert game handle resource
+    app.world.insert_resource(game_handle);
 
-    assets::register(&mut app);
-
-    debug!(?engine_config, "Starting game");
-
-    // Insert the game handle
-    let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-    let game_asset = engine_config.game_asset;
-    let handle: Handle<Game> = asset_server.load(&game_asset);
-    app.world.insert_resource(handle);
-
+    // Print the graphviz schedule graph
     #[cfg(feature = "schedule_graph")]
     bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
 }
 
-fn spawn_camera(mut commands: Commands) {
-    let mut camera_bundle = OrthographicCameraBundle::new_2d();
-    // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
-    camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
-    camera_bundle.orthographic_projection.scale = 16. * 14.;
-    commands
-        .spawn_bundle(camera_bundle)
-        .insert(Panning {
-            offset: Vec2::new(0., -consts::GROUND_Y),
-        })
-        .insert(ParallaxCameraComponent);
-}
-
+/// Loads the main [`GameMeta`] resource and then transitions to the main menu
+///
+/// This is run in a chain as either `not_hot_reload().chain(load_game)` or
+/// `is_hot_reload().chain(load_game)` so that logic for hot reloading the game and loading the game
+/// can be shared.
 fn load_game(
+    is_hot_reload: In<IsHotReload>,
+    mut skip_next_asset_update_event: Local<bool>,
+    camera: Query<Entity, With<Camera>>,
     mut commands: Commands,
-    game_handle: Res<Handle<Game>>,
-    mut assets: ResMut<Assets<Game>>,
+    game_handle: Res<Handle<GameMeta>>,
+    mut assets: ResMut<Assets<GameMeta>>,
+    mut egui_ctx: ResMut<EguiContext>,
+    asset_server: Res<AssetServer>,
+    mut events: EventReader<AssetEvent<GameMeta>>,
 ) {
-    if let Some(game) = assets.remove(game_handle.clone_weak()) {
+    let is_hot_reload = is_hot_reload.0 .0;
+
+    // If this is a hot reload run, check for modified asset events
+    if is_hot_reload {
+        let mut has_update = false;
+        for (event, event_id) in events.iter_with_id() {
+            if let AssetEvent::Modified { .. } = event {
+                // We may need to skip an asset update event
+                if *skip_next_asset_update_event {
+                    *skip_next_asset_update_event = false;
+                } else {
+                    debug!(%event_id, "Game updated");
+                    has_update = true;
+                }
+            }
+        }
+
+        // If there was no update, skip execution
+        if !has_update {
+            return;
+        }
+    }
+
+    if let Some(game) = assets.get_mut(game_handle.clone_weak()) {
         debug!("Loaded game");
+
+        if is_hot_reload {
+            // Despawn previous camera
+            commands.entity(camera.single()).despawn();
+        }
+
+        // Spawn the camera
+        let mut camera_bundle = OrthographicCameraBundle::new_2d();
+        // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
+        camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
+        camera_bundle.orthographic_projection.scale = game.camera_height as f32 / 2.0;
+        commands
+            .spawn_bundle(camera_bundle)
+            .insert(Panning {
+                offset: Vec2::new(0., -consts::GROUND_Y),
+            })
+            .insert(ParallaxCameraComponent);
+
+        // Helper to load border images
+        let mut load_border_image = |border: &mut UIBorderImageMeta| {
+            border.handle = asset_server.load(&border.image);
+            border.egui_texture = egui_ctx.add_image(border.handle.clone_weak());
+        };
+
+        // Load border images
+        load_border_image(&mut game.ui_theme.panel.border);
+        load_border_image(&mut game.ui_theme.button.borders.default);
+        if let Some(border) = &mut game.ui_theme.button.borders.clicked {
+            load_border_image(border);
+        }
+        if let Some(border) = &mut game.ui_theme.button.borders.hovered {
+            load_border_image(border);
+        }
+
+        if !is_hot_reload {
+            // Initialize empty fonts for all game fonts.
+            //
+            // This makes sure Egui will not panic if we try to use a font that is still loading.
+            let mut egui_fonts = egui::FontDefinitions::default();
+            for font_name in game.ui_theme.fonts.keys() {
+                let font_family = egui::FontFamily::Name(font_name.clone().into());
+                egui_fonts.families.insert(font_family, vec![]);
+            }
+            egui_ctx.ctx_mut().set_fonts(egui_fonts.clone());
+            commands.insert_resource(egui_fonts);
+
+        // If this is a hot reload run
+        } else {
+            // Since we modified the game asset, which will trigger another asset changed event, we
+            // need to skip the next update event.
+            *skip_next_asset_update_event = true;
+        }
+
+        // Insert the game resource
+        commands.insert_resource(game.clone());
         commands.insert_resource(game.start_level.clone());
-        commands.insert_resource(game);
-        commands.insert_resource(NextState(GameState::LoadingLevel));
+
+        if !is_hot_reload {
+            // Transition to the main menu
+            commands.insert_resource(NextState(GameState::MainMenu));
+        }
+
+    // If the game asset isn't loaded yet
     } else {
         trace!("Awaiting game load")
     }
 }
 
+/// Loads a level and transitions to [`GameState::InGame`]
+///
+/// A [`Handle<Level>`] resource must be inserted before running this system, to indicate which
+/// level to load.
 fn load_level(
-    level_handle: Res<Handle<Level>>,
+    level_handle: Res<Handle<LevelMeta>>,
     mut commands: Commands,
-    assets: Res<Assets<Level>>,
+    assets: Res<Assets<LevelMeta>>,
     mut parallax: ResMut<ParallaxResource>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
@@ -318,36 +430,31 @@ fn load_level(
         let window = windows.primary();
 
         // Setup the parallax background
-        *parallax = level.meta.parallax_background.get_resource();
+        *parallax = level.parallax_background.get_resource();
         parallax.window_size = Vec2::new(window.width(), window.height());
         parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
 
         // Set the clear color
-        commands.insert_resource(ClearColor(level.meta.background_color()));
+        commands.insert_resource(ClearColor(level.background_color()));
 
         // Spawn the player
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
-        let player_pos = level.meta.player_spawn.location + ground_offset;
+        let player_pos = level.player.location + ground_offset;
         commands
             .spawn_bundle(TransformBundle::from_transform(
                 Transform::from_translation(player_pos),
             ))
-            .insert(level.player_fighter_handle.clone())
+            .insert(level.player.fighter_handle.clone())
             .insert_bundle(PlayerBundle::default());
 
         // Spawn the enemies
-        for (enemy, enemy_handle) in level
-            .meta
-            .enemies
-            .iter()
-            .zip(level.enemy_fighter_handles.iter())
-        {
+        for enemy in level.enemies.iter() {
             let enemy_pos = enemy.location + ground_offset;
             commands
                 .spawn_bundle(TransformBundle::from_transform(
                     Transform::from_translation(enemy_pos),
                 ))
-                .insert(enemy_handle.clone())
+                .insert(enemy.fighter_handle.clone())
                 .insert_bundle(EnemyBundle::default());
         }
 
@@ -358,13 +465,14 @@ fn load_level(
     }
 }
 
+/// Hot reloads level asset data
 fn hot_reload_level(
     mut commands: Commands,
     mut parallax: ResMut<ParallaxResource>,
-    mut events: EventReader<AssetEvent<Level>>,
+    mut events: EventReader<AssetEvent<LevelMeta>>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    level_handle: Res<Handle<Level>>,
-    assets: Res<Assets<Level>>,
+    level_handle: Res<Handle<LevelMeta>>,
+    assets: Res<Assets<LevelMeta>>,
     asset_server: Res<AssetServer>,
     windows: Res<Windows>,
 ) {
@@ -375,17 +483,21 @@ fn hot_reload_level(
                 // Update the level background
                 let window = windows.primary();
                 parallax.despawn_layers(&mut commands);
-                *parallax = level.meta.parallax_background.get_resource();
+                *parallax = level.parallax_background.get_resource();
                 parallax.window_size = Vec2::new(window.width(), window.height());
                 parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
 
-                commands.insert_resource(ClearColor(level.meta.background_color()));
+                commands.insert_resource(ClearColor(level.background_color()));
             }
         }
     }
 }
 
-/// Load all fighters that have their handles spawned
+/// Load all fighters that have their handles spawned.
+///
+/// Fighters are spawned as "stubs" that only contain a transform, a marker component, and a
+/// [`Handle<Fighter>`]. This system takes those stubs, populates the rest of their components once
+/// the figher asset has been loaded.
 fn load_fighters(
     mut commands: Commands,
     // All fighters that haven't been fully loaded yet
@@ -438,6 +550,7 @@ fn load_fighters(
     }
 }
 
+/// Hot reload fighter data when fighter assets are updated.
 fn hot_reload_fighters(
     mut fighters: Query<(
         &Handle<Fighter>,
@@ -470,17 +583,20 @@ fn hot_reload_fighters(
     }
 }
 
+/// Transition game to pause state
 fn pause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
     if keyboard.just_pressed(KeyCode::P) {
         commands.insert_resource(NextState(GameState::Paused));
     }
 }
 
+// Transition game out of paused state
 fn unpause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
     if keyboard.just_pressed(KeyCode::P) {
         commands.insert_resource(NextState(GameState::InGame));
     }
 }
+
 fn player_attack(
     mut query: Query<(&mut State, &mut Transform, &Animation, &Facing), With<Player>>,
     keyboard: Res<Input<KeyCode>>,
