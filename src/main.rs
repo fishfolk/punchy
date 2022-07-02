@@ -37,7 +37,7 @@ mod ui;
 mod y_sort;
 
 use animation::*;
-use attack::{Attack, AttackPlugin};
+use attack::AttackPlugin;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
