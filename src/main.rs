@@ -10,6 +10,7 @@ use bevy::{
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
+use rand::Rng;
 use structopt::StructOpt;
 
 #[cfg(feature = "debug")]
@@ -217,6 +218,8 @@ fn main() {
                 .with_system(throw_item_system)
                 .with_system(item_attacks_enemy_collision)
                 .with_system(rotate_system)
+                .with_system(set_target_near_player)
+                .with_system(move_to_target)
                 .with_system(pause)
                 .into(),
         )
@@ -528,5 +531,31 @@ fn kill_entities(
 fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMarker>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn set_target_near_player(
+    mut commands: Commands,
+    query: Query<(Entity, &Transform), (With<Enemy>, Without<Target>)>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        let mut rng = rand::thread_rng();
+
+        for (entity, transform) in query.iter() {
+            if transform
+                .translation
+                .truncate()
+                .distance(player_transform.translation.truncate())
+                >= 100.0
+            {
+                let x_offset = rng.gen_range(-100.0..100.);
+                let y_offset = rng.gen_range(-100.0..100.);
+                commands.entity(entity).insert(Target {
+                    position: player_transform.translation.truncate()
+                        + Vec2::new(x_offset, y_offset),
+                });
+            }
+        }
     }
 }

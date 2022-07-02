@@ -202,3 +202,23 @@ pub fn rotate_system(mut query: Query<(&mut Transform, &Rotate)>, time: Res<Time
             Quat::from_rotation_z(rotation_factor * rotate.speed * time.delta_seconds());
     }
 }
+
+#[derive(Component)]
+pub struct Target {
+    pub position: Vec2,
+}
+pub fn move_to_target(
+    mut query: Query<(Entity, &mut Transform, &Stats, &Target)>,
+    mut commands: Commands,
+    time: Res<Time>,
+) {
+    for (entity, mut transform, stats, target) in query.iter_mut() {
+        let translation_old = transform.translation.clone();
+        transform.translation += (target.position.extend(0.) - translation_old).normalize()
+            * stats.movement_speed
+            * time.delta_seconds();
+        if transform.translation.truncate().distance(target.position) <= 100. {
+            commands.entity(entity).remove::<Target>();
+        }
+    }
+}
