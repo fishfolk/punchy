@@ -234,10 +234,8 @@ fn main() {
                 .with_system(kill_entities)
                 .with_system(knockback_system)
                 .with_system(move_direction_system)
-                .with_system(move_in_arc_system)
                 .with_system(throw_item_system)
                 .with_system(item_attacks_enemy_collision)
-                .with_system(rotate_system)
                 .with_system(set_target_near_player)
                 .with_system(move_to_target)
                 .with_system(pause)
@@ -248,6 +246,8 @@ fn main() {
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
+                .with_system(move_in_arc_system)
+                .with_system(rotate_system)
                 .with_system(camera_follow_player)
                 .into(),
         )
