@@ -208,17 +208,33 @@ pub struct Target {
     pub position: Vec2,
 }
 pub fn move_to_target(
-    mut query: Query<(Entity, &mut Transform, &Stats, &Target)>,
+    mut query: Query<(
+        Entity,
+        &mut Transform,
+        &Stats,
+        &Target,
+        &mut State,
+        &mut Facing,
+    )>,
     mut commands: Commands,
     time: Res<Time>,
 ) {
-    for (entity, mut transform, stats, target) in query.iter_mut() {
-        let translation_old = transform.translation.clone();
-        transform.translation += (target.position.extend(0.) - translation_old).normalize()
+    for (entity, mut transform, stats, target, mut state, mut facing) in query.iter_mut() {
+        let translation_old = transform.translation;
+        transform.translation += ((target.position.extend(0.) - translation_old)
             * stats.movement_speed
-            * time.delta_seconds();
+            * time.delta_seconds())
+        .normalize();
+        if transform.translation.x > translation_old.x {
+            *facing = Facing::Right;
+        } else {
+            *facing = Facing::Left;
+        }
         if transform.translation.truncate().distance(target.position) <= 100. {
             commands.entity(entity).remove::<Target>();
+            *state = State::Idle;
+        } else {
+            *state = State::Running;
         }
     }
 }
