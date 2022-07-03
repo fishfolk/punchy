@@ -161,6 +161,8 @@ impl Default for EnemyBundle {
     }
 }
 
+pub struct ArrivedEvent(Entity);
+
 /// Used as a system In<IsHotReload> parameter to indicate whether the system is being called to
 /// host reload an asset.
 struct IsHotReload(bool);
@@ -204,6 +206,7 @@ fn main() {
             scale_factor_override: Some(1.0),
             ..Default::default()
         })
+        .add_event::<ArrivedEvent>()
         .add_event::<ThrowItemEvent>()
         .add_loopless_state(GameState::LoadingGame)
         .add_plugin(platform::PlatformPlugin)
@@ -237,10 +240,19 @@ fn main() {
                 .with_system(move_direction_system)
                 .with_system(throw_item_system)
                 .with_system(item_attacks_enemy_collision)
-                .with_system(set_target_near_player)
-                .with_system(move_to_target)
                 .with_system(pause)
                 .into(),
+        )
+        .add_system(set_target_near_player.run_in_state(GameState::InGame))
+        .add_system(
+            move_to_target
+                .run_in_state(GameState::InGame)
+                .after(set_target_near_player),
+        )
+        .add_system(
+            enemy_attack
+                .run_in_state(GameState::InGame)
+                .after(move_to_target),
         )
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
@@ -625,8 +637,8 @@ fn player_attack(
             if keyboard.just_pressed(KeyCode::Space) {
                 state.set(State::Attacking);
             }
-        } else if animation.is_finished() {
-            state.set(State::Idle);
+        // } else if animation.is_finished() {
+        // state.set(State::Idle);
         } else {
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
@@ -641,6 +653,19 @@ fn player_attack(
                 transform.translation.y += 180. * time.delta_seconds();
             } else if animation.current_frame < 3 {
                 transform.translation.y -= 90. * time.delta_seconds();
+            }
+        }
+    }
+}
+
+fn enemy_attack(
+    mut query: Query<&mut State, (With<Enemy>, With<Target>)>,
+    mut event_reader: EventReader<ArrivedEvent>,
+) {
+    for event in event_reader.iter() {
+        if let Ok(mut state) = query.get_mut(event.0) {
+            if *state != State::Attacking {
+                state.set(State::Attacking);
             }
         }
     }
@@ -668,6 +693,7 @@ fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMar
     }
 }
 
+//for enemys without current target, pick a new spot near the player as target
 fn set_target_near_player(
     mut commands: Commands,
     query: Query<(Entity, &Transform), (With<Enemy>, Without<Target>)>,

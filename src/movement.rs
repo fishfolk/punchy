@@ -9,7 +9,8 @@ use bevy::{
 };
 
 use crate::{
-    animation::Facing, consts, item::ThrowItemEvent, state::State, DespawnMarker, Player, Stats,
+    animation::Facing, consts, item::ThrowItemEvent, state::State, ArrivedEvent, DespawnMarker,
+    Player, Stats,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -218,6 +219,7 @@ pub fn move_to_target(
     )>,
     mut commands: Commands,
     time: Res<Time>,
+    mut event_writer: EventWriter<ArrivedEvent>,
 ) {
     for (entity, mut transform, stats, target, mut state, mut facing) in query.iter_mut() {
         if *state == State::Idle || *state == State::Running {
@@ -233,6 +235,7 @@ pub fn move_to_target(
             if transform.translation.truncate().distance(target.position) <= 100. {
                 commands.entity(entity).remove::<Target>();
                 *state = State::Idle;
+                event_writer.send(ArrivedEvent(entity))
             } else {
                 *state = State::Running;
             }

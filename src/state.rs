@@ -1,13 +1,13 @@
-use bevy::prelude::{App, Component, CoreStage, Plugin, Query, Without};
+use bevy::prelude::{App, Component, CoreStage, Plugin, Query};
 use serde::Deserialize;
 
-use crate::{animation::Animation, movement::Knockback};
+use crate::animation::Animation;
 
 pub struct StatePlugin;
 
 impl Plugin for StatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(CoreStage::PreUpdate, exit_knocked_state);
+        app.add_system_to_stage(CoreStage::PostUpdate, return_to_idle);
     }
 }
 
@@ -46,9 +46,9 @@ impl State {
         *self = state;
     }
 
-    pub fn is_knocked(&self) -> bool {
-        matches!(self, State::KnockedLeft | State::KnockedRight)
-    }
+    // pub fn is_knocked(&self) -> bool {
+    //     matches!(self, State::KnockedLeft | State::KnockedRight)
+    // }
 }
 
 impl Default for State {
@@ -57,9 +57,9 @@ impl Default for State {
     }
 }
 
-fn exit_knocked_state(mut query: Query<(&mut State, &Animation), Without<Knockback>>) {
+fn return_to_idle(mut query: Query<(&mut State, &Animation)>) {
     for (mut state, animation) in query.iter_mut() {
-        if state.is_knocked() && animation.is_finished() {
+        if !animation.is_repeating() && animation.is_finished() && *state != State::Dying {
             state.set(State::Idle);
         }
     }
