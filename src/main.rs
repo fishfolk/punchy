@@ -631,6 +631,7 @@ fn player_attack(
     mut query: Query<(&mut State, &mut Transform, &Animation, &Facing), With<Player>>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
+    mut start_y: Local<Option<f32>>,
 ) {
     if let Ok((mut state, mut transform, animation, facing)) = query.get_single_mut() {
         if *state != State::Attacking {
@@ -649,10 +650,22 @@ fn player_attack(
                 }
             }
 
+            // For currently unclear reasons, the first Animation frame may run for less Bevy frames
+            // than expected. When this is the case, the player jumps less then it should, netting,
+            // at the end of the animation, a slightly negative Y than the beginning, which causes
+            // problems. This is a workaround.
+            //
+            if start_y.is_none() {
+                *start_y = Some(transform.translation.y);
+            }
+
             if animation.current_frame < 1 {
                 transform.translation.y += 180. * time.delta_seconds();
             } else if animation.current_frame < 3 {
                 transform.translation.y -= 90. * time.delta_seconds();
+            } else if animation.is_finished() {
+                transform.translation.y = start_y.unwrap();
+                *start_y = None;
             }
         }
     }
