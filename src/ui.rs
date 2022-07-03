@@ -191,7 +191,10 @@ fn pause_menu(
                                 commands.entity(entity).despawn();
                             }
                             // Reset camera position
-                            *camera_transform.single_mut() = Transform::default();
+                            let mut camera_transform = camera_transform.single_mut();
+                            camera_transform.translation.x = 0.0;
+                            camera_transform.translation.y = 0.0;
+
                             // Show the main menu
                             commands.insert_resource(NextState(GameState::MainMenu));
                         }
