@@ -220,21 +220,22 @@ pub fn move_to_target(
     time: Res<Time>,
 ) {
     for (entity, mut transform, stats, target, mut state, mut facing) in query.iter_mut() {
-        let translation_old = transform.translation;
-        transform.translation += ((target.position.extend(0.) - translation_old)
-            * stats.movement_speed
-            * time.delta_seconds())
-        .normalize();
-        if transform.translation.x > translation_old.x {
-            *facing = Facing::Right;
-        } else {
-            *facing = Facing::Left;
-        }
-        if transform.translation.truncate().distance(target.position) <= 100. {
-            commands.entity(entity).remove::<Target>();
-            *state = State::Idle;
-        } else {
-            *state = State::Running;
+        if *state == State::Idle || *state == State::Running {
+            let translation_old = transform.translation;
+            transform.translation += (target.position.extend(0.) - translation_old).normalize()
+                * stats.movement_speed
+                * time.delta_seconds();
+            if transform.translation.x > translation_old.x {
+                *facing = Facing::Right;
+            } else {
+                *facing = Facing::Left;
+            }
+            if transform.translation.truncate().distance(target.position) <= 100. {
+                commands.entity(entity).remove::<Target>();
+                *state = State::Idle;
+            } else {
+                *state = State::Running;
+            }
         }
     }
 }
