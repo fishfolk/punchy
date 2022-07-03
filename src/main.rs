@@ -244,9 +244,12 @@ fn main() {
                 .into(),
         )
         .add_system(unpause.run_in_state(GameState::Paused))
-        .add_system_to_stage(
+        .add_system_set_to_stage(
             CoreStage::PostUpdate,
-            camera_follow_player.run_in_state(GameState::InGame),
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(camera_follow_player)
+                .into(),
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
 
