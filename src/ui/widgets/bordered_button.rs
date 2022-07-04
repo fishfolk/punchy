@@ -5,7 +5,7 @@
 /// Adapted from <https://docs.rs/egui/0.18.1/src/egui/widgets/button.rs.html>
 use bevy_egui::egui::{self, *};
 
-use crate::metadata::UIBorderImageMeta;
+use crate::metadata::{BorderImageMeta, ButtonStyle, UIThemeMeta};
 
 use super::bordered_frame::BorderedFrame;
 
@@ -15,9 +15,9 @@ pub struct BorderedButton<'a> {
     wrap: Option<bool>,
     sense: Sense,
     min_size: Vec2,
-    default_border: Option<&'a UIBorderImageMeta>,
-    on_hover_border: Option<&'a UIBorderImageMeta>,
-    on_click_border: Option<&'a UIBorderImageMeta>,
+    default_border: Option<&'a BorderImageMeta>,
+    on_hover_border: Option<&'a BorderImageMeta>,
+    on_click_border: Option<&'a BorderImageMeta>,
     margin: egui::style::Margin,
     padding: egui::style::Margin,
 }
@@ -39,6 +39,28 @@ impl<'a> BorderedButton<'a> {
         }
     }
 
+    #[must_use = "You must call .show() to render the button"]
+    pub fn themed(
+        ui_theme: &'a UIThemeMeta,
+        button_style: &'a ButtonStyle,
+        label: &'a str,
+    ) -> BorderedButton<'a> {
+        let style = ui_theme
+            .button_styles
+            .get(button_style)
+            .expect("Missing button theme");
+
+        BorderedButton::new(
+            egui::RichText::new(label)
+                .font(style.font.font_id())
+                .color(style.font.color),
+        )
+        .border(&style.borders.default)
+        .on_click_border(style.borders.clicked.as_ref())
+        .on_hover_border(style.borders.hovered.as_ref())
+        .padding(style.padding.into())
+    }
+
     /// If `true`, the text will wrap to stay within the max width of the [`Ui`].
     ///
     /// By default [`Self::wrap`] will be true in vertical layouts
@@ -47,6 +69,7 @@ impl<'a> BorderedButton<'a> {
     ///
     /// Note that any `\n` in the text will always produce a new line.
     #[inline]
+    #[must_use = "You must call .show() to render the button"]
     pub fn wrap(mut self, wrap: bool) -> Self {
         self.wrap = Some(wrap);
         self
@@ -75,21 +98,21 @@ impl<'a> BorderedButton<'a> {
 
     /// Set the button border image
     #[must_use = "You must call .show() to render the button"]
-    pub fn border(mut self, border: &'a UIBorderImageMeta) -> Self {
+    pub fn border(mut self, border: &'a BorderImageMeta) -> Self {
         self.default_border = Some(border);
         self
     }
 
     /// Set a different border to use when hovering over the button
     #[must_use = "You must call .show() to render the button"]
-    pub fn on_hover_border(mut self, border: Option<&'a UIBorderImageMeta>) -> Self {
+    pub fn on_hover_border(mut self, border: Option<&'a BorderImageMeta>) -> Self {
         self.on_hover_border = border;
         self
     }
 
     /// Set a different border to use when the mouse is clicking on the button
     #[must_use = "You must call .show() to render the button"]
-    pub fn on_click_border(mut self, border: Option<&'a UIBorderImageMeta>) -> Self {
+    pub fn on_click_border(mut self, border: Option<&'a BorderImageMeta>) -> Self {
         self.on_click_border = border;
         self
     }

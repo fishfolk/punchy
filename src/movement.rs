@@ -44,7 +44,7 @@ pub fn player_controller(
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    if let Ok((mut state, stats, mut transform, facing_option)) = query.get_single_mut() {
+    for (mut state, stats, mut transform, facing_option) in query.iter_mut() {
         if *state == State::Attacking {
             return;
         }

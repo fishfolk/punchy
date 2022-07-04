@@ -66,7 +66,8 @@ pub fn camera_follow_player(
     mut camera_query: Query<(&mut Transform, &Panning), (With<Camera>, Without<Player>)>,
     mut move_event_writer: EventWriter<ParallaxMoveEvent>,
 ) {
-    if let Ok(player) = player_query.get_single() {
+    // TODO: Follow both players, not just the first one
+    if let Some(player) = player_query.iter().next() {
         let (mut camera, panning) = camera_query.single_mut();
 
         let diff = player.translation.x - (camera.translation.x - panning.offset.x);

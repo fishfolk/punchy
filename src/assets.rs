@@ -17,7 +17,7 @@ pub fn register(app: &mut bevy::prelude::App) {
         .add_asset_loader(GameMetaLoader)
         .add_asset::<LevelMeta>()
         .add_asset_loader(LevelMetaLoader)
-        .add_asset::<Fighter>()
+        .add_asset::<FighterMeta>()
         .add_asset_loader(FighterLoader)
         .add_asset::<EguiFont>()
         .add_asset_loader(EguiFontLoader);
@@ -84,11 +84,11 @@ impl AssetLoader for GameMetaLoader {
                 &self_path,
                 &meta.main_menu.background_image.image,
             );
-            meta.main_menu.background_image.handle = main_menu_background;
+            meta.main_menu.background_image.image_handle = main_menu_background;
 
             // Load UI fonts
             let mut font_paths = Vec::new();
-            for (font_name, font_relative_path) in &meta.ui_theme.fonts {
+            for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =
                     get_relative_asset(load_context, &self_path, font_relative_path);
 
@@ -137,28 +137,28 @@ impl AssetLoader for LevelMetaLoader {
                     .to_owned();
             }
 
-            // Load the player
-            let player_fighter_file_path = relative_asset_path(self_path, &meta.player.fighter);
-            let player_fighter_path = AssetPath::new(player_fighter_file_path, None);
-            let player_fighter_handle = load_context.get_handle(player_fighter_path.clone());
-            meta.player.fighter_handle = player_fighter_handle;
+            // Load the players
+            let mut dependencies = Vec::new();
+            for player in &mut meta.players {
+                let player_fighter_file_path = relative_asset_path(self_path, &player.fighter);
+                let player_fighter_path = AssetPath::new(player_fighter_file_path.clone(), None);
+                let player_fighter_handle = load_context.get_handle(player_fighter_path.clone());
+                dependencies.push(player_fighter_path);
+
+                player.fighter_handle = player_fighter_handle;
+            }
 
             // Load the enemies
-            let mut enemy_asset_paths = Vec::new();
             for enemy in &mut meta.enemies {
                 let enemy_fighter_file_path = relative_asset_path(self_path, &enemy.fighter);
                 let enemy_fighter_path = AssetPath::new(enemy_fighter_file_path.clone(), None);
                 let enemy_fighter_handle = load_context.get_handle(enemy_fighter_path.clone());
-                enemy_asset_paths.push(enemy_fighter_path);
+                dependencies.push(enemy_fighter_path);
 
                 enemy.fighter_handle = enemy_fighter_handle;
             }
 
-            load_context.set_default_asset(
-                LoadedAsset::new(meta)
-                    .with_dependency(player_fighter_path)
-                    .with_dependencies(enemy_asset_paths),
-            );
+            load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
         })
@@ -178,10 +178,16 @@ impl AssetLoader for FighterLoader {
         load_context: &'a mut bevy::asset::LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<(), anyhow::Error>> {
         Box::pin(async move {
-            let meta: FighterMeta = serde_yaml::from_slice(bytes)?;
+            let mut meta: FighterMeta = serde_yaml::from_slice(bytes)?;
             trace!(?meta, "Loaded fighter asset");
 
             let self_path = load_context.path();
+
+            let portrait_path = relative_asset_path(self_path, &meta.hud.portrait.image);
+            let portrait_path = AssetPath::new(portrait_path, None);
+            let portrait_handle = load_context.get_handle(portrait_path.clone());
+            meta.hud.portrait.image_handle = portrait_handle;
+
             let texture_path = relative_asset_path(self_path, &meta.spritesheet.image);
             let texture_path = AssetPath::new(texture_path, None);
             let texture_handle = load_context.get_handle(texture_path.clone());
@@ -195,8 +201,9 @@ impl AssetLoader for FighterLoader {
                 ))
                 .with_dependency(texture_path),
             );
+            meta.spritesheet.atlas_handle = atlas_handle;
 
-            load_context.set_default_asset(LoadedAsset::new(Fighter { meta, atlas_handle }));
+            load_context.set_default_asset(LoadedAsset::new(meta).with_dependency(portrait_path));
 
             Ok(())
         })

@@ -5,6 +5,11 @@ stats:
   damage: 35
   movement_speed: 150
 
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
 spritesheet:
   image: FishFight_SlingerAnimation_Idle_Walk_Shot_Run_Falling.png
   tile_size: [80, 80]

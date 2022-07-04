@@ -1,9 +1,14 @@
-name: Sharky
+name: Scrumptious Sharky
 
 stats:
   health: 100
   damage: 35
   movement_speed: 150
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
 
 spritesheet:
   image: PlayerSharky(96x80).png

@@ -1,6 +1,6 @@
 use bevy_egui::egui;
 
-use crate::metadata::UIBorderImageMeta;
+use crate::metadata::BorderImageMeta;
 
 /// A 9-patch style bordered frame.
 ///
@@ -20,7 +20,7 @@ pub struct BorderedFrame {
 impl BorderedFrame {
     /// Create a new frame with the given [`BorderImage`]
     #[must_use = "You must call .show() to render the frame"]
-    pub fn new(border_image: &UIBorderImageMeta) -> Self {
+    pub fn new(border_image: &BorderImageMeta) -> Self {
         let s = border_image.image_size;
         Self {
             bg_texture: border_image.egui_texture,
