@@ -39,7 +39,7 @@ mod ui;
 mod y_sort;
 
 use animation::*;
-use attack::AttackPlugin;
+use attack::{enemy_attack, AttackPlugin};
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
@@ -50,7 +50,11 @@ use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
 
-use crate::{config::EngineConfig, metadata::BorderImageMeta};
+use crate::{
+    attack::{attack_cleanup, attack_tick},
+    config::EngineConfig,
+    metadata::BorderImageMeta,
+};
 
 #[derive(Component)]
 pub struct Player;
@@ -240,6 +244,9 @@ fn main() {
                 .with_system(helper_camera_controller)
                 .with_system(y_sort)
                 .with_system(player_attack_enemy_collision)
+                .with_system(enemy_attack_player_collision)
+                .with_system(attack_tick)
+                .with_system(attack_cleanup)
                 .with_system(player_enemy_collision)
                 .with_system(kill_entities)
                 .with_system(knockback_system)
@@ -684,19 +691,6 @@ fn player_attack(
             } else if animation.is_finished() {
                 transform.translation.y = start_y.unwrap();
                 *start_y = None;
-            }
-        }
-    }
-}
-
-fn enemy_attack(
-    mut query: Query<&mut State, (With<Enemy>, With<Target>)>,
-    mut event_reader: EventReader<ArrivedEvent>,
-) {
-    for event in event_reader.iter() {
-        if let Ok(mut state) = query.get_mut(event.0) {
-            if *state != State::Attacking {
-                state.set(State::Attacking);
             }
         }
     }

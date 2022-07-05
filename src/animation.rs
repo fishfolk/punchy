@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::{state::State, GameStage, GameState};
 use bevy::{
     core::{Time, Timer},
-    prelude::{App, Changed, Component, CoreStage, Plugin, Query, Res},
+    prelude::{App, Changed, Component, Plugin, Query, Res},
     sprite::TextureAtlasSprite,
     utils::HashMap,
 };
