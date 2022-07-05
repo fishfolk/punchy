@@ -1,14 +1,19 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, style::Margin, RichText},
+    egui::{self, style::Margin},
     EguiContext, EguiPlugin, EguiSettings,
 };
 use iyes_loopless::prelude::*;
 
-use crate::{assets::EguiFont, metadata::GameMeta, GameState};
+use crate::{
+    assets::EguiFont,
+    metadata::{ButtonStyle, FontStyle, GameMeta},
+    GameState,
+};
 
-use self::widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame};
+use self::widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame, EguiUIExt};
 
+pub mod hud;
 pub mod widgets;
 
 pub struct UIPlugin;
@@ -18,6 +23,7 @@ impl Plugin for UIPlugin {
         app.add_plugin(EguiPlugin)
             .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
             .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
+            .add_system(hud::render_hud.run_in_state(GameState::InGame))
             .add_system(update_egui_fonts.run_if_resource_exists::<GameMeta>())
             .add_system(update_ui_scale.run_if_resource_exists::<GameMeta>())
             .add_system_set(
@@ -131,60 +137,33 @@ fn pause_menu(
                 .margin(outer_margin)
                 .padding(ui_theme.panel.padding.into())
                 .show(ui, |ui| {
-                    let text_color = ui_theme.panel.text_color;
-
                     ui.set_min_width(ui.available_width());
 
+                    let heading_font = ui_theme
+                        .font_styles
+                        .get(&FontStyle::Heading)
+                        .expect("Missing 'heading' font style")
+                        .colored(ui_theme.panel.font_color);
+
                     ui.vertical_centered(|ui| {
-                        ui.label(
-                            RichText::new("Paused")
-                                .font(egui::FontId::new(
-                                    ui_theme.font_sizes.big,
-                                    egui::FontFamily::Name(
-                                        game.main_menu.title_font.clone().into(),
-                                    ),
-                                ))
-                                .color(text_color),
-                        );
+                        ui.themed_label(&heading_font, "Paused");
 
                         ui.add_space(10.0);
 
                         let width = ui.available_width();
 
-                        if BorderedButton::new(
-                            RichText::new("Continue")
-                                .font(egui::FontId::new(
-                                    ui_theme.font_sizes.normal,
-                                    egui::FontFamily::Name(ui_theme.button.font.clone().into()),
-                                ))
-                                .color(ui_theme.button.text_color),
-                        )
-                        .min_size(egui::Vec2::new(width, 0.0))
-                        .padding(ui_theme.button.padding.into())
-                        .border(&ui_theme.button.borders.default)
-                        .on_click_border(ui_theme.button.borders.clicked.as_ref())
-                        .on_hover_border(ui_theme.button.borders.hovered.as_ref())
-                        .show(ui)
-                        .clicked()
+                        if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, "Continue")
+                            .min_size(egui::vec2(width, 0.0))
+                            .show(ui)
+                            .clicked()
                         {
                             commands.insert_resource(NextState(GameState::InGame));
                         }
 
-                        if BorderedButton::new(
-                            RichText::new("Main Menu")
-                                .font(egui::FontId::new(
-                                    ui_theme.font_sizes.normal,
-                                    egui::FontFamily::Name(ui_theme.button.font.clone().into()),
-                                ))
-                                .color(ui_theme.button.text_color),
-                        )
-                        .min_size(egui::Vec2::new(width, 0.0))
-                        .padding(ui_theme.button.padding.into())
-                        .border(&ui_theme.button.borders.default)
-                        .on_click_border(ui_theme.button.borders.clicked.as_ref())
-                        .on_hover_border(ui_theme.button.borders.hovered.as_ref())
-                        .show(ui)
-                        .clicked()
+                        if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, "Main Menu")
+                            .min_size(egui::vec2(width, 0.0))
+                            .show(ui)
+                            .clicked()
                         {
                             // Clean up all entities other than the camera
                             for entity in non_camera_entities.iter() {
@@ -209,8 +188,8 @@ struct MainMenuBackground;
 /// Spawns the background image for the main menu
 fn spawn_main_menu_background(mut commands: Commands, game: Res<GameMeta>, windows: Res<Windows>) {
     let window = windows.primary();
-    let bg_handle = game.main_menu.background_image.handle.clone();
-    let img_size = game.main_menu.background_image.size;
+    let bg_handle = game.main_menu.background_image.image_handle.clone();
+    let img_size = game.main_menu.background_image.image_size;
     let ratio = img_size.x / img_size.y;
     let height = window.height();
     let width = height * ratio;
@@ -258,8 +237,6 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
                 .margin(outer_margin)
                 .padding(ui_theme.panel.padding.into())
                 .show(ui, |ui| {
-                    let text_color = ui_theme.panel.text_color;
-
                     // Make sure the frame ocupies the entire rect that we allocated for it.
                     //
                     // Without this it would only take up enough size to fit it's content.
@@ -267,34 +244,14 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
 
                     // Create a vertical list of items, centered horizontally
                     ui.vertical_centered(|ui| {
-                        ui.label(
-                            RichText::new(&game.main_menu.title)
-                                .font(egui::FontId::new(
-                                    ui_theme.font_sizes.jumbo,
-                                    egui::FontFamily::Name(
-                                        game.main_menu.title_font.clone().into(),
-                                    ),
-                                ))
-                                .color(text_color),
-                        );
+                        ui.themed_label(&game.main_menu.title_font, &game.main_menu.title);
 
                         // Now switch the layout to bottom_up so that we can start adding widgets
                         // from the bottom of the frame.
                         ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                            if BorderedButton::new(
-                                RichText::new("Start Game")
-                                    .font(egui::FontId::new(
-                                        ui_theme.font_sizes.big,
-                                        egui::FontFamily::Name(ui_theme.button.font.clone().into()),
-                                    ))
-                                    .color(ui_theme.button.text_color),
-                            )
-                            .padding(ui_theme.button.padding.into())
-                            .border(&ui_theme.button.borders.default)
-                            .on_click_border(ui_theme.button.borders.clicked.as_ref())
-                            .on_hover_border(ui_theme.button.borders.hovered.as_ref())
-                            .show(ui)
-                            .clicked()
+                            if BorderedButton::themed(ui_theme, &ButtonStyle::Jumbo, "Start Game")
+                                .show(ui)
+                                .clicked()
                             {
                                 commands.insert_resource(game.start_level_handle.clone());
                                 commands.insert_resource(NextState(GameState::LoadingLevel));

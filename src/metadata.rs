@@ -11,6 +11,9 @@ use serde::Deserialize;
 
 use crate::{animation::Clip, assets::EguiFont, state::State, Stats};
 
+pub use ui::*;
+pub mod ui;
+
 #[derive(TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "eb28180f-ef68-44a0-8479-a299a3cef66e"]
@@ -27,7 +30,7 @@ pub struct GameMeta {
 #[serde(deny_unknown_fields)]
 pub struct MainMenuMeta {
     pub title: String,
-    pub title_font: String,
+    pub title_font: FontMeta,
     pub background_image: ImageMeta,
 }
 
@@ -35,9 +38,9 @@ pub struct MainMenuMeta {
 #[serde(deny_unknown_fields)]
 pub struct ImageMeta {
     pub image: String,
-    pub size: Vec2,
+    pub image_size: Vec2,
     #[serde(skip)]
-    pub handle: Handle<Image>,
+    pub image_handle: Handle<Image>,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug)]
@@ -46,7 +49,7 @@ pub struct ImageMeta {
 pub struct LevelMeta {
     pub background_color: [u8; 3],
     pub parallax_background: ParallaxMeta,
-    pub player: FighterSpawnMeta,
+    pub players: Vec<FighterSpawnMeta>,
     #[serde(default)]
     pub enemies: Vec<FighterSpawnMeta>,
 }
@@ -58,25 +61,28 @@ impl LevelMeta {
     }
 }
 
-#[derive(TypeUuid, Clone, Debug)]
-#[uuid = "d5e040c4-3de7-4b8a-b6c2-27f82f58d8f0"]
-pub struct Fighter {
-    pub meta: FighterMeta,
-    pub atlas_handle: Handle<TextureAtlas>,
-}
-
-#[derive(Deserialize, Clone, Debug, Component)]
+#[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
 #[serde(deny_unknown_fields)]
+#[uuid = "d5e040c4-3de7-4b8a-b6c2-27f82f58d8f0"]
 pub struct FighterMeta {
     pub name: String,
     pub stats: Stats,
+    pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct FighterHudMeta {
+    pub portrait: ImageMeta,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct FighterSpritesheetMeta {
     pub image: String,
+    #[serde(skip)]
+    pub atlas_handle: Handle<TextureAtlas>,
     pub tile_size: UVec2,
     pub columns: usize,
     pub rows: usize,
@@ -89,7 +95,7 @@ pub struct FighterSpritesheetMeta {
 pub struct FighterSpawnMeta {
     pub fighter: String,
     #[serde(skip)]
-    pub fighter_handle: Handle<Fighter>,
+    pub fighter_handle: Handle<FighterMeta>,
     pub location: Vec3,
 }
 
@@ -130,113 +136,6 @@ impl From<ParallaxLayerMeta> for LayerData {
             scale: meta.scale,
             z: meta.z,
             transition_factor: meta.transition_factor,
-        }
-    }
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct UIThemeMeta {
-    pub fonts: HashMap<String, String>,
-    #[serde(skip)]
-    pub font_handles: HashMap<String, Handle<EguiFont>>,
-    pub font_sizes: FontSizesMeta,
-    pub panel: UIPanelThemeMeta,
-    pub button: UIButtonThemeMeta,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct FontSizesMeta {
-    pub jumbo: f32,
-    pub big: f32,
-    pub normal: f32,
-    pub small: f32,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct UIPanelThemeMeta {
-    #[serde(default)]
-    pub text_color: ColorMeta,
-    #[serde(default)]
-    pub padding: MarginMeta,
-    pub border: UIBorderImageMeta,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct UIButtonThemeMeta {
-    #[serde(default)]
-    pub text_color: ColorMeta,
-    pub font: String,
-    #[serde(default)]
-    pub padding: MarginMeta,
-    pub borders: UIButtonBordersMeta,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct UIBorderImageMeta {
-    pub image: String,
-    pub image_size: UVec2,
-    pub border_size: MarginMeta,
-    #[serde(default = "f32_one")]
-    pub scale: f32,
-    #[serde(default)]
-    pub only_frame: bool,
-
-    #[serde(skip)]
-    pub handle: Handle<Image>,
-    #[serde(skip)]
-    pub egui_texture: egui::TextureId,
-}
-
-fn f32_one() -> f32 {
-    1.0
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct UIButtonBordersMeta {
-    pub default: UIBorderImageMeta,
-    #[serde(default)]
-    pub hovered: Option<UIBorderImageMeta>,
-    #[serde(default)]
-    pub clicked: Option<UIBorderImageMeta>,
-}
-
-#[derive(Default, Deserialize, Clone, Copy, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct ColorMeta([u8; 3]);
-
-impl From<ColorMeta> for egui::Color32 {
-    fn from(c: ColorMeta) -> Self {
-        let [r, g, b] = c.0;
-        egui::Color32::from_rgb(r, g, b)
-    }
-}
-
-#[derive(Default, Deserialize, Clone, Copy, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct MarginMeta {
-    #[serde(default)]
-    pub top: f32,
-    #[serde(default)]
-    pub bottom: f32,
-    #[serde(default)]
-    pub left: f32,
-    #[serde(default)]
-    pub right: f32,
-}
-
-impl From<MarginMeta> for bevy_egui::egui::style::Margin {
-    fn from(m: MarginMeta) -> Self {
-        Self {
-            left: m.left,
-            right: m.right,
-            top: m.top,
-            bottom: m.bottom,
         }
     }
 }

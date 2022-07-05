@@ -36,30 +36,31 @@ fn player_attack(
     keyboard: Res<Input<KeyCode>>,
 ) {
     if keyboard.just_pressed(KeyCode::Return) {
-        let (transform, facing) = query.single();
-        let mut dir = Vec2::X;
+        for (transform, facing) in query.iter() {
+            let mut dir = Vec2::X;
 
-        if facing.is_left() {
-            dir = -dir;
+            if facing.is_left() {
+                dir = -dir;
+            }
+
+            commands
+                .spawn_bundle(TransformBundle::from_transform(Transform::from_xyz(
+                    transform.translation.x,
+                    transform.translation.y,
+                    ATTACK_LAYER,
+                )))
+                .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
+                .insert(Sensor(true))
+                .insert(ActiveEvents::COLLISION_EVENTS)
+                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                .insert(CollisionGroups::new(
+                    BodyLayers::PLAYER_ATTACK,
+                    BodyLayers::ENEMY,
+                ))
+                .insert(facing.clone())
+                .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
+                // .insert(Velocity::from_linear(dir * 300.))
+                .insert(Attack { damage: 10 });
         }
-
-        commands
-            .spawn_bundle(TransformBundle::from_transform(Transform::from_xyz(
-                transform.translation.x,
-                transform.translation.y,
-                ATTACK_LAYER,
-            )))
-            .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
-            .insert(Sensor(true))
-            .insert(ActiveEvents::COLLISION_EVENTS)
-            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-            .insert(CollisionGroups::new(
-                BodyLayers::PLAYER_ATTACK,
-                BodyLayers::ENEMY,
-            ))
-            .insert(facing.clone())
-            .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
-            // .insert(Velocity::from_linear(dir * 300.))
-            .insert(Attack { damage: 10 });
     }
 }

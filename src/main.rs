@@ -43,14 +43,14 @@ use attack::AttackPlugin;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
-use metadata::{Fighter, GameMeta, LevelMeta};
+use metadata::{FighterMeta, GameMeta, LevelMeta};
 use movement::*;
 use serde::Deserialize;
 use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
 
-use crate::{config::EngineConfig, metadata::UIBorderImageMeta};
+use crate::{config::EngineConfig, metadata::BorderImageMeta};
 
 #[derive(Component)]
 pub struct Player;
@@ -393,19 +393,24 @@ fn load_game(
             .insert(ParallaxCameraComponent);
 
         // Helper to load border images
-        let mut load_border_image = |border: &mut UIBorderImageMeta| {
+        let mut load_border_image = |border: &mut BorderImageMeta| {
             border.handle = asset_server.load(&border.image);
             border.egui_texture = egui_ctx.add_image(border.handle.clone_weak());
         };
 
         // Load border images
+        load_border_image(&mut game.ui_theme.hud.portrait_frame);
         load_border_image(&mut game.ui_theme.panel.border);
-        load_border_image(&mut game.ui_theme.button.borders.default);
-        if let Some(border) = &mut game.ui_theme.button.borders.clicked {
-            load_border_image(border);
-        }
-        if let Some(border) = &mut game.ui_theme.button.borders.hovered {
-            load_border_image(border);
+        load_border_image(&mut game.ui_theme.hud.lifebar.background_image);
+        load_border_image(&mut game.ui_theme.hud.lifebar.progress_image);
+        for button in game.ui_theme.button_styles.values_mut() {
+            load_border_image(&mut button.borders.default);
+            if let Some(border) = &mut button.borders.clicked {
+                load_border_image(border);
+            }
+            if let Some(border) = &mut button.borders.hovered {
+                load_border_image(border);
+            }
         }
 
         if !is_hot_reload {
@@ -413,7 +418,7 @@ fn load_game(
             //
             // This makes sure Egui will not panic if we try to use a font that is still loading.
             let mut egui_fonts = egui::FontDefinitions::default();
-            for font_name in game.ui_theme.fonts.keys() {
+            for font_name in game.ui_theme.font_families.keys() {
                 let font_family = egui::FontFamily::Name(font_name.clone().into());
                 egui_fonts.families.insert(font_family, vec![]);
             }
@@ -467,18 +472,20 @@ fn load_level(
         // Set the clear color
         commands.insert_resource(ClearColor(level.background_color()));
 
-        // Spawn the player
+        // Spawn the players
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
-        let player_pos = level.player.location + ground_offset;
-        commands
-            .spawn_bundle(TransformBundle::from_transform(
-                Transform::from_translation(player_pos),
-            ))
-            .insert(level.player.fighter_handle.clone())
-            .insert_bundle(PlayerBundle::default());
+        for player in &level.players {
+            let player_pos = player.location + ground_offset;
+            commands
+                .spawn_bundle(TransformBundle::from_transform(
+                    Transform::from_translation(player_pos),
+                ))
+                .insert(player.fighter_handle.clone())
+                .insert_bundle(PlayerBundle::default());
+        }
 
         // Spawn the enemies
-        for enemy in level.enemies.iter() {
+        for enemy in &level.enemies {
             let enemy_pos = enemy.location + ground_offset;
             commands
                 .spawn_bundle(TransformBundle::from_transform(
@@ -535,13 +542,13 @@ fn load_fighters(
         (
             Entity,
             &Transform,
-            &Handle<Fighter>,
+            &Handle<FighterMeta>,
             Option<&Player>,
             Option<&Enemy>,
         ),
         Without<Stats>,
     >,
-    fighter_assets: Res<Assets<Fighter>>,
+    fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for (entity, transform, fighter_handle, player, enemy) in fighters.iter() {
         if let Some(fighter) = fighter_assets.get(fighter_handle) {
@@ -555,21 +562,21 @@ fn load_fighters(
 
             commands
                 .entity(entity)
-                .insert(Name::new(fighter.meta.name.clone()))
+                .insert(Name::new(fighter.name.clone()))
                 .insert_bundle(AnimatedSpriteSheetBundle {
                     sprite_sheet: SpriteSheetBundle {
                         sprite: TextureAtlasSprite::new(0),
-                        texture_atlas: fighter.atlas_handle.clone(),
+                        texture_atlas: fighter.spritesheet.atlas_handle.clone(),
                         transform: *transform,
                         ..Default::default()
                     },
                     animation: Animation::new(
-                        fighter.meta.spritesheet.animation_fps,
-                        fighter.meta.spritesheet.animations.clone(),
+                        fighter.spritesheet.animation_fps,
+                        fighter.spritesheet.animations.clone(),
                     ),
                 })
                 .insert_bundle(CharacterBundle {
-                    stats: fighter.meta.stats.clone(),
+                    stats: fighter.stats.clone(),
                     ..default()
                 })
                 .insert_bundle(PhysicsBundle {
@@ -583,14 +590,14 @@ fn load_fighters(
 /// Hot reload fighter data when fighter assets are updated.
 fn hot_reload_fighters(
     mut fighters: Query<(
-        &Handle<Fighter>,
+        &Handle<FighterMeta>,
         &mut Name,
         &mut Handle<TextureAtlas>,
         &mut Animation,
         &mut Stats,
     )>,
-    mut events: EventReader<AssetEvent<Fighter>>,
-    assets: Res<Assets<Fighter>>,
+    mut events: EventReader<AssetEvent<FighterMeta>>,
+    assets: Res<Assets<FighterMeta>>,
 ) {
     for event in events.iter() {
         if let AssetEvent::Modified { handle } = event {
@@ -600,13 +607,13 @@ fn hot_reload_fighters(
                 if fighter_handle == handle {
                     let fighter = assets.get(fighter_handle).unwrap();
 
-                    *name = Name::new(fighter.meta.name.clone());
-                    *atlas_handle = fighter.atlas_handle.clone();
+                    *name = Name::new(fighter.name.clone());
+                    *atlas_handle = fighter.spritesheet.atlas_handle.clone();
                     *animation = Animation::new(
-                        fighter.meta.spritesheet.animation_fps,
-                        fighter.meta.spritesheet.animations.clone(),
+                        fighter.spritesheet.animation_fps,
+                        fighter.spritesheet.animations.clone(),
                     );
-                    *stats = fighter.meta.stats.clone();
+                    *stats = fighter.stats.clone();
                 }
             }
         }
@@ -632,7 +639,7 @@ fn player_attack(
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    if let Ok((mut state, mut transform, animation, facing)) = query.get_single_mut() {
+    for (mut state, mut transform, animation, facing) in query.iter_mut() {
         if *state != State::Attacking {
             if keyboard.just_pressed(KeyCode::Space) {
                 state.set(State::Attacking);
@@ -699,7 +706,7 @@ fn set_target_near_player(
     query: Query<(Entity, &Transform), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
-    if let Ok(player_transform) = player_query.get_single() {
+    for player_transform in player_query.iter() {
         let mut rng = rand::thread_rng();
 
         for (entity, transform) in query.iter() {
