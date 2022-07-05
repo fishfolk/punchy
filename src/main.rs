@@ -79,6 +79,7 @@ impl Default for Stats {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
 enum GameStage {
+    Animation,
     HotReload,
 }
 
@@ -206,6 +207,11 @@ fn main() {
             scale_factor_override: Some(1.0),
             ..Default::default()
         })
+        .add_stage_after(
+            CoreStage::Update,
+            GameStage::Animation,
+            SystemStage::parallel(),
+        )
         .add_event::<ArrivedEvent>()
         .add_event::<ThrowItemEvent>()
         .add_loopless_state(GameState::LoadingGame)
@@ -716,19 +722,15 @@ fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMar
 //for enemys without current target, pick a new spot near the player as target
 fn set_target_near_player(
     mut commands: Commands,
-    query: Query<(Entity, &Transform), (With<Enemy>, Without<Target>)>,
+    query: Query<(Entity, &State), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
+    //right now this picks only whichever player shows up last, it should collect them and pick a different player for each enemy to target
     for player_transform in player_query.iter() {
         let mut rng = rand::thread_rng();
 
-        for (entity, transform) in query.iter() {
-            if transform
-                .translation
-                .truncate()
-                .distance(player_transform.translation.truncate())
-                >= 100.0
-            {
+        for (entity, state) in query.iter() {
+            if *state == State::Idle {
                 let x_offset = rng.gen_range(-100.0..100.);
                 let y_offset = rng.gen_range(-100.0..100.);
                 commands.entity(entity).insert(Target {

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::{state::State, GameState};
+use crate::{state::State, GameStage, GameState};
 use bevy::{
     core::{Time, Timer},
     prelude::{App, Changed, Component, CoreStage, Plugin, Query, Res},
@@ -14,7 +14,7 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
-            CoreStage::PostUpdate,
+            GameStage::Animation,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(animate_on_state_changed)
