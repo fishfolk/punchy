@@ -249,16 +249,21 @@ fn main() {
                 .with_system(pause)
                 .into(),
         )
-        .add_system(set_target_near_player.run_in_state(GameState::InGame))
+        .add_system(
+            set_target_near_player
+                .run_in_state(GameState::InGame)
+                .label("set_target_near_player"),
+        )
         .add_system(
             move_to_target
                 .run_in_state(GameState::InGame)
-                .after(set_target_near_player),
+                .after("set_target_near_player")
+                .label("move_to_target"),
         )
         .add_system(
             enemy_attack
                 .run_in_state(GameState::InGame)
-                .after(move_to_target),
+                .after("move_to_target"),
         )
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
