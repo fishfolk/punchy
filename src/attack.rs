@@ -89,7 +89,7 @@ pub fn enemy_attack(
                 state.set(State::Attacking);
                 let attack_entity = commands
                     .spawn_bundle(TransformBundle::default())
-                    .insert(Collider::cuboid(ATTACK_WIDTH * 1.2, ATTACK_HEIGHT * 1.2))
+                    .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8))
                     .insert(Sensor(true))
                     .insert(ActiveEvents::COLLISION_EVENTS)
                     .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
