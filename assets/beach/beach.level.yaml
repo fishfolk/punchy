@@ -45,8 +45,9 @@ parallax_background:
 players:
   - fighter: /fighters/fishy/fishy.fighter.yaml
     location: [0, 0, 0]
-  - fighter: /fighters/sharky/sharky.fighter.yaml
-    location: [-70, 30, 0]
+  # commented out for release till multiple players works correctly
+  # - fighter: /fighters/sharky/sharky.fighter.yaml
+  #   location: [-70, 30, 0]
 
 enemies:
   - fighter: &slinger /fighters/slinger/slinger.fighter.yaml
