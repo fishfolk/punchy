@@ -9,28 +9,30 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a124-b07bce1db0cb.mp4
 
 ## Web Build
+
 https://fishfight.github.io/punchy/demo/
 
 ## Controls
-| Key | Action |
-|-----|--------|
-|W,A,S,D| Movement|
-|T| Throw Item|
-|Enter| Shoot|
-|Space| Flop Attack|
-|Z,X| Zoom Camera|
-|↑↓←→ | Pan Camera|
-|Esc| Pause/Unpause|
-|F11| Toggle Fullscreen|
 
+| Action            | ⌨️ Keyboard                      | ⌨️ Player 2               | 🎮 Gamepad       |
+| ----------------- | ------------------------------- | ------------------------ | ---------------- |
+| Movement          | W / S / A / D                   | Up / Down / Left / Right | Left Stick, DPad |
+| Throw Item        | C                               | Period                   | West             |
+| Shoot             | V                               | Right Shift              | East             |
+| Flop Attack       | Spacebar                        | Comma                    | South            |
+| Zoom Camera       | Ctrl + + / -                    | ❌️                       | ❌️               |
+| Pan Camera        | Ctrl + Up / Down / Left / Right | ❌️                       | ❌️               |
+| Pause/Unpause     | Escape / P                      | ❌ ️                      | Start            |
+| Toggle Fullscreen | F11                             | ❌️                       | Select           |
 
 ## Contributing
 
 Anyone involved in the Fish Fight community must follow our [code of conduct](https://github.com/fishfight/FishFight/blob/main/CODE_OF_CONDUCT.md).
 
-Punchy is currently at an early stage of development, if you want to contribute the best way to get started is to join us at the [Spicy Lobster Discord](https://discord.gg/4smxjcheE5) and check out our [help-wanted](https://github.com/fishfight/punchy/labels/help%20wanted) issues. 
+Punchy is currently at an early stage of development, if you want to contribute the best way to get started is to join us at the [Spicy Lobster Discord](https://discord.gg/4smxjcheE5) and check out our [help-wanted](https://github.com/fishfight/punchy/labels/help%20wanted) issues.
 
 Before committing and opening a PR, please run the following commands and follow their instructions:
+
 1. `cargo clippy -- -W clippy::correctness -D warnings`
 2. `cargo fmt`
 
@@ -44,4 +46,3 @@ Art prototype based on a modded Little Fighter 2:
 https://youtu.be/mgMFiNpgvzk
 
 ![879482D8-9960-46E8-8190-057B340702C1](https://user-images.githubusercontent.com/583842/161245437-7e31568e-3b7f-4b3d-90e8-42747faea5f3.jpeg)
-

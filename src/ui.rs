@@ -4,9 +4,11 @@ use bevy_egui::{
     EguiContext, EguiPlugin, EguiSettings,
 };
 use iyes_loopless::prelude::*;
+use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     assets::EguiFont,
+    input::MenuAction,
     metadata::{ButtonStyle, FontStyle, GameMeta},
     GameState,
 };
@@ -21,6 +23,7 @@ pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EguiPlugin)
+            .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
             .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
             .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
@@ -38,6 +41,21 @@ impl Plugin for UIPlugin {
                     .with_system(main_menu)
                     .into(),
             );
+    }
+}
+
+fn handle_menu_input(mut windows: ResMut<Windows>, input: Query<&ActionState<MenuAction>>) {
+    use bevy::window::WindowMode;
+    let input = input.single();
+
+    // Handle fullscreen toggling
+    if input.just_pressed(MenuAction::ToggleFullscreen) {
+        if let Some(window) = windows.get_primary_mut() {
+            window.set_mode(match window.mode() {
+                WindowMode::BorderlessFullscreen => WindowMode::Windowed,
+                _ => WindowMode::BorderlessFullscreen,
+            });
+        }
     }
 }
 

@@ -3,21 +3,21 @@ use std::time::Duration;
 use bevy::{
     core::{Time, Timer},
     hierarchy::{BuildChildren, DespawnRecursiveExt},
-    input::Input,
     math::Vec2,
-    prelude::{
-        App, Commands, Component, Entity, EventReader, KeyCode, Plugin, Query, Res, Transform, With,
-    },
+    prelude::{App, Commands, Component, Entity, EventReader, Plugin, Query, Res, Transform, With},
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
+use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::Facing,
     collisions::BodyLayers,
     consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH},
-    movement::{MoveInDirection, Target},
+    input::PlayerAction,
+    movement::MoveInDirection,
+    movement::Target,
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
 };
@@ -40,15 +40,14 @@ pub struct Attack {
 pub struct AttackTimer(pub Timer);
 
 fn player_attack(
-    query: Query<(&Transform, &Facing, &State), With<Player>>,
+    query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
     mut commands: Commands,
-    keyboard: Res<Input<KeyCode>>,
 ) {
-    if keyboard.just_pressed(KeyCode::Return) {
-        for (transform, facing, state) in query.iter() {
-            if *state != State::Idle && *state != State::Running {
-                break;
-            }
+    for (transform, facing, state, input) in query.iter() {
+        if *state != State::Idle && *state != State::Running {
+            break;
+        }
+        if input.just_pressed(PlayerAction::Shoot) {
             let mut dir = Vec2::X;
 
             if facing.is_left() {

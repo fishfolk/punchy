@@ -7,9 +7,16 @@ use bevy::{
 };
 use bevy_egui::egui;
 use bevy_parallax::{LayerData, ParallaxResource};
+use leafwing_input_manager::{prelude::InputMap, user_input::UserInput, Actionlike};
 use serde::Deserialize;
 
-use crate::{animation::Clip, assets::EguiFont, state::State, Stats};
+use crate::{
+    animation::Clip,
+    assets::EguiFont,
+    input::{CameraAction, MenuAction, PlayerAction},
+    state::State,
+    Stats,
+};
 
 pub use ui::*;
 pub mod ui;
@@ -24,6 +31,47 @@ pub struct GameMeta {
     pub main_menu: MainMenuMeta,
     pub ui_theme: UIThemeMeta,
     pub camera_height: u32,
+
+    pub default_input_maps: InputMapsMeta,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct InputMapsMeta {
+    /// Each item in `players` is the input map for the corresponding player index.
+    ///
+    /// i.e. the first entry is the input map for player one, the second is for player two, etc.
+    #[serde(default)]
+    pub players: Vec<HashMap<PlayerAction, Vec<UserInput>>>,
+    #[serde(default)]
+    pub camera: HashMap<CameraAction, Vec<UserInput>>,
+    #[serde(default)]
+    pub menu: HashMap<MenuAction, Vec<UserInput>>,
+}
+
+impl InputMapsMeta {
+    fn get_input_map<T: Actionlike + Copy>(map: &HashMap<T, Vec<UserInput>>) -> InputMap<T> {
+        let mut bindings = Vec::new();
+        for (action, inputs) in map {
+            for input in inputs {
+                bindings.push((input.clone(), *action));
+            }
+        }
+        InputMap::new(bindings)
+    }
+
+    pub fn get_player_map(&self, player_idx: usize) -> Option<InputMap<PlayerAction>> {
+        let player_map = self.players.get(player_idx)?;
+        Some(Self::get_input_map(player_map))
+    }
+
+    pub fn get_camera_map(&self) -> InputMap<CameraAction> {
+        Self::get_input_map(&self.camera)
+    }
+
+    pub fn get_menu_map(&self) -> InputMap<MenuAction> {
+        Self::get_input_map(&self.menu)
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]
