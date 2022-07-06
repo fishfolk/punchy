@@ -45,8 +45,8 @@ pub fn player_controller(
     time: Res<Time>,
 ) {
     for (mut state, stats, mut transform, facing_option) in query.iter_mut() {
-        if *state == State::Attacking {
-            return;
+        if *state != State::Idle && *state != State::Running {
+            break;
         }
 
         let mut dir = Vec2::ZERO;

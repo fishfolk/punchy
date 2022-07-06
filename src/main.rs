@@ -240,7 +240,7 @@ fn main() {
                 .with_system(load_fighters)
                 .with_system(spawn_throwable_items)
                 .with_system(player_controller)
-                .with_system(player_attack)
+                .with_system(player_flop)
                 .with_system(helper_camera_controller)
                 .with_system(y_sort)
                 .with_system(player_attack_enemy_collision)
@@ -652,7 +652,7 @@ fn unpause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
     }
 }
 
-fn player_attack(
+fn player_flop(
     mut query: Query<(&mut State, &mut Transform, &Animation, &Facing), With<Player>>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
@@ -660,6 +660,9 @@ fn player_attack(
 ) {
     for (mut state, mut transform, animation, facing) in query.iter_mut() {
         if *state != State::Attacking {
+            if *state != State::Idle && *state != State::Running {
+                return;
+            }
             if keyboard.just_pressed(KeyCode::Space) {
                 state.set(State::Attacking);
             }

@@ -40,12 +40,15 @@ pub struct Attack {
 pub struct AttackTimer(pub Timer);
 
 fn player_attack(
-    query: Query<(&Transform, &Facing), With<Player>>,
+    query: Query<(&Transform, &Facing, &State), With<Player>>,
     mut commands: Commands,
     keyboard: Res<Input<KeyCode>>,
 ) {
     if keyboard.just_pressed(KeyCode::Return) {
-        for (transform, facing) in query.iter() {
+        for (transform, facing, state) in query.iter() {
+            if *state != State::Idle && *state != State::Running {
+                break;
+            }
             let mut dir = Vec2::X;
 
             if facing.is_left() {
@@ -95,7 +98,10 @@ pub fn enemy_attack(
                         BodyLayers::PLAYER,
                     ))
                     .insert(Attack { damage: 10 })
-                    .insert(AttackTimer(Timer::new(Duration::from_secs_f32(0.5), false)))
+                    .insert(AttackTimer(Timer::new(
+                        Duration::from_secs_f32(0.48),
+                        false,
+                    )))
                     .id();
                 commands.entity(event.0).push_children(&[attack_entity]);
             }
