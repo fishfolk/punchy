@@ -30,5 +30,8 @@ spritesheet:
       frames: [40, 46]
     dying:
       frames: [40, 46]
+    waiting:
+      frames: [0, 7]
+      repeat: false
     attacking:
       frames: [16, 23]

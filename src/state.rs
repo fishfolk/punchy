@@ -21,6 +21,7 @@ pub enum State {
     KnockedLeft,
     KnockedRight,
     // Hitstun,
+    Waiting,
     Dying,
 }
 
@@ -35,6 +36,7 @@ impl TryFrom<String> for State {
             "knocked_left" => State::KnockedLeft,
             "knocked_right" => State::KnockedRight,
             // "hitstun" => State::Hitstun,
+            "waiting" => State::Waiting,
             "dying" => State::Dying,
             _ => {
                 return Err("invalid value");

@@ -4,7 +4,11 @@ use bevy::{
     core::{Time, Timer},
     hierarchy::{BuildChildren, DespawnRecursiveExt},
     math::Vec2,
-    prelude::{App, Commands, Component, Entity, EventReader, Plugin, Query, Res, Transform, With},
+    prelude::{
+        default, App, AssetServer, Commands, Component, Entity, EventReader, Plugin, Query, Res,
+        Transform, With,
+    },
+    sprite::SpriteBundle,
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::*;
@@ -14,10 +18,9 @@ use leafwing_input_manager::prelude::ActionState;
 use crate::{
     animation::Facing,
     collisions::BodyLayers,
-    consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH},
+    consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
     input::PlayerAction,
-    movement::MoveInDirection,
-    movement::Target,
+    movement::{MoveInDirection, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
 };
@@ -42,6 +45,7 @@ pub struct AttackTimer(pub Timer);
 fn player_attack(
     query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
 ) {
     for (transform, facing, state, input) in query.iter() {
         if *state != State::Idle && *state != State::Running {
@@ -55,11 +59,24 @@ fn player_attack(
             }
 
             commands
-                .spawn_bundle(TransformBundle::from_transform(Transform::from_xyz(
-                    transform.translation.x,
-                    transform.translation.y,
-                    ATTACK_LAYER,
-                )))
+                // .spawn_bundle(TransformBundle::from_transform(Transform::from_xyz(
+                //     transform.translation.x,
+                //     transform.translation.y,
+                //     ATTACK_LAYER,
+                // )))
+                .spawn_bundle(SpriteBundle {
+                    texture: asset_server.load("bottled_seaweed11x31.png"),
+                    transform: Transform::from_xyz(
+                        transform.translation.x,
+                        transform.translation.y,
+                        ATTACK_LAYER,
+                    ),
+                    ..default()
+                })
+                .insert(Rotate {
+                    speed: THROW_ITEM_ROTATION_SPEED,
+                    to_right: !facing.is_left(),
+                })
                 .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
                 .insert(Sensor(true))
                 .insert(ActiveEvents::COLLISION_EVENTS)
@@ -85,24 +102,30 @@ pub fn enemy_attack(
     for event in event_reader.iter() {
         if let Ok(mut state) = query.get_mut(event.0) {
             if *state != State::Attacking {
-                state.set(State::Attacking);
-                let attack_entity = commands
-                    .spawn_bundle(TransformBundle::default())
-                    .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8))
-                    .insert(Sensor(true))
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                    .insert(CollisionGroups::new(
-                        BodyLayers::ENEMY_ATTACK,
-                        BodyLayers::PLAYER,
-                    ))
-                    .insert(Attack { damage: 10 })
-                    .insert(AttackTimer(Timer::new(
-                        Duration::from_secs_f32(0.48),
-                        false,
-                    )))
-                    .id();
-                commands.entity(event.0).push_children(&[attack_entity]);
+                if rand::random() && *state != State::Waiting {
+                    state.set(State::Waiting);
+                } else {
+                    state.set(State::Attacking);
+                    let attack_entity = commands
+                        .spawn_bundle(TransformBundle::default())
+                        .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8))
+                        .insert(Sensor(true))
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(CollisionGroups::new(
+                            BodyLayers::ENEMY_ATTACK,
+                            BodyLayers::PLAYER,
+                        ))
+                        .insert(Attack { damage: 10 })
+                        .insert(AttackTimer(Timer::new(
+                            Duration::from_secs_f32(0.48),
+                            false,
+                        )))
+                        .id();
+                    commands.entity(event.0).push_children(&[attack_entity]);
+                }
             }
         }
     }
