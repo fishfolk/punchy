@@ -736,8 +736,11 @@ fn set_target_near_player(
                 let x_offset = rng.gen_range(-100.0..100.);
                 let y_offset = rng.gen_range(-100.0..100.);
                 commands.entity(entity).insert(Target {
-                    position: player_transform.translation.truncate()
-                        + Vec2::new(x_offset, y_offset),
+                    position: Vec2::new(
+                        player_transform.translation.x + x_offset,
+                        (player_transform.translation.y + y_offset)
+                            .clamp(consts::MIN_Y, consts::MAX_Y),
+                    ),
                 });
             }
         }
