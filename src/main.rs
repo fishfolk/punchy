@@ -11,7 +11,9 @@ use bevy::{
 use bevy_egui::{egui, EguiContext};
 use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
+use input::MenuAction;
 use iyes_loopless::prelude::*;
+use leafwing_input_manager::prelude::*;
 use rand::Rng;
 use structopt::StructOpt;
 
@@ -30,6 +32,7 @@ mod camera;
 mod collisions;
 mod config;
 mod consts;
+mod input;
 mod item;
 mod metadata;
 mod movement;
@@ -53,6 +56,7 @@ use y_sort::*;
 use crate::{
     attack::{attack_cleanup, attack_tick},
     config::EngineConfig,
+    input::{CameraAction, PlayerAction},
     metadata::BorderImageMeta,
 };
 
@@ -221,13 +225,15 @@ fn main() {
         .add_loopless_state(GameState::LoadingGame)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+        .add_plugin(InputManagerPlugin::<PlayerAction>::default())
+        .add_plugin(InputManagerPlugin::<CameraAction>::default())
+        .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(StatePlugin)
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource::default())
-        .add_system(toggle_fullscreen)
         .add_system(
             not_hot_reload
                 .chain(load_game)
@@ -337,20 +343,6 @@ fn main() {
     app.run();
 }
 
-/// Toggle's fullscreen window when pressing F11
-fn toggle_fullscreen(mut windows: ResMut<Windows>, keyboard_input: Res<Input<KeyCode>>) {
-    use bevy::window::WindowMode;
-
-    if keyboard_input.just_pressed(KeyCode::F11) {
-        if let Some(window) = windows.get_primary_mut() {
-            window.set_mode(match window.mode() {
-                WindowMode::BorderlessFullscreen => WindowMode::Windowed,
-                _ => WindowMode::BorderlessFullscreen,
-            });
-        }
-    }
-}
-
 /// Loads the main [`GameMeta`] resource and then transitions to the main menu
 ///
 /// This is run in a chain as either `not_hot_reload().chain(load_game)` or
@@ -408,7 +400,27 @@ fn load_game(
             .insert(Panning {
                 offset: Vec2::new(0., -consts::GROUND_Y),
             })
-            .insert(ParallaxCameraComponent);
+            .insert(ParallaxCameraComponent)
+            // Insert insert manager bundle for `CameraAction`s
+            .insert_bundle(InputManagerBundle {
+                input_map: game
+                    .default_input_maps
+                    .get_camera_map()
+                    // The first gamepad can control the camera
+                    .set_gamepad(Gamepad(0))
+                    .build(),
+                ..default()
+            })
+            // We also add another input manager bundle for `MenuAction`s
+            .insert_bundle(InputManagerBundle {
+                input_map: game
+                    .default_input_maps
+                    .get_menu_map()
+                    // the first gamepad can control the menu
+                    .set_gamepad(Gamepad(0))
+                    .build(),
+                ..default()
+            });
 
         // Helper to load border images
         let mut load_border_image = |border: &mut BorderImageMeta| {
@@ -476,6 +488,7 @@ fn load_level(
     mut parallax: ResMut<ParallaxResource>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
+    game: Res<GameMeta>,
     windows: Res<Windows>,
 ) {
     if let Some(level) = assets.get(level_handle.clone_weak()) {
@@ -492,14 +505,22 @@ fn load_level(
 
         // Spawn the players
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
-        for player in &level.players {
+        for (i, player) in level.players.iter().enumerate() {
             let player_pos = player.location + ground_offset;
             commands
                 .spawn_bundle(TransformBundle::from_transform(
                     Transform::from_translation(player_pos),
                 ))
                 .insert(player.fighter_handle.clone())
-                .insert_bundle(PlayerBundle::default());
+                .insert_bundle(PlayerBundle::default())
+                .insert_bundle(InputManagerBundle {
+                    input_map: game
+                        .default_input_maps
+                        .get_player_map(i)
+                        .map(|mut map| map.set_gamepad(Gamepad(i)).build())
+                        .unwrap_or_default(),
+                    ..default()
+                });
         }
 
         // Spawn the enemies
@@ -639,31 +660,41 @@ fn hot_reload_fighters(
 }
 
 /// Transition game to pause state
-fn pause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
-    if keyboard.just_pressed(KeyCode::Escape) {
+fn pause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
+    let input = input.single();
+    if input.just_pressed(MenuAction::Pause) {
         commands.insert_resource(NextState(GameState::Paused));
     }
 }
 
 // Transition game out of paused state
-fn unpause(keyboard: Res<Input<KeyCode>>, mut commands: Commands) {
-    if keyboard.just_pressed(KeyCode::Escape) {
+fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
+    let input = input.single();
+    if input.just_pressed(MenuAction::Pause) {
         commands.insert_resource(NextState(GameState::InGame));
     }
 }
 
 fn player_flop(
-    mut query: Query<(&mut State, &mut Transform, &Animation, &Facing), With<Player>>,
-    keyboard: Res<Input<KeyCode>>,
+    mut query: Query<
+        (
+            &mut State,
+            &mut Transform,
+            &Animation,
+            &Facing,
+            &ActionState<PlayerAction>,
+        ),
+        With<Player>,
+    >,
     time: Res<Time>,
     mut start_y: Local<Option<f32>>,
 ) {
-    for (mut state, mut transform, animation, facing) in query.iter_mut() {
+    for (mut state, mut transform, animation, facing, input) in query.iter_mut() {
         if *state != State::Attacking {
             if *state != State::Idle && *state != State::Running {
                 return;
             }
-            if keyboard.just_pressed(KeyCode::Space) {
+            if input.just_pressed(PlayerAction::FlopAttack) {
                 state.set(State::Attacking);
             }
         // } else if animation.is_finished() {

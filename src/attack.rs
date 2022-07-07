@@ -3,22 +3,23 @@ use std::time::Duration;
 use bevy::{
     core::{Time, Timer},
     hierarchy::{BuildChildren, DespawnRecursiveExt},
-    input::Input,
     math::Vec2,
     prelude::{
-        default, App, AssetServer, Commands, Component, Entity, EventReader, KeyCode, Plugin,
-        Query, Res, Transform, With,
+        default, App, AssetServer, Commands, Component, Entity, EventReader, Plugin, Query, Res,
+        Transform, With,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
+use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::Facing,
     collisions::BodyLayers,
-    consts::{self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH},
+    consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
+    input::PlayerAction,
     movement::{MoveInDirection, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
@@ -42,16 +43,15 @@ pub struct Attack {
 pub struct AttackTimer(pub Timer);
 
 fn player_attack(
-    query: Query<(&Transform, &Facing, &State), With<Player>>,
+    query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
     mut commands: Commands,
-    keyboard: Res<Input<KeyCode>>,
     asset_server: Res<AssetServer>,
 ) {
-    if keyboard.just_pressed(KeyCode::Return) {
-        for (transform, facing, state) in query.iter() {
-            if *state != State::Idle && *state != State::Running {
-                break;
-            }
+    for (transform, facing, state, input) in query.iter() {
+        if *state != State::Idle && *state != State::Running {
+            break;
+        }
+        if input.just_pressed(PlayerAction::Shoot) {
             let mut dir = Vec2::X;
 
             if facing.is_left() {
@@ -74,7 +74,7 @@ fn player_attack(
                     ..default()
                 })
                 .insert(Rotate {
-                    speed: consts::THROW_ITEM_ROTATION_SPEED,
+                    speed: THROW_ITEM_ROTATION_SPEED,
                     to_right: !facing.is_left(),
                 })
                 .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))

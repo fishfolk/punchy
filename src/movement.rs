@@ -1,16 +1,15 @@
 use bevy::{
     core::{Time, Timer},
-    input::Input,
     math::{Quat, Vec2, Vec3Swizzles},
     prelude::{
-        Commands, Component, Deref, DerefMut, Entity, EventWriter, KeyCode, Query, Res, Transform,
-        With,
+        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, Transform, With,
     },
 };
+use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    animation::Facing, consts, item::ThrowItemEvent, state::State, ArrivedEvent, DespawnMarker,
-    Player, Stats,
+    animation::Facing, consts, input::PlayerAction, item::ThrowItemEvent, state::State,
+    ArrivedEvent, DespawnMarker, Player, Stats,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -40,30 +39,39 @@ pub fn knockback_system(
 }
 
 pub fn player_controller(
-    mut query: Query<(&mut State, &Stats, &mut Transform, Option<&mut Facing>), With<Player>>,
-    keyboard: Res<Input<KeyCode>>,
+    mut query: Query<
+        (
+            &mut State,
+            &Stats,
+            &mut Transform,
+            Option<&mut Facing>,
+            &ActionState<PlayerAction>,
+        ),
+        With<Player>,
+    >,
     time: Res<Time>,
 ) {
-    for (mut state, stats, mut transform, facing_option) in query.iter_mut() {
+    for (mut state, stats, mut transform, facing_option, input) in query.iter_mut() {
         if *state != State::Idle && *state != State::Running {
             break;
         }
 
         let mut dir = Vec2::ZERO;
 
-        if keyboard.pressed(KeyCode::A) {
+        use PlayerAction::*;
+        if input.pressed(Left) {
             dir -= Vec2::X;
         }
 
-        if keyboard.pressed(KeyCode::D) {
+        if input.pressed(Right) {
             dir += Vec2::X;
         }
 
-        if keyboard.pressed(KeyCode::W) {
+        if input.pressed(Up) {
             dir += Vec2::Y;
         }
 
-        if keyboard.pressed(KeyCode::S) {
+        if input.pressed(Down) {
             dir -= Vec2::Y;
         }
 
@@ -99,12 +107,11 @@ pub fn player_controller(
 }
 
 pub fn throw_item_system(
-    query: Query<(&Transform, Option<&Facing>), With<Player>>,
+    query: Query<(&Transform, Option<&Facing>, &ActionState<PlayerAction>), With<Player>>,
     mut ev_throw_item: EventWriter<ThrowItemEvent>,
-    keyboard: Res<Input<KeyCode>>,
 ) {
-    for (transform, facing_option) in query.iter() {
-        if keyboard.just_pressed(KeyCode::T) {
+    for (transform, facing_option, input) in query.iter() {
+        if input.just_pressed(PlayerAction::Throw) {
             let facing = match facing_option {
                 Some(f) => f.clone(),
                 None => Facing::Right,

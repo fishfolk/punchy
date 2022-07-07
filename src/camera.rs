@@ -1,17 +1,17 @@
 use bevy::{
     core::Time,
-    input::Input,
     math::Vec2,
     prelude::{
-        Camera, Component, EventWriter, KeyCode, OrthographicProjection, Query, Res, ResMut,
-        Transform, With, Without,
+        Camera, Component, EventWriter, OrthographicProjection, Query, Res, ResMut, Transform,
+        With, Without,
     },
     render::camera::CameraProjection,
     window::Windows,
 };
 use bevy_parallax::ParallaxMoveEvent;
+use leafwing_input_manager::prelude::ActionState;
 
-use crate::{consts, Player};
+use crate::{consts, input::CameraAction, Player};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
@@ -20,34 +20,39 @@ pub struct Panning {
 }
 
 pub fn helper_camera_controller(
-    mut query: Query<(&mut Camera, &mut OrthographicProjection, &mut Panning)>,
-    keys: Res<Input<KeyCode>>,
+    mut query: Query<(
+        &mut Camera,
+        &mut OrthographicProjection,
+        &mut Panning,
+        &ActionState<CameraAction>,
+    )>,
     time: Res<Time>,
     mut windows: ResMut<Windows>,
 ) {
-    let (mut camera, mut projection, mut panning) = query.single_mut();
+    let (mut camera, mut projection, mut panning, input) = query.single_mut();
 
-    if keys.pressed(KeyCode::Up) {
+    use CameraAction::*;
+    if input.pressed(Up) {
         panning.offset.y += 150.0 * time.delta_seconds();
     }
-    if keys.pressed(KeyCode::Left) {
+    if input.pressed(Left) {
         panning.offset.x -= 150.0 * time.delta_seconds();
     }
-    if keys.pressed(KeyCode::Down) {
+    if input.pressed(Down) {
         panning.offset.y -= 150.0 * time.delta_seconds();
     }
-    if keys.pressed(KeyCode::Right) {
+    if input.pressed(Right) {
         panning.offset.x += 150.0 * time.delta_seconds();
     }
 
-    if keys.pressed(KeyCode::Z) {
+    if input.pressed(ZoomIn) {
         projection.scale = f32::clamp(
             projection.scale - 150. * time.delta_seconds(),
             1.,
             projection.scale,
         );
     }
-    if keys.pressed(KeyCode::X) {
+    if input.pressed(ZoomOut) {
         projection.scale += 150. * time.delta_seconds();
     }
 

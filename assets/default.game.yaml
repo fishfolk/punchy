@@ -12,6 +12,161 @@ main_menu:
     image: ui/main-menu-background.png
     image_size: [1919, 1027]
 
+default_input_maps:
+  players:
+    # Player 1
+    - Up:
+        - Single:
+            Keyboard: W
+        - Single:
+            GamepadAxis:
+              axis: LeftStickY
+              comparison: Greater
+              threshold: 0.2
+        - Single:
+            GamepadButton: DPadUp
+      Down:
+        - Single:
+            Keyboard: S
+        - Single:
+            GamepadAxis:
+              axis: LeftStickY
+              comparison: Less
+              threshold: -0.2
+        - Single:
+            GamepadButton: DPadDown
+      Left:
+        - Single:
+            Keyboard: A
+        - Single:
+            GamepadAxis:
+              axis: LeftStickX
+              comparison: Less
+              threshold: -0.2
+        - Single:
+            GamepadButton: DPadLeft
+      Right:
+        - Single:
+            Keyboard: D
+        - Single:
+            GamepadAxis:
+              axis: LeftStickX
+              comparison: Greater
+              threshold: 0.2
+        - Single:
+            GamepadButton: DPadRight
+      FlopAttack:
+        - Single:
+            Keyboard: Space
+        - Single:
+            GamepadButton: South
+      Throw:
+        - Single:
+            Keyboard: C
+        - Single:
+            GamepadButton: West
+      Shoot:
+        - Single:
+            Keyboard: V
+        - Single:
+            GamepadButton: East
+    # Player 2
+    - Up:
+        - Single:
+            Keyboard: Up
+        - Single:
+            GamepadAxis:
+              axis: LeftStickY
+              comparison: Greater
+              threshold: 0.2
+        - Single:
+            GamepadButton: DPadUp
+      Down:
+        - Single:
+            Keyboard: Down
+        - Single:
+            GamepadAxis:
+              axis: LeftStickY
+              comparison: Less
+              threshold: -0.2
+        - Single:
+            GamepadButton: DPadDown
+      Left:
+        - Single:
+            Keyboard: Left
+        - Single:
+            GamepadAxis:
+              axis: LeftStickX
+              comparison: Less
+              threshold: -0.2
+        - Single:
+            GamepadButton: DPadLeft
+      Right:
+        - Single:
+            Keyboard: Right
+        - Single:
+            GamepadAxis:
+              axis: LeftStickX
+              comparison: Greater
+              threshold: 0.2
+        - Single:
+            GamepadButton: DPadRight
+      FlopAttack:
+        - Single:
+            Keyboard: Comma
+        - Single:
+            GamepadButton: South
+      Throw:
+        - Single:
+            Keyboard: Period
+        - Single:
+            GamepadButton: West
+      Shoot:
+        - Single:
+            Keyboard: RShift
+        - Single:
+            GamepadButton: East
+
+  camera:
+    Up:
+      - Chord:
+          - Keyboard: Up
+          - Keyboard: LControl
+    Down:
+      - Chord:
+          - Keyboard: Down
+          - Keyboard: LControl
+    Left:
+      - Chord:
+          - Keyboard: Left
+          - Keyboard: LControl
+    Right:
+      - Chord:
+          - Keyboard: Right
+          - Keyboard: LControl
+    ZoomIn:
+      - Chord:
+          - Keyboard: Equals
+          - Keyboard: LControl
+    ZoomOut:
+      - Chord:
+          - Keyboard: Minus
+          - Keyboard: LControl
+
+  menu:
+    Pause:
+      - Single:
+          Keyboard: Escape
+      - Single:
+          Keyboard: P
+      - Single:
+          GamepadButton: Start
+    ToggleFullscreen:
+      - Single:
+          Keyboard: F11
+      - Single:
+          GamepadButton: Mode
+
 ui_theme:
   font_families:
     ark: ui/ark-pixel-16px-latin.ttf
