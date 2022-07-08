@@ -6,10 +6,8 @@ use bevy::{
     asset::{AssetServerSettings, AssetStage},
     ecs::bundle::Bundle,
     prelude::*,
-    render::camera::ScalingMode,
 };
-use bevy_egui::{egui, EguiContext};
-use bevy_parallax::{ParallaxCameraComponent, ParallaxPlugin, ParallaxResource};
+use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
@@ -32,6 +30,7 @@ mod camera;
 mod collisions;
 mod config;
 mod consts;
+mod game_init;
 mod input;
 mod item;
 mod metadata;
@@ -57,7 +56,6 @@ use crate::{
     attack::{attack_cleanup, attack_tick},
     config::EngineConfig,
     input::{CameraAction, PlayerAction},
-    metadata::BorderImageMeta,
 };
 
 #[derive(Component)]
@@ -172,18 +170,6 @@ impl Default for EnemyBundle {
 
 pub struct ArrivedEvent(Entity);
 
-/// Used as a system In<IsHotReload> parameter to indicate whether the system is being called to
-/// host reload an asset.
-struct IsHotReload(bool);
-/// Helper to create a system chain, i.e.: `not_hot_reload.chain(my_system)`
-fn not_hot_reload() -> IsHotReload {
-    IsHotReload(false)
-}
-/// Helper to create a system chain, i.e.: `is_hot_reload.chain(my_system)`
-fn is_hot_reload() -> IsHotReload {
-    IsHotReload(true)
-}
-
 fn main() {
     let engine_config = EngineConfig::from_args();
 
@@ -234,11 +220,7 @@ fn main() {
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource::default())
-        .add_system(
-            not_hot_reload
-                .chain(load_game)
-                .run_in_state(GameState::LoadingGame),
-        )
+        .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
             ConditionSet::new()
@@ -322,7 +304,7 @@ fn main() {
             GameStage::HotReload,
             SystemStage::parallel(),
         )
-        .add_system_to_stage(GameStage::HotReload, is_hot_reload.chain(load_game))
+        .add_system_to_stage(GameStage::HotReload, game_init::hot_reload_game)
         .add_system_set_to_stage(
             GameStage::HotReload,
             ConditionSet::new()
@@ -341,140 +323,6 @@ fn main() {
     bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
-}
-
-/// Loads the main [`GameMeta`] resource and then transitions to the main menu
-///
-/// This is run in a chain as either `not_hot_reload().chain(load_game)` or
-/// `is_hot_reload().chain(load_game)` so that logic for hot reloading the game and loading the game
-/// can be shared.
-fn load_game(
-    is_hot_reload: In<IsHotReload>,
-    mut skip_next_asset_update_event: Local<bool>,
-    camera: Query<Entity, With<Camera>>,
-    mut commands: Commands,
-    game_handle: Res<Handle<GameMeta>>,
-    mut assets: ResMut<Assets<GameMeta>>,
-    mut egui_ctx: ResMut<EguiContext>,
-    asset_server: Res<AssetServer>,
-    mut events: EventReader<AssetEvent<GameMeta>>,
-) {
-    let is_hot_reload = is_hot_reload.0 .0;
-
-    // If this is a hot reload run, check for modified asset events
-    if is_hot_reload {
-        let mut has_update = false;
-        for (event, event_id) in events.iter_with_id() {
-            if let AssetEvent::Modified { .. } = event {
-                // We may need to skip an asset update event
-                if *skip_next_asset_update_event {
-                    *skip_next_asset_update_event = false;
-                } else {
-                    debug!(%event_id, "Game updated");
-                    has_update = true;
-                }
-            }
-        }
-
-        // If there was no update, skip execution
-        if !has_update {
-            return;
-        }
-    }
-
-    if let Some(game) = assets.get_mut(game_handle.clone_weak()) {
-        debug!("Loaded game");
-
-        if is_hot_reload {
-            // Despawn previous camera
-            commands.entity(camera.single()).despawn();
-        }
-
-        // Spawn the camera
-        let mut camera_bundle = OrthographicCameraBundle::new_2d();
-        // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
-        camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
-        camera_bundle.orthographic_projection.scale = game.camera_height as f32 / 2.0;
-        commands
-            .spawn_bundle(camera_bundle)
-            .insert(Panning {
-                offset: Vec2::new(0., -consts::GROUND_Y),
-            })
-            .insert(ParallaxCameraComponent)
-            // Insert insert manager bundle for `CameraAction`s
-            .insert_bundle(InputManagerBundle {
-                input_map: game
-                    .default_input_maps
-                    .get_camera_map()
-                    // The first gamepad can control the camera
-                    .set_gamepad(Gamepad(0))
-                    .build(),
-                ..default()
-            })
-            // We also add another input manager bundle for `MenuAction`s
-            .insert_bundle(InputManagerBundle {
-                input_map: game
-                    .default_input_maps
-                    .get_menu_map()
-                    // the first gamepad can control the menu
-                    .set_gamepad(Gamepad(0))
-                    .build(),
-                ..default()
-            });
-
-        // Helper to load border images
-        let mut load_border_image = |border: &mut BorderImageMeta| {
-            border.handle = asset_server.load(&border.image);
-            border.egui_texture = egui_ctx.add_image(border.handle.clone_weak());
-        };
-
-        // Load border images
-        load_border_image(&mut game.ui_theme.hud.portrait_frame);
-        load_border_image(&mut game.ui_theme.panel.border);
-        load_border_image(&mut game.ui_theme.hud.lifebar.background_image);
-        load_border_image(&mut game.ui_theme.hud.lifebar.progress_image);
-        for button in game.ui_theme.button_styles.values_mut() {
-            load_border_image(&mut button.borders.default);
-            if let Some(border) = &mut button.borders.clicked {
-                load_border_image(border);
-            }
-            if let Some(border) = &mut button.borders.focused {
-                load_border_image(border);
-            }
-        }
-
-        if !is_hot_reload {
-            // Initialize empty fonts for all game fonts.
-            //
-            // This makes sure Egui will not panic if we try to use a font that is still loading.
-            let mut egui_fonts = egui::FontDefinitions::default();
-            for font_name in game.ui_theme.font_families.keys() {
-                let font_family = egui::FontFamily::Name(font_name.clone().into());
-                egui_fonts.families.insert(font_family, vec![]);
-            }
-            egui_ctx.ctx_mut().set_fonts(egui_fonts.clone());
-            commands.insert_resource(egui_fonts);
-
-        // If this is a hot reload run
-        } else {
-            // Since we modified the game asset, which will trigger another asset changed event, we
-            // need to skip the next update event.
-            *skip_next_asset_update_event = true;
-        }
-
-        // Insert the game resource
-        commands.insert_resource(game.clone());
-        commands.insert_resource(game.start_level.clone());
-
-        if !is_hot_reload {
-            // Transition to the main menu
-            commands.insert_resource(NextState(GameState::MainMenu));
-        }
-
-    // If the game asset isn't loaded yet
-    } else {
-        trace!("Awaiting game load")
-    }
 }
 
 /// Loads a level and transitions to [`GameState::InGame`]
