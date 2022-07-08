@@ -438,7 +438,7 @@ fn load_game(
             if let Some(border) = &mut button.borders.clicked {
                 load_border_image(border);
             }
-            if let Some(border) = &mut button.borders.hovered {
+            if let Some(border) = &mut button.borders.focused {
                 load_border_image(border);
             }
         }

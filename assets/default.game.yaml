@@ -15,46 +15,33 @@ main_menu:
 default_input_maps:
   players:
     # Player 1
-    - Up:
-        - Single:
+    - Move:
+      - VirtualDPad:
+          up:
             Keyboard: W
-        - Single:
-            GamepadAxis:
-              axis: LeftStickY
-              comparison: Greater
-              threshold: 0.2
-        - Single:
-            GamepadButton: DPadUp
-      Down:
-        - Single:
+          down:
             Keyboard: S
-        - Single:
-            GamepadAxis:
-              axis: LeftStickY
-              comparison: Less
-              threshold: -0.2
-        - Single:
-            GamepadButton: DPadDown
-      Left:
-        - Single:
+          left:
             Keyboard: A
-        - Single:
-            GamepadAxis:
-              axis: LeftStickX
-              comparison: Less
-              threshold: -0.2
-        - Single:
-            GamepadButton: DPadLeft
-      Right:
-        - Single:
+          right:
             Keyboard: D
-        - Single:
-            GamepadAxis:
-              axis: LeftStickX
-              comparison: Greater
-              threshold: 0.2
-        - Single:
+      - VirtualDPad:
+          up:
+            GamepadButton: DPadUp
+          down:
+            GamepadButton: DPadDown
+          left:
+            GamepadButton: DPadLeft
+          right:
             GamepadButton: DPadRight
+      - Single:
+          DualGamepadAxis:
+            x_axis: LeftStickX
+            y_axis: LeftStickY
+            x_positive_low: 0.1
+            x_negative_low: -0.1
+            y_positive_low: 0.1
+            y_negative_low: -0.1
       FlopAttack:
         - Single:
             Keyboard: Space
@@ -71,45 +58,32 @@ default_input_maps:
         - Single:
             GamepadButton: East
     # Player 2
-    - Up:
-        - Single:
+    - Move:
+      - VirtualDPad:
+          up:
             Keyboard: Up
-        - Single:
-            GamepadAxis:
-              axis: LeftStickY
-              comparison: Greater
-              threshold: 0.2
-        - Single:
-            GamepadButton: DPadUp
-      Down:
-        - Single:
+          down:
             Keyboard: Down
-        - Single:
-            GamepadAxis:
-              axis: LeftStickY
-              comparison: Less
-              threshold: -0.2
-        - Single:
-            GamepadButton: DPadDown
-      Left:
-        - Single:
+          left:
             Keyboard: Left
-        - Single:
-            GamepadAxis:
-              axis: LeftStickX
-              comparison: Less
-              threshold: -0.2
-        - Single:
-            GamepadButton: DPadLeft
-      Right:
-        - Single:
+          right:
             Keyboard: Right
-        - Single:
-            GamepadAxis:
-              axis: LeftStickX
-              comparison: Greater
-              threshold: 0.2
-        - Single:
+      - Single:
+          DualGamepadAxis:
+            x_axis: LeftStickX
+            y_axis: LeftStickY
+            x_positive_low: 0.1
+            x_negative_low: -0.1
+            y_positive_low: 0.1
+            y_negative_low: -0.1
+      - VirtualDPad:
+          up:
+            GamepadButton: DPadUp
+          down:
+            GamepadButton: DPadDown
+          left:
+            GamepadButton: DPadLeft
+          right:
             GamepadButton: DPadRight
       FlopAttack:
         - Single:
@@ -154,6 +128,51 @@ default_input_maps:
           - Keyboard: LControl
 
   menu:
+    Confirm:
+      - Single:
+          GamepadButton: South
+      - Single:
+          GamepadButton: Start
+    Forward:
+      - Single:
+          Keyboard: Down
+      - Single:
+          Keyboard: Right
+      - Single:
+          GamepadButton: DPadDown
+      - Single:
+          GamepadButton: DPadRight
+      - Single:
+          GamepadButton: Select
+      - Single:
+          SingleGamepadAxis:
+            axis: LeftStickY
+            positive_low: 1.0
+            negative_low: -0.5
+      - Single:
+          SingleGamepadAxis:
+            axis: LeftStickX
+            negative_low: -1.0
+            positive_low: 0.5
+    Backward:
+      - Single:
+          Keyboard: Left
+      - Single:
+          Keyboard: Up
+      - Single:
+          GamepadButton: DPadLeft
+      - Single:
+          GamepadButton: DPadUp
+      - Single:
+          SingleGamepadAxis:
+            axis: LeftStickY
+            negative_low: -1.0
+            positive_low: 0.5
+      - Single:
+          SingleGamepadAxis:
+            axis: LeftStickX
+            negative_low: -0.5
+            positive_low: 1.0
     Pause:
       - Single:
           Keyboard: Escape
@@ -247,6 +266,15 @@ ui_theme:
             right: 5
             left: 5
           scale: 3
+        focused:
+          image: ui/green-button-focused.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 3
         clicked:
           image: ui/green-button-down.png
           image_size: [14, 14]
@@ -270,6 +298,15 @@ ui_theme:
       borders:
         default:
           image: ui/green-button.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 2
+        focused:
+          image: ui/green-button-focused.png
           image_size: [14, 14]
           border_size:
             top: 5
