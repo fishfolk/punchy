@@ -3,13 +3,14 @@ use bevy_egui::{
     egui::{self, style::Margin},
     EguiContext, EguiInput, EguiPlugin, EguiSettings, EguiSystem,
 };
+use bevy_fluent::Localization;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     assets::EguiFont,
     input::MenuAction,
-    metadata::{ButtonStyle, FontStyle, GameMeta},
+    metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
     GameState,
 };
 
@@ -180,6 +181,7 @@ fn pause_menu(
     game: Res<GameMeta>,
     non_camera_entities: Query<Entity, Without<Camera>>,
     mut camera_transform: Query<&mut Transform, With<Camera>>,
+    localization: Res<Localization>,
 ) {
     let ui_theme = &game.ui_theme;
 
@@ -205,16 +207,19 @@ fn pause_menu(
                         .colored(ui_theme.panel.font_color);
 
                     ui.vertical_centered(|ui| {
-                        ui.themed_label(&heading_font, "Paused");
+                        ui.themed_label(&heading_font, &localization.get("paused"));
 
                         ui.add_space(10.0);
 
                         let width = ui.available_width();
 
-                        let continue_button =
-                            BorderedButton::themed(ui_theme, &ButtonStyle::Normal, "Continue")
-                                .min_size(egui::vec2(width, 0.0))
-                                .show(ui);
+                        let continue_button = BorderedButton::themed(
+                            ui_theme,
+                            &ButtonStyle::Normal,
+                            &localization.get("continue"),
+                        )
+                        .min_size(egui::vec2(width, 0.0))
+                        .show(ui);
 
                         // Focus continue button by default
                         if ui.memory().focus().is_none() {
@@ -225,10 +230,14 @@ fn pause_menu(
                             commands.insert_resource(NextState(GameState::InGame));
                         }
 
-                        if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, "Main Menu")
-                            .min_size(egui::vec2(width, 0.0))
-                            .show(ui)
-                            .clicked()
+                        if BorderedButton::themed(
+                            ui_theme,
+                            &ButtonStyle::Normal,
+                            &localization.get("main-menu"),
+                        )
+                        .min_size(egui::vec2(width, 0.0))
+                        .show(ui)
+                        .clicked()
                         {
                             // Clean up all entities other than the camera
                             for entity in non_camera_entities.iter() {
@@ -280,7 +289,12 @@ fn despawn_main_menu_background(
 }
 
 /// Render the main menu UI
-fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game: Res<GameMeta>) {
+fn main_menu(
+    mut commands: Commands,
+    mut egui_context: ResMut<EguiContext>,
+    game: Res<GameMeta>,
+    localization: Res<Localization>,
+) {
     let ui_theme = &game.ui_theme;
 
     egui::CentralPanel::default()
@@ -309,14 +323,17 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
 
                     // Create a vertical list of items, centered horizontally
                     ui.vertical_centered(|ui| {
-                        ui.themed_label(&game.main_menu.title_font, &game.main_menu.title);
+                        ui.themed_label(&game.main_menu.title_font, &localization.get("title"));
 
                         // Now switch the layout to bottom_up so that we can start adding widgets
                         // from the bottom of the frame.
                         ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                            let start_button =
-                                BorderedButton::themed(ui_theme, &ButtonStyle::Jumbo, "Start Game")
-                                    .show(ui);
+                            let start_button = BorderedButton::themed(
+                                ui_theme,
+                                &ButtonStyle::Jumbo,
+                                &localization.get("start-game"),
+                            )
+                            .show(ui);
 
                             // Focus the start button if nothing else is focused. That way you can
                             // play the game just by pressing Enter.

@@ -23,13 +23,6 @@ pub fn register(app: &mut bevy::prelude::App) {
         .add_asset_loader(EguiFontLoader);
 }
 
-// An error that could ocurr during asset processing
-#[derive(thiserror::Error, Debug)]
-pub enum AssetLoaderError {
-    #[error("Could not parse YAML asset: {0}")]
-    DeserializationError(#[from] serde_yaml::Error),
-}
-
 /// Calculate an asset's full path relative to another asset
 fn relative_asset_path(asset_path: &Path, relative_path: &str) -> PathBuf {
     let is_relative = !relative_path.starts_with('/');
@@ -43,6 +36,19 @@ fn relative_asset_path(asset_path: &Path, relative_path: &str) -> PathBuf {
             .unwrap()
             .to_owned()
     }
+}
+
+/// Helper to get relative asset paths and handles
+fn get_relative_asset<T: Asset>(
+    load_context: &mut bevy::asset::LoadContext,
+    self_path: &Path,
+    relative_path: &str,
+) -> (AssetPath<'static>, Handle<T>) {
+    let asset_path = relative_asset_path(self_path, relative_path);
+    let asset_path = AssetPath::new(asset_path, None);
+    let handle = load_context.get_handle(asset_path.clone());
+
+    (asset_path, handle)
 }
 
 #[derive(Default)]
@@ -60,17 +66,19 @@ impl AssetLoader for GameMetaLoader {
 
             let self_path = load_context.path().to_owned();
 
-            /// Helper to get relative asset paths and handles
-            fn get_relative_asset<T: Asset>(
-                load_context: &mut bevy::asset::LoadContext,
-                self_path: &Path,
-                relative_path: &str,
-            ) -> (AssetPath<'static>, Handle<T>) {
-                let asset_path = relative_asset_path(self_path, relative_path);
-                let asset_path = AssetPath::new(asset_path, None);
-                let handle = load_context.get_handle(asset_path.clone());
+            // Detect the system locale
+            let locale = sys_locale::get_locale()
+                .unwrap_or_else(|| "en-US".to_string())
+                .parse()?;
+            debug!("Detected system locale: {}", locale);
+            meta.translations.detected_locale = locale;
 
-                (asset_path, handle)
+            // Get locale handles
+            let mut locale_paths = Vec::new();
+            for locale in &meta.translations.locales {
+                let (path, handle) = get_relative_asset(load_context, &self_path, locale);
+                locale_paths.push(path);
+                meta.translations.locale_handles.push(handle);
             }
 
             // Load the start level asset
@@ -99,9 +107,12 @@ impl AssetLoader for GameMetaLoader {
                     .insert(font_name.clone(), font_handle);
             }
 
+            error!("Locale paths: {:?}", locale_paths);
+
             load_context.set_default_asset(
                 LoadedAsset::new(meta)
                     .with_dependencies(vec![start_level_path, main_menu_background_path])
+                    .with_dependencies(locale_paths)
                     .with_dependencies(font_paths),
             );
 

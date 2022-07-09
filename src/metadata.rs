@@ -21,6 +21,9 @@ use crate::{
 pub use ui::*;
 pub mod ui;
 
+pub mod localization;
+pub use localization::TranslationsMeta;
+
 #[derive(TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "eb28180f-ef68-44a0-8479-a299a3cef66e"]
@@ -33,6 +36,7 @@ pub struct GameMeta {
     pub camera_height: u32,
 
     pub default_input_maps: InputMapsMeta,
+    pub translations: TranslationsMeta,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -77,7 +81,6 @@ impl InputMapsMeta {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct MainMenuMeta {
-    pub title: String,
     pub title_font: FontMeta,
     pub background_image: ImageMeta,
 }

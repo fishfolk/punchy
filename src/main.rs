@@ -33,6 +33,7 @@ mod consts;
 mod game_init;
 mod input;
 mod item;
+mod localization;
 mod metadata;
 mod movement;
 mod platform;
@@ -210,6 +211,7 @@ fn main() {
         .add_event::<ThrowItemEvent>()
         .add_loopless_state(GameState::LoadingGame)
         .add_plugin(platform::PlatformPlugin)
+        .add_plugin(localization::LocalizationPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
         .add_plugin(InputManagerPlugin::<CameraAction>::default())
