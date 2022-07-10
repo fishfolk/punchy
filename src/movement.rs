@@ -4,12 +4,13 @@ use bevy::{
     prelude::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, Transform, With,
     },
+    window::Windows,
 };
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    animation::Facing, consts, input::PlayerAction, item::ThrowItemEvent, state::State,
-    ArrivedEvent, DespawnMarker, Player, Stats,
+    animation::Facing, consts, input::PlayerAction, item::ThrowItemEvent, metadata::GameMeta,
+    state::State, ArrivedEvent, DespawnMarker, Player, Stats,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -50,10 +51,17 @@ pub fn player_controller(
         With<Player>,
     >,
     time: Res<Time>,
+    game_meta: Res<GameMeta>,
+    windows: Res<Windows>,
 ) {
+    let players_x = query
+        .iter()
+        .map(|(_, _, transform, _, _)| transform.translation.x)
+        .collect::<Vec<_>>();
+
     // Compute the new direction vectors; can be None if the state is not (idle or running).
     //
-    let player_dirs = query
+    let mut player_dirs = query
         .iter()
         .map(|(state, stats, transform, _, input)| {
             if *state != State::Idle && *state != State::Running {
@@ -80,6 +88,32 @@ pub fn player_controller(
             }
         })
         .collect::<Vec<_>>();
+
+    if player_dirs.len() == 2 {
+        let window_width = windows.get_primary().unwrap().width();
+        let max_players_x_distance = window_width * game_meta.max_players_x_distance_fraction;
+
+        let new_players_x = players_x
+            .iter()
+            .zip(player_dirs.iter())
+            .map(|(x, dir)| x + dir.unwrap_or(Vec2::ZERO).x)
+            .collect::<Vec<_>>();
+
+        if (new_players_x[0] - new_players_x[1]).abs() > max_players_x_distance {
+            let right_player_i = if new_players_x[0] > new_players_x[1] {
+                0
+            } else {
+                1
+            };
+
+            // We could clamp the dir.x, however, if we do that, we'd have to deal with jitter.
+            // Since we assume that the movement in each frame is small, we just stop the movement.
+            //
+            if player_dirs[right_player_i].unwrap().x > 0. {
+                player_dirs[right_player_i] = Some(Vec2::ZERO);
+            }
+        }
+    }
 
     for ((mut state, _, mut transform, facing_option, _), dir) in
         query.iter_mut().zip(player_dirs.iter())
