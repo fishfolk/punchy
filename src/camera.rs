@@ -77,7 +77,7 @@ pub fn camera_follow_player(
 
         let diff = player.translation.x - (camera.translation.x - panning.offset.x);
 
-        camera.translation.x = player.translation.x + panning.offset.x;
+        // The x axis is handled by the parallax plugin.
         camera.translation.y = consts::GROUND_Y + panning.offset.y;
 
         move_event_writer.send(ParallaxMoveEvent {
