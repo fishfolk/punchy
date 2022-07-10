@@ -5,7 +5,6 @@ use bevy::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
         With,
     },
-    window::Windows,
 };
 use leafwing_input_manager::prelude::ActionState;
 
@@ -68,7 +67,6 @@ pub fn player_controller(
     >,
     time: Res<Time>,
     game_meta: Res<GameMeta>,
-    windows: Res<Windows>,
     left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
     let players_x = query
@@ -117,8 +115,8 @@ pub fn player_controller(
         .collect::<Vec<_>>();
 
     if player_dirs.len() > 1 {
-        let window_width = windows.get_primary().unwrap().width();
-        let max_players_x_distance = window_width * game_meta.max_players_x_distance_fraction;
+        let max_players_x_distance =
+            LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
 
         let new_players_x = players_x
             .iter()
@@ -312,10 +310,15 @@ pub fn move_to_target(
 pub fn update_left_movement_boundary(
     query: Query<&Transform, With<Player>>,
     mut boundary: ResMut<LeftMovementBoundary>,
+    game_meta: Res<GameMeta>,
 ) {
-    for transform in query.iter() {
-        boundary.0 = boundary
-            .0
-            .max(transform.translation.x - LEFT_BOUNDARY_MAX_DISTANCE)
-    }
+    let max_player_x = query
+        .iter()
+        .map(|transform| transform.translation.x)
+        .max_by(|ax, bx| ax.total_cmp(bx))
+        .unwrap();
+
+    boundary.0 = boundary
+        .0
+        .max(max_player_x - game_meta.camera_move_right_boundary - LEFT_BOUNDARY_MAX_DISTANCE);
 }
