@@ -16,7 +16,7 @@ pub struct BorderedButton<'a> {
     sense: Sense,
     min_size: Vec2,
     default_border: Option<&'a BorderImageMeta>,
-    on_hover_border: Option<&'a BorderImageMeta>,
+    on_focus_border: Option<&'a BorderImageMeta>,
     on_click_border: Option<&'a BorderImageMeta>,
     margin: egui::style::Margin,
     padding: egui::style::Margin,
@@ -32,7 +32,7 @@ impl<'a> BorderedButton<'a> {
             min_size: Vec2::ZERO,
             wrap: None,
             default_border: None,
-            on_hover_border: None,
+            on_focus_border: None,
             on_click_border: None,
             margin: Default::default(),
             padding: Default::default(),
@@ -57,7 +57,7 @@ impl<'a> BorderedButton<'a> {
         )
         .border(&style.borders.default)
         .on_click_border(style.borders.clicked.as_ref())
-        .on_hover_border(style.borders.hovered.as_ref())
+        .on_focus_border(style.borders.focused.as_ref())
         .padding(style.padding.into())
     }
 
@@ -103,10 +103,10 @@ impl<'a> BorderedButton<'a> {
         self
     }
 
-    /// Set a different border to use when hovering over the button
+    /// Set a different border to use when focusing / hovering over the button
     #[must_use = "You must call .show() to render the button"]
-    pub fn on_hover_border(mut self, border: Option<&'a BorderImageMeta>) -> Self {
-        self.on_hover_border = border;
+    pub fn on_focus_border(mut self, border: Option<&'a BorderImageMeta>) -> Self {
+        self.on_focus_border = border;
         self
     }
 
@@ -147,7 +147,7 @@ impl<'a> Widget for BorderedButton<'a> {
             min_size,
             wrap,
             default_border,
-            on_hover_border,
+            on_focus_border,
             on_click_border,
             margin,
             padding,
@@ -163,6 +163,11 @@ impl<'a> Widget for BorderedButton<'a> {
 
         let (rect, response) = ui.allocate_at_least(desired_size, sense);
         response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, text.text()));
+
+        // Focus the button automatically when it is hovered
+        if response.hovered() {
+            response.request_focus();
+        }
 
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact(&response);
@@ -180,8 +185,8 @@ impl<'a> Widget for BorderedButton<'a> {
 
             let border = if response.is_pointer_button_down_on() {
                 on_click_border.or(default_border)
-            } else if response.hovered() {
-                on_hover_border.or(default_border)
+            } else if response.has_focus() {
+                on_focus_border.or(default_border)
             } else {
                 default_border
             };

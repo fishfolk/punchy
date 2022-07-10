@@ -58,25 +58,12 @@ pub fn player_controller(
 
         let mut dir = Vec2::ZERO;
 
-        use PlayerAction::*;
-        if input.pressed(Left) {
-            dir -= Vec2::X;
+        if input.pressed(PlayerAction::Move) {
+            dir = input.action_axis_pair(PlayerAction::Move).unwrap().xy();
         }
 
-        if input.pressed(Right) {
-            dir += Vec2::X;
-        }
-
-        if input.pressed(Up) {
-            dir += Vec2::Y;
-        }
-
-        if input.pressed(Down) {
-            dir -= Vec2::Y;
-        }
-
-        //Normalize direction
-        dir = dir.normalize_or_zero() * stats.movement_speed * time.delta_seconds();
+        // Apply speed
+        dir = dir * stats.movement_speed * time.delta_seconds();
 
         //Restrict player to the ground
         let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;

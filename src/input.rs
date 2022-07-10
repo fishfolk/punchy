@@ -3,11 +3,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Copy, Clone, Actionlike, Deserialize, Eq, PartialEq, Hash)]
 pub enum PlayerAction {
-    // Movement
-    Up,
-    Left,
-    Down,
-    Right,
+    Move,
     // Attacks
     FlopAttack,
     Throw,
@@ -26,6 +22,9 @@ pub enum CameraAction {
 
 #[derive(Debug, Copy, Clone, Actionlike, Deserialize, Eq, PartialEq, Hash)]
 pub enum MenuAction {
+    Confirm,
+    Forward,
+    Backward,
     Pause,
     ToggleFullscreen,
 }

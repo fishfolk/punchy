@@ -157,7 +157,7 @@ pub struct ProgressBarMeta {
 pub struct ButtonBordersMeta {
     pub default: BorderImageMeta,
     #[serde(default)]
-    pub hovered: Option<BorderImageMeta>,
+    pub focused: Option<BorderImageMeta>,
     #[serde(default)]
     pub clicked: Option<BorderImageMeta>,
 }

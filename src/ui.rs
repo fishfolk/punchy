@@ -1,7 +1,7 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap, window::WindowId};
 use bevy_egui::{
     egui::{self, style::Margin},
-    EguiContext, EguiPlugin, EguiSettings,
+    EguiContext, EguiInput, EguiPlugin, EguiSettings, EguiSystem,
 };
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -23,7 +23,12 @@ pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EguiPlugin)
-            .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
+            .add_system(
+                handle_menu_input
+                    .run_if_resource_exists::<GameMeta>()
+                    .after(EguiSystem::ProcessInput)
+                    .before(EguiSystem::BeginFrame),
+            )
             .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
             .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
@@ -44,7 +49,11 @@ impl Plugin for UIPlugin {
     }
 }
 
-fn handle_menu_input(mut windows: ResMut<Windows>, input: Query<&ActionState<MenuAction>>) {
+fn handle_menu_input(
+    mut windows: ResMut<Windows>,
+    input: Query<&ActionState<MenuAction>>,
+    mut egui_inputs: ResMut<HashMap<WindowId, EguiInput>>,
+) {
     use bevy::window::WindowMode;
     let input = input.single();
 
@@ -56,6 +65,38 @@ fn handle_menu_input(mut windows: ResMut<Windows>, input: Query<&ActionState<Men
                 _ => WindowMode::BorderlessFullscreen,
             });
         }
+    }
+
+    // Emit tab / shift + tab Egui events in response to menu navigation inputs. This is pretty
+    // hacky and may need to be re-visited.
+    let events = &mut egui_inputs
+        .get_mut(&WindowId::primary())
+        .unwrap()
+        .raw_input
+        .events;
+
+    if input.just_pressed(MenuAction::Confirm) {
+        events.push(egui::Event::Key {
+            key: egui::Key::Enter,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+
+    if input.just_pressed(MenuAction::Forward) {
+        events.push(egui::Event::Key {
+            key: egui::Key::Tab,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+
+    if input.just_pressed(MenuAction::Backward) {
+        events.push(egui::Event::Key {
+            key: egui::Key::Tab,
+            pressed: true,
+            modifiers: egui::Modifiers::SHIFT,
+        });
     }
 }
 
@@ -170,11 +211,17 @@ fn pause_menu(
 
                         let width = ui.available_width();
 
-                        if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, "Continue")
-                            .min_size(egui::vec2(width, 0.0))
-                            .show(ui)
-                            .clicked()
-                        {
+                        let continue_button =
+                            BorderedButton::themed(ui_theme, &ButtonStyle::Normal, "Continue")
+                                .min_size(egui::vec2(width, 0.0))
+                                .show(ui);
+
+                        // Focus continue button by default
+                        if ui.memory().focus().is_none() {
+                            continue_button.request_focus();
+                        }
+
+                        if continue_button.clicked() {
                             commands.insert_resource(NextState(GameState::InGame));
                         }
 
@@ -267,10 +314,17 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
                         // Now switch the layout to bottom_up so that we can start adding widgets
                         // from the bottom of the frame.
                         ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                            if BorderedButton::themed(ui_theme, &ButtonStyle::Jumbo, "Start Game")
-                                .show(ui)
-                                .clicked()
-                            {
+                            let start_button =
+                                BorderedButton::themed(ui_theme, &ButtonStyle::Jumbo, "Start Game")
+                                    .show(ui);
+
+                            // Focus the start button if nothing else is focused. That way you can
+                            // play the game just by pressing Enter.
+                            if ui.memory().focus().is_none() {
+                                start_button.request_focus();
+                            }
+
+                            if start_button.clicked() {
                                 commands.insert_resource(game.start_level_handle.clone());
                                 commands.insert_resource(NextState(GameState::LoadingLevel));
                             }

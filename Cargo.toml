@@ -21,7 +21,7 @@ getrandom = { version = "0.2", features = ["js"] }
 bevy_mod_debugdump = { version = "0.4", optional = true }
 bevy-inspector-egui = { version = "0.11", optional = true }
 bevy-inspector-egui-rapier = { version = "0.4", optional = true, features = ["rapier2d"] }
-leafwing_input_manager = { git = "https://github.com/zicklag/leafwing-input-manager.git", rev = "45c40f3d" }
+leafwing_input_manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager.git", rev = "c12d7a8" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features=["Window"] }
