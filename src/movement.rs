@@ -5,7 +5,6 @@ use bevy::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
         With,
     },
-    window::Windows,
 };
 use leafwing_input_manager::prelude::ActionState;
 
@@ -68,7 +67,6 @@ pub fn player_controller(
     >,
     time: Res<Time>,
     game_meta: Res<GameMeta>,
-    windows: Res<Windows>,
     left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
     let players_x = query
@@ -117,8 +115,8 @@ pub fn player_controller(
         .collect::<Vec<_>>();
 
     if player_dirs.len() > 1 {
-        let window_width = windows.get_primary().unwrap().width();
-        let max_players_x_distance = window_width * game_meta.max_players_x_distance_fraction;
+        let max_players_x_distance =
+            LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
 
         let new_players_x = players_x
             .iter()
