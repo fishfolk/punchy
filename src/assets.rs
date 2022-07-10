@@ -107,8 +107,6 @@ impl AssetLoader for GameMetaLoader {
                     .insert(font_name.clone(), font_handle);
             }
 
-            error!("Locale paths: {:?}", locale_paths);
-
             load_context.set_default_asset(
                 LoadedAsset::new(meta)
                     .with_dependencies(vec![start_level_path, main_menu_background_path])
