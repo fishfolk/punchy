@@ -1,5 +1,8 @@
 start_level: beach/beach.level.yaml
 camera_height: 448
+# Allowed x distance between players, as a fraction of the screen width.
+# This is also used for camera move, so be careful.
+max_players_x_distance_fraction: 0.25
 
 main_menu:
   title_font:
