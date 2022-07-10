@@ -14,4 +14,8 @@ pub struct EngineConfig {
     /// The .game.yaml asset to load at startup
     #[structopt(default_value = "default.game.yaml")]
     pub game_asset: String,
+
+    /// Skip the menu and automatically start the game
+    #[structopt(short = "s", long)]
+    pub auto_start: bool,
 }
