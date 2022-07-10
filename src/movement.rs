@@ -310,10 +310,15 @@ pub fn move_to_target(
 pub fn update_left_movement_boundary(
     query: Query<&Transform, With<Player>>,
     mut boundary: ResMut<LeftMovementBoundary>,
+    game_meta: Res<GameMeta>,
 ) {
-    for transform in query.iter() {
-        boundary.0 = boundary
-            .0
-            .max(transform.translation.x - LEFT_BOUNDARY_MAX_DISTANCE)
-    }
+    let max_player_x = query
+        .iter()
+        .map(|transform| transform.translation.x)
+        .max_by(|ax, bx| ax.total_cmp(bx))
+        .unwrap();
+
+    boundary.0 = boundary
+        .0
+        .max(max_player_x - game_meta.camera_move_right_boundary - LEFT_BOUNDARY_MAX_DISTANCE);
 }
