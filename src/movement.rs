@@ -51,44 +51,57 @@ pub fn player_controller(
     >,
     time: Res<Time>,
 ) {
-    for (mut state, stats, mut transform, facing_option, input) in query.iter_mut() {
-        if *state != State::Idle && *state != State::Running {
-            break;
-        }
+    // Compute the new direction vectors; can be None if the state is not (idle or running).
+    //
+    let player_dirs = query
+        .iter()
+        .map(|(state, stats, transform, _, input)| {
+            if *state != State::Idle && *state != State::Running {
+                None
+            } else {
+                let mut dir = Vec2::ZERO;
 
-        let mut dir = Vec2::ZERO;
+                if input.pressed(PlayerAction::Move) {
+                    dir = input.action_axis_pair(PlayerAction::Move).unwrap().xy();
+                }
 
-        if input.pressed(PlayerAction::Move) {
-            dir = input.action_axis_pair(PlayerAction::Move).unwrap().xy();
-        }
+                // Apply speed
+                dir = dir * stats.movement_speed * time.delta_seconds();
 
-        // Apply speed
-        dir = dir * stats.movement_speed * time.delta_seconds();
+                //Restrict player to the ground
+                let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
 
-        //Restrict player to the ground
-        let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
+                if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
+                    dir.y = 0.;
+                }
 
-        if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
-            dir.y = 0.;
-        }
-
-        //Move the player
-        transform.translation.x += dir.x;
-        transform.translation.y += dir.y;
-
-        //Set the player state and direction
-        if let Some(mut facing) = facing_option {
-            if dir.x < 0. {
-                facing.set(Facing::Left);
-            } else if dir.x > 0. {
-                facing.set(Facing::Right);
+                //Move the player
+                Some(dir)
             }
-        }
+        })
+        .collect::<Vec<_>>();
 
-        if dir == Vec2::ZERO {
-            state.set(State::Idle);
-        } else {
-            state.set(State::Running);
+    for ((mut state, _, mut transform, facing_option, _), dir) in
+        query.iter_mut().zip(player_dirs.iter())
+    {
+        if let Some(dir) = dir {
+            transform.translation.x += dir.x;
+            transform.translation.y += dir.y;
+
+            //Set the player state and direction
+            if let Some(mut facing) = facing_option {
+                if dir.x < 0. {
+                    facing.set(Facing::Left);
+                } else if dir.x > 0. {
+                    facing.set(Facing::Right);
+                }
+            }
+
+            if dir == &Vec2::ZERO {
+                state.set(State::Idle);
+            } else {
+                state.set(State::Running);
+            }
         }
     }
 }
