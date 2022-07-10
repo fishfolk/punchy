@@ -2,20 +2,31 @@ use bevy::{
     core::{Time, Timer},
     math::{Quat, Vec2, Vec3Swizzles},
     prelude::{
-        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, Transform, With,
+        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
+        With,
     },
     window::Windows,
 };
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    animation::Facing, consts, input::PlayerAction, item::ThrowItemEvent, metadata::GameMeta,
+    animation::Facing, consts::{self, LEFT_BOUNDARY_MAX_DISTANCE}, input::PlayerAction, item::ThrowItemEvent, metadata::GameMeta,
     state::State, ArrivedEvent, DespawnMarker, Player, Stats,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deref, DerefMut)]
 pub struct MoveInDirection(pub Vec2);
+
+// (Moving) bondary before which, the players can't go back.
+#[derive(Component)]
+pub struct LeftMovementBoundary(f32);
+
+impl Default for LeftMovementBoundary {
+    fn default() -> Self {
+        Self(-LEFT_BOUNDARY_MAX_DISTANCE)
+    }
+}
 
 #[derive(Component)]
 pub struct Knockback {
@@ -53,6 +64,7 @@ pub fn player_controller(
     time: Res<Time>,
     game_meta: Res<GameMeta>,
     windows: Res<Windows>,
+    left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
     let players_x = query
         .iter()
@@ -75,6 +87,16 @@ pub fn player_controller(
 
                 // Apply speed
                 dir = dir * stats.movement_speed * time.delta_seconds();
+
+                let new_x = transform.translation.x + dir.x;
+
+                // The dir.x condition allows some flexibility (e.g. in case of knockback), given
+                // the current state of development. To be removed once the movement logic is
+                // stabilized.
+                //
+                if dir.x < 0. && new_x < left_movement_boundary.0 {
+                    dir.x = 0.;
+                }
 
                 //Restrict player to the ground
                 let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
@@ -281,5 +303,16 @@ pub fn move_to_target(
                 *state = State::Running;
             }
         }
+    }
+}
+
+pub fn update_left_movement_boundary(
+    query: Query<&Transform, With<Player>>,
+    mut boundary: ResMut<LeftMovementBoundary>,
+) {
+    for transform in query.iter() {
+        boundary.0 = boundary
+            .0
+            .max(transform.translation.x - LEFT_BOUNDARY_MAX_DISTANCE)
     }
 }
