@@ -35,6 +35,7 @@ pub struct GameMeta {
     pub ui_theme: UIThemeMeta,
     pub camera_height: u32,
     pub max_players_x_distance_fraction: f32,
+    pub camera_move_right_boundary: f32,
 
     pub default_input_maps: InputMapsMeta,
     pub translations: TranslationsMeta,

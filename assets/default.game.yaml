@@ -3,6 +3,8 @@ camera_height: 448
 # Allowed x distance between players, as a fraction of the screen width.
 # This is also used for camera move, so be careful.
 max_players_x_distance_fraction: 0.25
+# Distance of the rightmost player from the center of the camera, after which the camera moves.
+camera_move_right_boundary: 150.
 
 main_menu:
   title_font:
