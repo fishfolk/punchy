@@ -10,8 +10,13 @@ use bevy::{
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    animation::Facing, consts::{self, LEFT_BOUNDARY_MAX_DISTANCE}, input::PlayerAction, item::ThrowItemEvent, metadata::GameMeta,
-    state::State, ArrivedEvent, DespawnMarker, Player, Stats,
+    animation::Facing,
+    consts::{self, LEFT_BOUNDARY_MAX_DISTANCE},
+    input::PlayerAction,
+    item::ThrowItemEvent,
+    metadata::GameMeta,
+    state::State,
+    ArrivedEvent, DespawnMarker, Player, Stats,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -111,7 +116,7 @@ pub fn player_controller(
         })
         .collect::<Vec<_>>();
 
-    if player_dirs.len() == 2 {
+    if player_dirs.len() > 1 {
         let window_width = windows.get_primary().unwrap().width();
         let max_players_x_distance = window_width * game_meta.max_players_x_distance_fraction;
 
@@ -121,18 +126,16 @@ pub fn player_controller(
             .map(|(x, dir)| x + dir.unwrap_or(Vec2::ZERO).x)
             .collect::<Vec<_>>();
 
-        if (new_players_x[0] - new_players_x[1]).abs() > max_players_x_distance {
-            let right_player_i = if new_players_x[0] > new_players_x[1] {
-                0
-            } else {
-                1
-            };
+        let min_player_x = new_players_x
+            .iter()
+            .min_by(|ax, bx| ax.total_cmp(bx))
+            .unwrap();
 
-            // We could clamp the dir.x, however, if we do that, we'd have to deal with jitter.
-            // Since we assume that the movement in each frame is small, we just stop the movement.
-            //
-            if player_dirs[right_player_i].unwrap().x > 0. {
-                player_dirs[right_player_i] = Some(Vec2::ZERO);
+        for (player_dir, player_x) in player_dirs.iter_mut().zip(new_players_x.iter()) {
+            if let Some(player_dir) = player_dir.as_mut() {
+                if *player_x > min_player_x + max_players_x_distance {
+                    *player_dir = Vec2::ZERO;
+                }
             }
         }
     }
