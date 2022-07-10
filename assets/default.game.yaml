@@ -2,7 +2,6 @@ start_level: beach/beach.level.yaml
 camera_height: 448
 
 main_menu:
-  title: "Fish Fight\nPunchy"
   title_font:
     family: ark
     color: [0, 0, 0]
@@ -323,3 +322,11 @@ ui_theme:
             right: 5
             left: 5
           scale: 2
+
+translations:
+  # This is the locale that we will fallback to if the selected locale doesn't have
+  # translation for a certain message.
+  default_locale: en-US
+  locales:
+    - locales/en-US/en-US.ftl.yml
+    - locales/fr-FR/fr-FR.ftl.yml

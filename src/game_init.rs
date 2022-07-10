@@ -1,5 +1,6 @@
 use bevy::{ecs::system::SystemParam, prelude::*, render::camera::ScalingMode};
 use bevy_egui::{egui, EguiContext};
+use bevy_fluent::Locale;
 use bevy_parallax::ParallaxCameraComponent;
 use iyes_loopless::state::NextState;
 use leafwing_input_manager::InputManagerBundle;
@@ -87,6 +88,13 @@ impl<'w, 's> GameLoader<'w, 's> {
                 // Transition to the main menu when we are done
                 commands.insert_resource(NextState(GameState::MainMenu));
             }
+
+            // Set the locale resource
+            let translations = &game.translations;
+            commands.insert_resource(
+                Locale::new(translations.detected_locale.clone())
+                    .with_default(translations.default_locale.clone()),
+            );
 
             // Spawn the camera
             let mut camera_bundle = OrthographicCameraBundle::new_2d();
