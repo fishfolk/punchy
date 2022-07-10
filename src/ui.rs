@@ -18,6 +18,8 @@ use self::widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFra
 pub mod hud;
 pub mod widgets;
 
+const SKIP_MENU_ENV_VAR: &str = "PUNCHY_SKIP_MENU";
+
 pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
@@ -324,7 +326,10 @@ fn main_menu(mut commands: Commands, mut egui_context: ResMut<EguiContext>, game
                                 start_button.request_focus();
                             }
 
-                            if start_button.clicked() {
+                            let skip_menu_val =
+                                std::env::var(SKIP_MENU_ENV_VAR).unwrap_or(String::from(""));
+
+                            if start_button.clicked() || !skip_menu_val.is_empty() {
                                 commands.insert_resource(game.start_level_handle.clone());
                                 commands.insert_resource(NextState(GameState::LoadingLevel));
                             }
