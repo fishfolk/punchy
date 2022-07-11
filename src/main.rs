@@ -9,9 +9,11 @@ use bevy::{
 };
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
+use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
+use player::*;
 use rand::{seq::SliceRandom, Rng};
 use structopt::StructOpt;
 
@@ -30,6 +32,7 @@ mod camera;
 mod collisions;
 mod config;
 mod consts;
+mod enemy;
 mod game_init;
 mod input;
 mod item;
@@ -37,6 +40,7 @@ mod localization;
 mod metadata;
 mod movement;
 mod platform;
+mod player;
 mod state;
 mod ui;
 mod y_sort;
@@ -58,12 +62,6 @@ use crate::{
     config::EngineConfig,
     input::{CameraAction, PlayerAction},
 };
-
-#[derive(Component)]
-pub struct Player;
-
-#[derive(Component)]
-pub struct Enemy;
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -137,34 +135,6 @@ impl Default for PhysicsBundle {
             active_collision_types: ActiveCollisionTypes::default()
                 | ActiveCollisionTypes::STATIC_STATIC,
             collision_groups: CollisionGroups::default(),
-        }
-    }
-}
-
-#[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
-    facing: Facing,
-}
-impl Default for PlayerBundle {
-    fn default() -> Self {
-        PlayerBundle {
-            player: Player,
-            facing: Facing::Right,
-        }
-    }
-}
-
-#[derive(Bundle)]
-struct EnemyBundle {
-    enemy: Enemy,
-    facing: Facing,
-}
-impl Default for EnemyBundle {
-    fn default() -> Self {
-        EnemyBundle {
-            enemy: Enemy,
-            facing: Facing::Left,
         }
     }
 }
