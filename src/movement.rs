@@ -2,19 +2,35 @@ use bevy::{
     core::{Time, Timer},
     math::{Quat, Vec2, Vec3Swizzles},
     prelude::{
-        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, Transform, With,
+        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
+        With,
     },
 };
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    animation::Facing, consts, input::PlayerAction, item::ThrowItemEvent, state::State,
+    animation::Facing,
+    consts::{self, LEFT_BOUNDARY_MAX_DISTANCE},
+    input::PlayerAction,
+    item::ThrowItemEvent,
+    metadata::GameMeta,
+    state::State,
     ArrivedEvent, DespawnMarker, Player, Stats,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deref, DerefMut)]
 pub struct MoveInDirection(pub Vec2);
+
+// (Moving) bondary before which, the players can't go back.
+#[derive(Component)]
+pub struct LeftMovementBoundary(f32);
+
+impl Default for LeftMovementBoundary {
+    fn default() -> Self {
+        Self(-LEFT_BOUNDARY_MAX_DISTANCE)
+    }
+}
 
 #[derive(Component)]
 pub struct Knockback {
@@ -50,45 +66,99 @@ pub fn player_controller(
         With<Player>,
     >,
     time: Res<Time>,
+    game_meta: Res<GameMeta>,
+    left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
-    for (mut state, stats, mut transform, facing_option, input) in query.iter_mut() {
-        if *state != State::Idle && *state != State::Running {
-            break;
-        }
+    let players_x = query
+        .iter()
+        .map(|(_, _, transform, _, _)| transform.translation.x)
+        .collect::<Vec<_>>();
 
-        let mut dir = Vec2::ZERO;
+    // Compute the new direction vectors; can be None if the state is not (idle or running).
+    //
+    let mut player_dirs = query
+        .iter()
+        .map(|(state, stats, transform, _, input)| {
+            if *state != State::Idle && *state != State::Running {
+                None
+            } else {
+                let mut dir = Vec2::ZERO;
 
-        if input.pressed(PlayerAction::Move) {
-            dir = input.action_axis_pair(PlayerAction::Move).unwrap().xy();
-        }
+                if input.pressed(PlayerAction::Move) {
+                    dir = input.action_axis_pair(PlayerAction::Move).unwrap().xy();
+                }
 
-        // Apply speed
-        dir = dir * stats.movement_speed * time.delta_seconds();
+                // Apply speed
+                dir = dir * stats.movement_speed * time.delta_seconds();
 
-        //Restrict player to the ground
-        let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
+                let new_x = transform.translation.x + dir.x;
 
-        if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
-            dir.y = 0.;
-        }
+                // The dir.x condition allows some flexibility (e.g. in case of knockback), given
+                // the current state of development. To be removed once the movement logic is
+                // stabilized.
+                //
+                if dir.x < 0. && new_x < left_movement_boundary.0 {
+                    dir.x = 0.;
+                }
 
-        //Move the player
-        transform.translation.x += dir.x;
-        transform.translation.y += dir.y;
+                //Restrict player to the ground
+                let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
 
-        //Set the player state and direction
-        if let Some(mut facing) = facing_option {
-            if dir.x < 0. {
-                facing.set(Facing::Left);
-            } else if dir.x > 0. {
-                facing.set(Facing::Right);
+                if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
+                    dir.y = 0.;
+                }
+
+                //Move the player
+                Some(dir)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if player_dirs.len() > 1 {
+        let max_players_x_distance =
+            LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
+
+        let new_players_x = players_x
+            .iter()
+            .zip(player_dirs.iter())
+            .map(|(x, dir)| x + dir.unwrap_or(Vec2::ZERO).x)
+            .collect::<Vec<_>>();
+
+        let min_player_x = new_players_x
+            .iter()
+            .min_by(|ax, bx| ax.total_cmp(bx))
+            .unwrap();
+
+        for (player_dir, player_x) in player_dirs.iter_mut().zip(new_players_x.iter()) {
+            if let Some(player_dir) = player_dir.as_mut() {
+                if *player_x > min_player_x + max_players_x_distance {
+                    *player_dir = Vec2::ZERO;
+                }
             }
         }
+    }
 
-        if dir == Vec2::ZERO {
-            state.set(State::Idle);
-        } else {
-            state.set(State::Running);
+    for ((mut state, _, mut transform, facing_option, _), dir) in
+        query.iter_mut().zip(player_dirs.iter())
+    {
+        if let Some(dir) = dir {
+            transform.translation.x += dir.x;
+            transform.translation.y += dir.y;
+
+            //Set the player state and direction
+            if let Some(mut facing) = facing_option {
+                if dir.x < 0. {
+                    facing.set(Facing::Left);
+                } else if dir.x > 0. {
+                    facing.set(Facing::Right);
+                }
+            }
+
+            if dir == &Vec2::ZERO {
+                state.set(State::Idle);
+            } else {
+                state.set(State::Running);
+            }
         }
     }
 }
@@ -235,4 +305,20 @@ pub fn move_to_target(
             }
         }
     }
+}
+
+pub fn update_left_movement_boundary(
+    query: Query<&Transform, With<Player>>,
+    mut boundary: ResMut<LeftMovementBoundary>,
+    game_meta: Res<GameMeta>,
+) {
+    let max_player_x = query
+        .iter()
+        .map(|transform| transform.translation.x)
+        .max_by(|ax, bx| ax.total_cmp(bx))
+        .unwrap();
+
+    boundary.0 = boundary
+        .0
+        .max(max_player_x - game_meta.camera_move_right_boundary - LEFT_BOUNDARY_MAX_DISTANCE);
 }

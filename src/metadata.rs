@@ -34,6 +34,7 @@ pub struct GameMeta {
     pub main_menu: MainMenuMeta,
     pub ui_theme: UIThemeMeta,
     pub camera_height: u32,
+    pub camera_move_right_boundary: f32,
 
     pub default_input_maps: InputMapsMeta,
     pub translations: TranslationsMeta,

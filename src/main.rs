@@ -222,6 +222,7 @@ fn main() {
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource::default())
+        .insert_resource(LeftMovementBoundary::default())
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
@@ -270,6 +271,7 @@ fn main() {
                 .with_system(move_in_arc_system)
                 .with_system(rotate_system)
                 .with_system(camera_follow_player)
+                .with_system(update_left_movement_boundary)
                 .into(),
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
