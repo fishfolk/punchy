@@ -23,30 +23,6 @@ fn load_locales(
     mut events: EventReader<AssetEvent<BundleAsset>>,
     assets: Res<Assets<BundleAsset>>,
 ) {
-    // Helper to rebuild the localization
-    let mut reload_localization = || {
-        let mut new_localization = Localization::new();
-
-        // Create map containing the bundles and their handles, indexed by their locale
-        let mut bundles = assets
-            .iter()
-            .map(|(handle_id, asset)| (&asset.locales[0], (handle_id, asset)))
-            .collect::<HashMap<_, _>>();
-
-        // Extract sorted list of locales in a fallback chain
-        let locales = locale.fallback_chain(bundles.keys().cloned());
-
-        // Insert bundles into the localization in sorted order
-        for locale in locales {
-            if let Some((handle_id, bundle)) = bundles.remove(locale) {
-                new_localization.insert(&Handle::weak(handle_id), bundle);
-            }
-        }
-
-        // Update the localization resource
-        *localization = new_localization;
-    };
-
     // Whether there was an update that means we need to rebuild the localization
     let mut should_rebuild_localization = false;
 
@@ -84,6 +60,25 @@ fn load_locales(
 
     // Rebuild localization if anything was updated
     if should_rebuild_localization {
-        reload_localization();
+        let mut new_localization = Localization::new();
+
+        // Create map containing the bundles and their handles, indexed by their locale
+        let mut bundles = assets
+            .iter()
+            .map(|(handle_id, asset)| (&asset.locales[0], (handle_id, asset)))
+            .collect::<HashMap<_, _>>();
+
+        // Extract sorted list of locales in a fallback chain
+        let locales = locale.fallback_chain(bundles.keys().cloned());
+
+        // Insert bundles into the localization in sorted order
+        for locale in locales {
+            if let Some((handle_id, bundle)) = bundles.remove(locale) {
+                new_localization.insert(&Handle::weak(handle_id), bundle);
+            }
+        }
+
+        // Update the localization resource
+        *localization = new_localization;
     }
 }
