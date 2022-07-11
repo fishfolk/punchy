@@ -9,6 +9,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     assets::EguiFont,
+    config::EngineConfig,
     input::MenuAction,
     metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
     GameState,
@@ -18,8 +19,6 @@ use self::widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFra
 
 pub mod hud;
 pub mod widgets;
-
-const SKIP_MENU_ENV_VAR: &str = "PUNCHY_SKIP_MENU";
 
 pub struct UIPlugin;
 
@@ -296,6 +295,7 @@ fn main_menu(
     mut egui_context: ResMut<EguiContext>,
     game: Res<GameMeta>,
     localization: Res<Localization>,
+    engine_config: Res<EngineConfig>,
 ) {
     let ui_theme = &game.ui_theme;
 
@@ -343,10 +343,7 @@ fn main_menu(
                                 start_button.request_focus();
                             }
 
-                            let skip_menu_val =
-                                std::env::var(SKIP_MENU_ENV_VAR).unwrap_or(String::from(""));
-
-                            if start_button.clicked() || !skip_menu_val.is_empty() {
+                            if start_button.clicked() || engine_config.auto_start {
                                 commands.insert_resource(game.start_level_handle.clone());
                                 commands.insert_resource(NextState(GameState::LoadingLevel));
                             }
