@@ -1,7 +1,7 @@
 use bevy::{prelude::*, utils::HashMap, window::WindowId};
 use bevy_egui::{
     egui::{self, style::Margin},
-    EguiContext, EguiInput, EguiPlugin, EguiSettings, EguiSystem,
+    EguiContext, EguiInput, EguiPlugin, EguiSettings,
 };
 use bevy_fluent::Localization;
 use iyes_loopless::prelude::*;
@@ -25,12 +25,7 @@ pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EguiPlugin)
-            .add_system(
-                handle_menu_input
-                    .run_if_resource_exists::<GameMeta>()
-                    .after(EguiSystem::ProcessInput)
-                    .before(EguiSystem::BeginFrame),
-            )
+            .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
             .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
             .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
