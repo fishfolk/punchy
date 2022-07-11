@@ -326,27 +326,13 @@ fn load_level(
         commands.insert_resource(ClearColor(level.background_color()));
 
         // Spawn the players
-        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
         for (i, player) in level.players.iter().enumerate() {
-            let player_pos = player.location + ground_offset;
-            commands
-                .spawn_bundle(TransformBundle::from_transform(
-                    Transform::from_translation(player_pos),
-                ))
-                .insert(player.fighter_handle.clone())
-                .insert_bundle(PlayerBundle::default())
-                .insert_bundle(InputManagerBundle {
-                    input_map: game
-                        .default_input_maps
-                        .get_player_map(i)
-                        .map(|mut map| map.set_gamepad(Gamepad(i)).build())
-                        .unwrap_or_default(),
-                    ..default()
-                });
+            commands.spawn_bundle(PlayerBundle::new(&player, i, &*game));
         }
 
         // Spawn the enemies
         for enemy in &level.enemies {
+            let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
             let enemy_pos = enemy.location + ground_offset;
             commands
                 .spawn_bundle(TransformBundle::from_transform(
