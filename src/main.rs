@@ -12,7 +12,7 @@ use bevy_rapier2d::prelude::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use structopt::StructOpt;
 
 #[cfg(feature = "debug")]
@@ -610,12 +610,12 @@ fn set_target_near_player(
     query: Query<(Entity, &State), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
-    //right now this picks only whichever player shows up last, it should collect them and pick a different player for each enemy to target
-    for player_transform in player_query.iter() {
-        let mut rng = rand::thread_rng();
+    let mut rng = rand::thread_rng();
+    let transforms = player_query.iter().collect::<Vec<_>>();
 
-        for (entity, state) in query.iter() {
-            if *state == State::Idle {
+    for (entity, state) in query.iter() {
+        if *state == State::Idle {
+            if let Some(player_transform) = transforms.choose(&mut rng) {
                 let x_offset = rng.gen_range(-100.0..100.);
                 let y_offset = rng.gen_range(-100.0..100.);
                 commands.entity(entity).insert(Target {
