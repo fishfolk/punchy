@@ -5,6 +5,7 @@
 use bevy::{
     asset::{AssetServerSettings, AssetStage},
     ecs::bundle::Bundle,
+    log::LogSettings,
     prelude::*,
 };
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
@@ -145,6 +146,12 @@ fn main() {
     let engine_config = EngineConfig::from_args();
 
     let mut app = App::new();
+
+    // Configure log level
+    app.insert_resource(LogSettings {
+        filter: engine_config.log_level.clone(),
+        ..default()
+    });
 
     // Configure asset server
     let mut asset_server_settings = AssetServerSettings {

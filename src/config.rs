@@ -18,4 +18,11 @@ pub struct EngineConfig {
     /// Skip the menu and automatically start the game
     #[structopt(short = "s", long)]
     pub auto_start: bool,
+
+    /// Set the log level
+    /// 
+    /// May additionally specify log levels for specific modules as a comma-separated list of
+    /// `module=level` items.
+    #[structopt(short = "l", long, default_value = "info,wgpu=error,bevy_fluent=warn")]
+    pub log_level: String,
 }
