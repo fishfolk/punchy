@@ -60,7 +60,7 @@ pub fn player_controller(
             &mut State,
             &Stats,
             &mut Transform,
-            Option<&mut Facing>,
+            &mut Facing,
             &ActionState<PlayerAction>,
         ),
         With<Player>,
@@ -138,7 +138,7 @@ pub fn player_controller(
         }
     }
 
-    for ((mut state, _, mut transform, facing_option, _), dir) in
+    for ((mut state, _, mut transform, mut facing, _), dir) in
         query.iter_mut().zip(player_dirs.iter())
     {
         if let Some(dir) = dir {
@@ -146,12 +146,10 @@ pub fn player_controller(
             transform.translation.y += dir.y;
 
             //Set the player state and direction
-            if let Some(mut facing) = facing_option {
-                if dir.x < 0. {
-                    facing.set(Facing::Left);
-                } else if dir.x > 0. {
-                    facing.set(Facing::Right);
-                }
+            if dir.x < 0. {
+                facing.set(Facing::Left);
+            } else if dir.x > 0. {
+                facing.set(Facing::Right);
             }
 
             if dir == &Vec2::ZERO {
