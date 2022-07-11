@@ -332,14 +332,7 @@ fn load_level(
 
         // Spawn the enemies
         for enemy in &level.enemies {
-            let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
-            let enemy_pos = enemy.location + ground_offset;
-            commands
-                .spawn_bundle(TransformBundle::from_transform(
-                    Transform::from_translation(enemy_pos),
-                ))
-                .insert(enemy.fighter_handle.clone())
-                .insert_bundle(EnemyBundle::default());
+            commands.spawn_bundle(EnemyBundle::new(&enemy));
         }
 
         commands.insert_resource(level.clone());
