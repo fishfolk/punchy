@@ -109,22 +109,12 @@ impl<'w, 's> GameLoader<'w, 's> {
                 .insert(ParallaxCameraComponent)
                 // Insert insert manager bundle for `CameraAction`s
                 .insert_bundle(InputManagerBundle {
-                    input_map: game
-                        .default_input_maps
-                        .get_camera_map()
-                        // The first gamepad can control the camera
-                        .set_gamepad(Gamepad(0))
-                        .build(),
+                    input_map: game.default_input_maps.get_camera_map().build(),
                     ..default()
                 })
                 // We also add another input manager bundle for `MenuAction`s
                 .insert_bundle(InputManagerBundle {
-                    input_map: game
-                        .default_input_maps
-                        .get_menu_map()
-                        // the first gamepad can control the menu
-                        .set_gamepad(Gamepad(0))
-                        .build(),
+                    input_map: game.default_input_maps.get_menu_map().build(),
                     ..default()
                 });
 

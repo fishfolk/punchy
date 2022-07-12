@@ -2222,8 +2222,8 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "leafwing_input_manager"
-version = "0.4.0"
-source = "git+https://github.com/Leafwing-Studios/leafwing-input-manager.git?rev=c12d7a8#c12d7a8581f549f3baf3b7719d241d7c1600fc31"
+version = "0.5.0"
+source = "git+https://github.com/Leafwing-Studios/leafwing-input-manager.git?rev=e8bd6e0#e8bd6e00886f45cd37c3289cf2a726b514058fda"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -2243,8 +2243,8 @@ dependencies = [
 
 [[package]]
 name = "leafwing_input_manager_macros"
-version = "0.3.0"
-source = "git+https://github.com/Leafwing-Studios/leafwing-input-manager.git?rev=c12d7a8#c12d7a8581f549f3baf3b7719d241d7c1600fc31"
+version = "0.5.0"
+source = "git+https://github.com/Leafwing-Studios/leafwing-input-manager.git?rev=e8bd6e0#e8bd6e00886f45cd37c3289cf2a726b514058fda"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3347,18 +3347,18 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.138"
+version = "1.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1578c6245786b9d168c5447eeacfb96856573ca56c9d68fdcf394be134882a47"
+checksum = "0171ebb889e45aa68b44aee0859b3eede84c6f5f5c228e6f140c0b2a0a46cad6"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.138"
+version = "1.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023e9b1467aef8a10fb88f25611870ada9800ef7e22afce356bb0d2387b6f27c"
+checksum = "dc1d3230c1de7932af58ad8ffbe1d784bd55efd5a9d84ac24f69c72d83543dfb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4025,9 +4025,9 @@ dependencies = [
 
 [[package]]
 name = "weezl"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c97e489d8f836838d497091de568cf16b117486d529ec5579233521065bd5e4"
+checksum = "9193164d4de03a926d909d3bc7c30543cecb35400c02114792c2cae20d5e2dbb"
 
 [[package]]
 name = "wgpu"
