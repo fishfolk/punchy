@@ -3,6 +3,10 @@
 list:
     just --list
 
+check:
+    cargo clippy -- -W clippy::correctness -D warnings
+    cargo fmt --check
+
 build:
     cargo build
 
