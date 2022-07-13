@@ -145,6 +145,11 @@ fn main() {
     let engine_config = EngineConfig::from_args();
 
     let mut app = App::new();
+    app.insert_resource(WindowDescriptor {
+        title: "Fish Fight Punchy".to_string(),
+        scale_factor_override: Some(1.0),
+        ..default()
+    });
 
     // Configure asset server
     let mut asset_server_settings = AssetServerSettings {
@@ -167,11 +172,6 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(engine_config.clone())
         .insert_resource(ClearColor(Color::BLACK))
-        .insert_resource(WindowDescriptor {
-            title: "Fish Fight Punchy".to_string(),
-            scale_factor_override: Some(1.0),
-            ..Default::default()
-        })
         .add_stage_after(
             CoreStage::Update,
             GameStage::Animation,
