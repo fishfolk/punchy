@@ -8,6 +8,7 @@ use bevy::{
     log::LogSettings,
     prelude::*,
 };
+use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use enemy::*;
@@ -28,6 +29,7 @@ use bevy::log::LogPlugin;
 mod animation;
 mod assets;
 mod attack;
+mod audio;
 mod camera;
 mod collisions;
 mod config;
@@ -47,6 +49,7 @@ mod y_sort;
 
 use animation::*;
 use attack::{enemy_attack, AttackPlugin};
+use audio::*;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
@@ -202,12 +205,16 @@ fn main() {
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
+        .add_plugin(AudioPlugin)
         .add_plugin(StatePlugin)
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
+        .add_audio_channel::<MusicChannel>()
+        .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
         .insert_resource(LeftMovementBoundary::default())
         .add_system(platform::load_storage.run_in_state(GameState::LoadingStorage))
+        .add_startup_system(set_audio_channels_volume)
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
