@@ -12,18 +12,18 @@ build:
 
 build-release:
     cargo build --release
-    strip target/release/littlefighter2
+    strip target/release/punchy
 
 build-web:
     cargo build --target wasm32-unknown-unknown
-    wasm-bindgen --out-dir target/wasm --target web target/wasm32-unknown-unknown/debug/littlefighter2.wasm
+    wasm-bindgen --out-dir target/wasm --target web target/wasm32-unknown-unknown/debug/punchy.wasm
     cat wasm_resources/index.html | sed "s/\$BASEPATH//g" > target/wasm/index.html
     mkdir -p target/wasm
     cp -r assets target/wasm/
 
 build-release-web basepath='':
     cargo build --target wasm32-unknown-unknown --release
-    wasm-bindgen --out-dir target/wasm-dist --no-typescript --target web target/wasm32-unknown-unknown/release/littlefighter2.wasm
+    wasm-bindgen --out-dir target/wasm-dist --no-typescript --target web target/wasm32-unknown-unknown/release/punchy.wasm
     cat wasm_resources/index.html | sed "s/\$BASEPATH/$(printf {{basepath}} | sed 's/\//\\\//g')/g" > target/wasm-dist/index.html
     cp -r assets target/wasm-dist/
 
