@@ -197,6 +197,11 @@ impl AssetLoader for FighterLoader {
             let portrait_handle = load_context.get_handle(portrait_path.clone());
             meta.hud.portrait.image_handle = portrait_handle;
 
+            for (state, audio_file) in &meta.audio.effects {
+                let (_, effect_handle) = get_relative_asset(load_context, self_path, audio_file);
+                meta.audio.effect_handles.insert(*state, effect_handle);
+            }
+
             let texture_path = relative_asset_path(self_path, &meta.spritesheet.image);
             let texture_path = AssetPath::new(texture_path, None);
             let texture_handle = load_context.get_handle(texture_path.clone());

@@ -6,6 +6,7 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_egui::egui;
+use bevy_kira_audio::AudioSource;
 use bevy_parallax::{LayerData, ParallaxResource};
 use leafwing_input_manager::{prelude::InputMap, user_input::UserInput, Actionlike};
 use serde::Deserialize;
@@ -121,6 +122,7 @@ pub struct FighterMeta {
     pub stats: Stats,
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
+    pub audio: AudioMeta,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -140,6 +142,14 @@ pub struct FighterSpritesheetMeta {
     pub rows: usize,
     pub animation_fps: f32,
     pub animations: HashMap<State, Clip>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AudioMeta {
+    pub effects: HashMap<State, String>,
+    #[serde(skip)]
+    pub effect_handles: HashMap<State, Handle<AudioSource>>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
