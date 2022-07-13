@@ -2308,33 +2308,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
-name = "littlefighter2"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bevy",
- "bevy-inspector-egui",
- "bevy-inspector-egui-rapier",
- "bevy-parallax",
- "bevy_egui",
- "bevy_fluent",
- "bevy_mod_debugdump",
- "bevy_rapier2d",
- "fluent",
- "getrandom",
- "iyes_loopless",
- "leafwing_input_manager",
- "rand",
- "serde",
- "serde_yaml",
- "structopt",
- "sys-locale",
- "thiserror",
- "unic-langid",
- "web-sys",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3107,6 +3080,33 @@ name = "profiling"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f61dcf0b917cd75d4521d7343d1ffff3d1583054133c9b5cbea3375c703c40d"
+
+[[package]]
+name = "punchy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "bevy-inspector-egui",
+ "bevy-inspector-egui-rapier",
+ "bevy-parallax",
+ "bevy_egui",
+ "bevy_fluent",
+ "bevy_mod_debugdump",
+ "bevy_rapier2d",
+ "fluent",
+ "getrandom",
+ "iyes_loopless",
+ "leafwing_input_manager",
+ "rand",
+ "serde",
+ "serde_yaml",
+ "structopt",
+ "sys-locale",
+ "thiserror",
+ "unic-langid",
+ "web-sys",
+]
 
 [[package]]
 name = "quote"
