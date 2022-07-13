@@ -46,6 +46,7 @@ debug = false
 opt-level = 1
 
 [profile.release]
+strip = true
 lto = true
 codegen-units = 1 # Improves physics performance for release builds
 

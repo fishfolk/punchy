@@ -12,7 +12,6 @@ build:
 
 build-release:
     cargo build --release
-    strip target/release/punchy
 
 build-web:
     cargo build --target wasm32-unknown-unknown
