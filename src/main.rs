@@ -327,12 +327,12 @@ fn load_level(
 
         // Spawn the players
         for (i, player) in level.players.iter().enumerate() {
-            commands.spawn_bundle(PlayerBundle::new(&player, i, &*game));
+            commands.spawn_bundle(PlayerBundle::new(player, i, &game));
         }
 
         // Spawn the enemies
         for enemy in &level.enemies {
-            commands.spawn_bundle(EnemyBundle::new(&enemy));
+            commands.spawn_bundle(EnemyBundle::new(enemy));
         }
 
         commands.insert_resource(level.clone());
