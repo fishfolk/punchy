@@ -35,3 +35,7 @@ spritesheet:
       repeat: false
     attacking:
       frames: [16, 23]
+
+audio:
+  effects:
+    attacking: hit.ogg

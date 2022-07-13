@@ -35,3 +35,6 @@ spritesheet:
       repeat: false
     attacking:
       frames: [16, 20]
+
+audio:
+  effects: {}
