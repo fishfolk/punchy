@@ -90,6 +90,7 @@ enum GameStage {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GameState {
+    LoadingStorage,
     LoadingGame,
     MainMenu,
     LoadingLevel,
@@ -192,7 +193,7 @@ fn main() {
         )
         .add_event::<ArrivedEvent>()
         .add_event::<ThrowItemEvent>()
-        .add_loopless_state(GameState::LoadingGame)
+        .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
@@ -206,6 +207,7 @@ fn main() {
         .add_plugin(UIPlugin)
         .insert_resource(ParallaxResource::default())
         .insert_resource(LeftMovementBoundary::default())
+        .add_system(platform::load_storage.run_in_state(GameState::LoadingStorage))
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
