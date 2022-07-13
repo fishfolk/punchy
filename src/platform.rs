@@ -250,6 +250,7 @@ impl Storage {
 pub struct SaveTask(Receiver<()>);
 
 impl SaveTask {
+    /// Get whether or not saving has been completed.
     pub fn is_complete(&mut self) -> bool {
         !self.0.is_empty()
     }
