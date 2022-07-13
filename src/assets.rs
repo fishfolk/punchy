@@ -40,7 +40,7 @@ fn relative_asset_path(asset_path: &Path, relative_path: &str) -> PathBuf {
 
 /// Helper to get relative asset paths and handles
 fn get_relative_asset<T: Asset>(
-    load_context: &mut bevy::asset::LoadContext,
+    load_context: &bevy::asset::LoadContext,
     self_path: &Path,
     relative_path: &str,
 ) -> (AssetPath<'static>, Handle<T>) {
