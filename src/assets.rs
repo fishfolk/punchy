@@ -191,14 +191,18 @@ impl AssetLoader for FighterLoader {
             trace!(?meta, "Loaded fighter asset");
 
             let self_path = load_context.path();
+            let mut dependencies = Vec::new();
 
             let portrait_path = relative_asset_path(self_path, &meta.hud.portrait.image);
             let portrait_path = AssetPath::new(portrait_path, None);
             let portrait_handle = load_context.get_handle(portrait_path.clone());
+            dependencies.push(portrait_path);
             meta.hud.portrait.image_handle = portrait_handle;
 
             for (state, audio_file) in &meta.audio.effects {
-                let (_, effect_handle) = get_relative_asset(load_context, self_path, audio_file);
+                let (asset_path, effect_handle) =
+                    get_relative_asset(load_context, self_path, audio_file);
+                dependencies.push(asset_path);
                 meta.audio.effect_handles.insert(*state, effect_handle);
             }
 
@@ -217,7 +221,7 @@ impl AssetLoader for FighterLoader {
             );
             meta.spritesheet.atlas_handle = atlas_handle;
 
-            load_context.set_default_asset(LoadedAsset::new(meta).with_dependency(portrait_path));
+            load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
         })
