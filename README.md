@@ -36,6 +36,8 @@ Before committing and opening a PR, please run the following commands and follow
 1. `cargo clippy -- -W clippy::correctness -D warnings`
 2. `cargo fmt`
 
+Or if you install [`just`](https://github.com/casey/just) you can simply run `just check`.
+
 ## MVP Spec
 
 ![861A6300-5FFD-4DDC-B4BF-0E8514F4B87C](https://user-images.githubusercontent.com/583842/161247148-0bc07089-1409-48ca-9cc8-ee1a1edddb9e.png)
