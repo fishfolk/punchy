@@ -1,0 +1,28 @@
+name: Build caches
+
+on:
+  push:
+    branches:
+      - master
+jobs:
+  # Watch out! Clippy (cache) data is shared with build data, but it's not the same.
+  # In order to cache build, add a separate job (or extend this).
+  build_clippy_cache:
+    name: Build Clippy cache
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install dev packages
+      run: sudo apt install libasound2-dev libudev-dev
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - uses: actions-rs/cargo@v1
+      with:
+        command: clippy
