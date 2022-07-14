@@ -500,26 +500,39 @@ fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
 }
 
 fn player_flop(
+    mut commands: Commands,
     mut query: Query<
         (
+            Entity,
             &mut State,
             &mut Transform,
             &Animation,
             &Facing,
             &ActionState<PlayerAction>,
+            &Handle<FighterMeta>,
         ),
         With<Player>,
     >,
+    fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
     mut start_y: Local<Option<f32>>,
 ) {
-    for (mut state, mut transform, animation, facing, input) in query.iter_mut() {
+    for (entity, mut state, mut transform, animation, facing, input, fighter_meta) in
+        query.iter_mut()
+    {
         if *state != State::Attacking {
             if *state != State::Idle && *state != State::Running {
                 return;
             }
             if input.just_pressed(PlayerAction::FlopAttack) {
                 state.set(State::Attacking);
+
+                if let Some(fighter) = fighter_assets.get(fighter_meta) {
+                    if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+                        let fx_playback = FighterStateEffectsPlayback::new(*state, effects.clone());
+                        commands.entity(entity).insert(fx_playback);
+                    }
+                }
             }
         // } else if animation.is_finished() {
         // state.set(State::Idle);
