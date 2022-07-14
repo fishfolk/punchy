@@ -85,6 +85,9 @@ impl InputMapsMeta {
 pub struct MainMenuMeta {
     pub title_font: FontMeta,
     pub background_image: ImageMeta,
+    pub music: String,
+    #[serde(skip)]
+    pub music_handle: Handle<AudioSource>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

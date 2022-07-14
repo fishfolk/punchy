@@ -4,7 +4,7 @@
 use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::{AudioChannel, AudioSource};
 
-use crate::{animation::Animation, state::State};
+use crate::{animation::Animation, metadata::GameMeta, state::State};
 
 /// For readability.
 const IMPOSSIBLE_ANIMATION_I: usize = usize::MAX;
@@ -69,4 +69,21 @@ pub fn fighter_sound_effect(
             }
         }
     }
+}
+
+// For currently unclear reasons, this system runs twice even if it's added via
+// `add_enter_system(GameState::MainMenu`, so we need to track the playback state.
+pub fn play_menu_music(
+    mut playing: Local<bool>,
+    game_meta: Res<GameMeta>,
+    music_channel: Res<AudioChannel<MusicChannel>>,
+) {
+    if !*playing {
+        music_channel.play(game_meta.main_menu.music_handle.clone());
+        *playing = true;
+    }
+}
+
+pub fn stop_menu_music(music_channel: Res<AudioChannel<MusicChannel>>) {
+    music_channel.stop();
 }

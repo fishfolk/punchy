@@ -9,6 +9,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     assets::EguiFont,
+    audio::*,
     config::EngineConfig,
     input::MenuAction,
     metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
@@ -41,6 +42,7 @@ impl Plugin for UIPlugin {
                 ConditionSet::new()
                     .run_in_state(GameState::MainMenu)
                     .with_system(main_menu)
+                    .with_system(play_menu_music)
                     .into(),
             );
     }

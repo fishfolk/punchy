@@ -14,6 +14,8 @@ main_menu:
     image: ui/main-menu-background.png
     image_size: [1919, 1027]
 
+  music: ui/Fishycuffs [title screen].ogg
+
 default_input_maps:
   players:
     # Player 1

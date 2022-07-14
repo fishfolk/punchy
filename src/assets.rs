@@ -95,7 +95,14 @@ impl AssetLoader for GameMetaLoader {
             );
             meta.main_menu.background_image.image_handle = main_menu_background;
 
+            // Load the music
+
+            let (music_path, music_handle) =
+                get_relative_asset(load_context, &self_path, &meta.main_menu.music);
+            meta.main_menu.music_handle = music_handle;
+
             // Load UI fonts
+
             let mut font_paths = Vec::new();
             for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =
@@ -112,7 +119,8 @@ impl AssetLoader for GameMetaLoader {
                 LoadedAsset::new(meta)
                     .with_dependencies(vec![start_level_path, main_menu_background_path])
                     .with_dependencies(locale_paths)
-                    .with_dependencies(font_paths),
+                    .with_dependencies(font_paths)
+                    .with_dependencies(vec![music_path]),
             );
 
             Ok(())

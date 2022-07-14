@@ -215,6 +215,8 @@ fn main() {
         .insert_resource(LeftMovementBoundary::default())
         .add_system(platform::load_storage.run_in_state(GameState::LoadingStorage))
         .add_startup_system(set_audio_channels_volume)
+        .add_enter_system(GameState::MainMenu, play_menu_music)
+        .add_exit_system(GameState::MainMenu, stop_menu_music)
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
