@@ -5,6 +5,7 @@
 use bevy::{
     asset::{AssetServerSettings, AssetStage},
     ecs::bundle::Bundle,
+    log::LogSettings,
     prelude::*,
 };
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
@@ -15,7 +16,6 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use player::*;
 use rand::{seq::SliceRandom, Rng};
-use structopt::StructOpt;
 
 #[cfg(feature = "debug")]
 use bevy_inspector_egui::{RegisterInspectable, WorldInspectorPlugin};
@@ -142,12 +142,25 @@ impl Default for PhysicsBundle {
 pub struct ArrivedEvent(Entity);
 
 fn main() {
-    let engine_config = EngineConfig::from_args();
+    #[cfg(not(target_arch = "wasm32"))]
+    let engine_config = {
+        use structopt::StructOpt;
+        EngineConfig::from_args()
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let engine_config = EngineConfig::from_web_params();
 
     let mut app = App::new();
     app.insert_resource(WindowDescriptor {
         title: "Fish Fight Punchy".to_string(),
         scale_factor_override: Some(1.0),
+        ..default()
+    });
+
+    // Configure log level
+    app.insert_resource(LogSettings {
+        filter: engine_config.log_level.clone(),
         ..default()
     });
 
