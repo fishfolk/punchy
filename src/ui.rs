@@ -29,7 +29,7 @@ impl Plugin for UIPlugin {
             .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
             .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
-            .add_system(update_egui_fonts.run_if_resource_exists::<GameMeta>())
+            .add_system(update_egui_fonts)
             .add_system(update_ui_scale.run_if_resource_exists::<GameMeta>())
             .add_system_set(
                 ConditionSet::new()
@@ -100,21 +100,30 @@ fn handle_menu_input(
 /// Watches for asset events for [`EguiFont`] assets and updates the corresponding fonts from the
 /// [`GameMeta`], inserting the font data into the egui context.
 fn update_egui_fonts(
-    mut egui_font_definitions: ResMut<egui::FontDefinitions>,
+    mut font_queue: Local<Vec<Handle<EguiFont>>>,
     mut egui_ctx: ResMut<EguiContext>,
-    game: Res<GameMeta>,
+    egui_font_definitions: Option<ResMut<egui::FontDefinitions>>,
+    game: Option<Res<GameMeta>>,
     mut events: EventReader<AssetEvent<EguiFont>>,
     assets: Res<Assets<EguiFont>>,
 ) {
+    // Add any newly updated/created fonts to the queue
     for event in events.iter() {
         if let AssetEvent::Created { handle } | AssetEvent::Modified { handle } = event {
+            font_queue.push(handle.clone_weak());
+        }
+    }
+
+    // Update queued fonts if the game is ready
+    if let Some((game, mut egui_font_definitions)) = game.zip(egui_font_definitions) {
+        for handle in font_queue.drain(..) {
             // Get the game font name associated to this handle
             let name = game
                 .ui_theme
                 .font_handles
                 .iter()
                 .find_map(|(font_name, font_handle)| {
-                    if font_handle == handle {
+                    if font_handle == &handle {
                         Some(font_name.clone())
                     } else {
                         None

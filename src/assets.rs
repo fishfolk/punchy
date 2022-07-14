@@ -238,7 +238,7 @@ impl AssetLoader for EguiFontLoader {
         Box::pin(async move {
             let path = load_context.path();
             let data = egui::FontData::from_owned(bytes.to_vec());
-            debug!(?path, "Loaded font asset");
+            trace!(?path, "Loaded font asset");
 
             load_context.set_default_asset(LoadedAsset::new(EguiFont(data)));
 
