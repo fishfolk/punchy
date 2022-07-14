@@ -4,7 +4,11 @@
 use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::{AudioChannel, AudioSource};
 
-use crate::{animation::Animation, metadata::GameMeta, state::State};
+use crate::{
+    animation::Animation,
+    metadata::{GameMeta, LevelMeta},
+    state::State,
+};
 
 /// For readability.
 const IMPOSSIBLE_ANIMATION_I: usize = usize::MAX;
@@ -85,5 +89,19 @@ pub fn play_menu_music(
 }
 
 pub fn stop_menu_music(music_channel: Res<AudioChannel<MusicChannel>>) {
+    music_channel.stop();
+}
+
+pub fn play_level_music(
+    level_handle: Res<Handle<LevelMeta>>,
+    assets: Res<Assets<LevelMeta>>,
+    music_channel: Res<AudioChannel<MusicChannel>>,
+) {
+    if let Some(level) = assets.get(level_handle.clone_weak()) {
+        music_channel.play(level.music_handle.clone());
+    }
+}
+
+pub fn stop_level_music(music_channel: Res<AudioChannel<MusicChannel>>) {
     music_channel.stop();
 }

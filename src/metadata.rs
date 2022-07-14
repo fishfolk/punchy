@@ -108,6 +108,9 @@ pub struct LevelMeta {
     pub players: Vec<FighterSpawnMeta>,
     #[serde(default)]
     pub enemies: Vec<FighterSpawnMeta>,
+    pub music: String,
+    #[serde(skip)]
+    pub music_handle: Handle<AudioSource>,
 }
 
 impl LevelMeta {

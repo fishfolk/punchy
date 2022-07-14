@@ -176,6 +176,13 @@ impl AssetLoader for LevelMetaLoader {
                 enemy.fighter_handle = enemy_fighter_handle;
             }
 
+            // Load the music
+
+            let (music_path, music_handle) =
+                get_relative_asset(load_context, self_path, &meta.music);
+            meta.music_handle = music_handle;
+            dependencies.push(music_path);
+
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
