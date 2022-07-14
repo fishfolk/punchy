@@ -11,14 +11,13 @@ use bevy::{
     sprite::SpriteBundle,
     transform::TransformBundle,
 };
-use bevy_kira_audio::AudioChannel;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::Facing,
-    audio::EffectsChannel,
+    audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
     consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
     input::PlayerAction,
@@ -98,14 +97,13 @@ fn player_attack(
 }
 
 pub fn enemy_attack(
-    mut query: Query<(&mut State, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
+    mut query: Query<(Entity, &mut State, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
     fighter_assets: Res<Assets<FighterMeta>>,
-    effects_channel: Res<AudioChannel<EffectsChannel>>,
 ) {
     for event in event_reader.iter() {
-        if let Ok((mut state, fighter_handle)) = query.get_mut(event.0) {
+        if let Ok((entity, mut state, fighter_handle)) = query.get_mut(event.0) {
             if *state != State::Attacking {
                 if rand::random() && *state != State::Waiting {
                     state.set(State::Waiting);
@@ -133,8 +131,10 @@ pub fn enemy_attack(
                     commands.entity(event.0).push_children(&[attack_entity]);
 
                     if let Some(fighter) = fighter_assets.get(fighter_handle) {
-                        if let Some(effect_handle) = fighter.audio.effect_handles.get(&state) {
-                            effects_channel.play(effect_handle.clone());
+                        if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+                            let fx_playback =
+                                FighterStateEffectsPlayback::new(*state, effects.clone());
+                            commands.entity(entity).insert(fx_playback);
                         }
                     }
                 }

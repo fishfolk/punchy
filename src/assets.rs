@@ -5,6 +5,7 @@ use bevy::{
     prelude::AddAsset,
     prelude::*,
     reflect::TypeUuid,
+    utils::HashMap,
 };
 use bevy_egui::egui;
 
@@ -199,11 +200,21 @@ impl AssetLoader for FighterLoader {
             dependencies.push(portrait_path);
             meta.hud.portrait.image_handle = portrait_handle;
 
-            for (state, audio_file) in &meta.audio.effects {
-                let (asset_path, effect_handle) =
-                    get_relative_asset(load_context, self_path, audio_file);
-                dependencies.push(asset_path);
-                meta.audio.effect_handles.insert(*state, effect_handle);
+            for (state, frame_audio_files) in &meta.audio.effects {
+                for (animation_i, audio_file) in frame_audio_files {
+                    let (asset_path, effect_handle) =
+                        get_relative_asset(load_context, self_path, audio_file);
+
+                    dependencies.push(asset_path);
+
+                    let frame_audio_handles = meta
+                        .audio
+                        .effect_handles
+                        .entry(*state)
+                        .or_insert_with(HashMap::new);
+
+                    frame_audio_handles.insert(*animation_i, effect_handle);
+                }
             }
 
             let texture_path = relative_asset_path(self_path, &meta.spritesheet.image);

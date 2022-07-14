@@ -264,6 +264,7 @@ fn main() {
                 .with_system(rotate_system)
                 .with_system(camera_follow_player)
                 .with_system(update_left_movement_boundary)
+                .with_system(fighter_sound_effect)
                 .into(),
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);

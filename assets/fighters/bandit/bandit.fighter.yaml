@@ -38,4 +38,5 @@ spritesheet:
 
 audio:
   effects:
-    attacking: hit.ogg
+    attacking:
+      16: hit.ogg

@@ -147,9 +147,9 @@ pub struct FighterSpritesheetMeta {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct AudioMeta {
-    pub effects: HashMap<State, String>,
+    pub effects: HashMap<State, HashMap<usize, String>>,
     #[serde(skip)]
-    pub effect_handles: HashMap<State, Handle<AudioSource>>,
+    pub effect_handles: HashMap<State, HashMap<usize, Handle<AudioSource>>>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
