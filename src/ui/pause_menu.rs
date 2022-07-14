@@ -8,7 +8,10 @@ use crate::{
     GameState,
 };
 
-use super::widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame, EguiUIExt};
+use super::{
+    widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame, EguiUIExt},
+    EguiUiExt,
+};
 
 pub fn pause_menu(
     mut commands: Commands,
@@ -85,6 +88,7 @@ pub fn pause_menu(
 
                             // Show the main menu
                             commands.insert_resource(NextState(GameState::MainMenu));
+                            ui.clear_focus();
                         }
                     });
                 })

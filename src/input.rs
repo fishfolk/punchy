@@ -23,8 +23,9 @@ pub enum CameraAction {
 #[derive(Debug, Copy, Clone, Actionlike, Deserialize, Eq, PartialEq, Hash)]
 pub enum MenuAction {
     Confirm,
-    Forward,
-    Backward,
+    Back,
+    Next,
+    Previous,
     Pause,
     ToggleFullscreen,
 }

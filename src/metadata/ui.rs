@@ -21,6 +21,7 @@ pub struct UIThemeMeta {
 pub enum FontStyle {
     Heading,
     Normal,
+    Bigger,
 }
 
 impl TryFrom<String> for FontStyle {
@@ -30,6 +31,7 @@ impl TryFrom<String> for FontStyle {
         use FontStyle::*;
         Ok(match value.as_str() {
             "heading" => Heading,
+            "bigger" => Bigger,
             "normal" => Normal,
             _ => {
                 return Err("Invalid font style");
@@ -77,7 +79,6 @@ impl FontMeta {
 #[serde(deny_unknown_fields)]
 #[serde(try_from = "String")]
 pub enum ButtonStyle {
-    Jumbo,
     Normal,
 }
 
@@ -87,10 +88,9 @@ impl TryFrom<String> for ButtonStyle {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         use ButtonStyle::*;
         Ok(match value.as_str() {
-            "jumbo" => Jumbo,
             "normal" => Normal,
             _ => {
-                return Err("Invalid font style");
+                return Err("Invalid button style");
             }
         })
     }

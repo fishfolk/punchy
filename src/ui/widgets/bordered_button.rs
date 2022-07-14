@@ -43,7 +43,7 @@ impl<'a> BorderedButton<'a> {
     pub fn themed(
         ui_theme: &'a UIThemeMeta,
         button_style: &'a ButtonStyle,
-        label: &'a str,
+        label: impl Into<RichText>,
     ) -> BorderedButton<'a> {
         let style = ui_theme
             .button_styles
@@ -51,7 +51,8 @@ impl<'a> BorderedButton<'a> {
             .expect("Missing button theme");
 
         BorderedButton::new(
-            egui::RichText::new(label)
+            label
+                .into()
                 .font(style.font.font_id())
                 .color(style.font.color),
         )

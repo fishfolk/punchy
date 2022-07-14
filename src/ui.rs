@@ -33,9 +33,27 @@ impl Plugin for UIPlugin {
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::MainMenu)
-                    .with_system(main_menu::main_menu_ui)
+                    .with_system(main_menu::main_menu_system)
                     .into(),
             );
+    }
+}
+
+/// Extension trait with helpers the egui context and UI types
+pub trait EguiUiExt {
+    /// Clear the UI focus
+    fn clear_focus(self);
+}
+
+impl EguiUiExt for &egui::Context {
+    fn clear_focus(self) {
+        self.memory().request_focus(egui::Id::null());
+    }
+}
+
+impl EguiUiExt for &mut egui::Ui {
+    fn clear_focus(self) {
+        self.ctx().clear_focus();
     }
 }
 
@@ -73,7 +91,7 @@ fn handle_menu_input(
         });
     }
 
-    if input.just_pressed(MenuAction::Forward) {
+    if input.just_pressed(MenuAction::Next) {
         events.push(egui::Event::Key {
             key: egui::Key::Tab,
             pressed: true,
@@ -81,7 +99,7 @@ fn handle_menu_input(
         });
     }
 
-    if input.just_pressed(MenuAction::Backward) {
+    if input.just_pressed(MenuAction::Previous) {
         events.push(egui::Event::Key {
             key: egui::Key::Tab,
             pressed: true,

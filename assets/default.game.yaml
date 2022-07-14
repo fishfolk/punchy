@@ -8,7 +8,7 @@ main_menu:
   title_font:
     family: ark
     color: [0, 0, 0]
-    size: 55
+    size: 40
 
   background_image:
     image: ui/main-menu-background.png
@@ -137,7 +137,14 @@ default_input_maps:
           GamepadButton: South
       - Single:
           GamepadButton: Start
-    Forward:
+
+    Back:
+      - Single:
+          Keyboard: Escape
+      - Single:
+          GamepadButton: East
+        
+    Next:
       - Single:
           Keyboard: Down
       - Single:
@@ -158,7 +165,7 @@ default_input_maps:
             axis: LeftStickX
             negative_low: -1.0
             positive_low: 0.5
-    Backward:
+    Previous:
       - Single:
           Keyboard: Left
       - Single:
@@ -198,6 +205,14 @@ ui_theme:
     heading:
       family: ark
       size: 30
+      color: [0, 0, 0]
+    bigger:
+      family: ark
+      size: 20
+      color: [0, 0, 0]
+    normal:
+      family: ark
+      size: 15
       color: [0, 0, 0]
 
   hud:
@@ -247,48 +262,9 @@ ui_theme:
         bottom: 11
         left: 11
         right: 11
-      scale: 4.0
+      scale: 3.0
 
   button_styles:
-    jumbo:
-      font:
-        family: ark
-        color: [255, 255, 255]
-        size: 30
-      padding:
-        top: 12
-        left: 12
-        right: 12
-        bottom: 16
-      borders:
-        default:
-          image: ui/green-button.png
-          image_size: [14, 14]
-          border_size:
-            top: 5
-            bottom: 5
-            right: 5
-            left: 5
-          scale: 3
-        focused:
-          image: ui/green-button-focused.png
-          image_size: [14, 14]
-          border_size:
-            top: 5
-            bottom: 5
-            right: 5
-            left: 5
-          scale: 3
-        clicked:
-          image: ui/green-button-down.png
-          image_size: [14, 14]
-          border_size:
-            top: 5
-            bottom: 5
-            right: 5
-            left: 5
-          scale: 3
-
     normal:
       font:
         family: ark
