@@ -178,20 +178,9 @@ impl<'w, 's> GameLoader<'w, 's> {
 
 fn menu_input_map() -> InputMap<MenuAction> {
     InputMap::default()
-        // Previous
-        .insert(KeyCode::Up, MenuAction::Previous)
-        .insert(KeyCode::Left, MenuAction::Previous)
-        .insert(GamepadButtonType::DPadLeft, MenuAction::Previous)
-        .insert(GamepadButtonType::DPadUp, MenuAction::Previous)
-        .insert(
-            SingleAxis {
-                axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickX),
-                positive_low: 1.0,
-                negative_low: -0.5,
-                value: None,
-            },
-            MenuAction::Previous,
-        )
+        // Up
+        .insert(KeyCode::Up, MenuAction::Up)
+        .insert(GamepadButtonType::DPadUp, MenuAction::Up)
         .insert(
             SingleAxis {
                 axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickY),
@@ -199,22 +188,23 @@ fn menu_input_map() -> InputMap<MenuAction> {
                 negative_low: -1.0,
                 value: None,
             },
-            MenuAction::Previous,
+            MenuAction::Up,
         )
-        // Next
-        .insert(KeyCode::Down, MenuAction::Next)
-        .insert(KeyCode::Right, MenuAction::Next)
-        .insert(GamepadButtonType::DPadRight, MenuAction::Next)
-        .insert(GamepadButtonType::DPadDown, MenuAction::Next)
+        // Left
+        .insert(KeyCode::Left, MenuAction::Left)
+        .insert(GamepadButtonType::DPadLeft, MenuAction::Left)
         .insert(
             SingleAxis {
                 axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickX),
-                positive_low: 0.5,
-                negative_low: -1.0,
+                positive_low: 1.0,
+                negative_low: -0.5,
                 value: None,
             },
-            MenuAction::Next,
+            MenuAction::Left,
         )
+        // Down
+        .insert(KeyCode::Down, MenuAction::Down)
+        .insert(GamepadButtonType::DPadDown, MenuAction::Down)
         .insert(
             SingleAxis {
                 axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickY),
@@ -222,7 +212,19 @@ fn menu_input_map() -> InputMap<MenuAction> {
                 negative_low: -0.5,
                 value: None,
             },
-            MenuAction::Next,
+            MenuAction::Down,
+        )
+        // Right
+        .insert(KeyCode::Right, MenuAction::Right)
+        .insert(GamepadButtonType::DPadRight, MenuAction::Right)
+        .insert(
+            SingleAxis {
+                axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickX),
+                positive_low: 0.5,
+                negative_low: -1.0,
+                value: None,
+            },
+            MenuAction::Right,
         )
         // Confirm
         .insert(KeyCode::Return, MenuAction::Confirm)

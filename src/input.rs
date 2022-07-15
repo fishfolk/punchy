@@ -12,10 +12,12 @@ pub enum PlayerAction {
 
 #[derive(Debug, Copy, Clone, Actionlike, Deserialize, Eq, PartialEq, Hash)]
 pub enum MenuAction {
+    Up,
+    Down,
+    Left,
+    Right,
     Confirm,
     Back,
-    Next,
-    Previous,
     Pause,
     ToggleFullscreen,
 }

@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame, EguiUIExt},
-    EguiUiExt,
+    EguiContextExt,
 };
 
 pub fn pause_menu(
@@ -88,7 +88,7 @@ pub fn pause_menu(
 
                             // Show the main menu
                             commands.insert_resource(NextState(GameState::MainMenu));
-                            ui.clear_focus();
+                            ui.ctx().clear_focus();
                         }
                     });
                 })

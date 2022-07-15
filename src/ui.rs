@@ -11,11 +11,15 @@ pub mod widgets;
 pub mod main_menu;
 pub mod pause_menu;
 
+pub mod extensions;
+pub use extensions::*;
+
 pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(EguiPlugin)
+        app.init_resource::<WidgetAdjacencies>()
+            .add_plugin(EguiPlugin)
             .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
             .add_enter_system(GameState::MainMenu, main_menu::spawn_main_menu_background)
             .add_enter_system(GameState::MainMenu, play_menu_music)
@@ -39,21 +43,75 @@ impl Plugin for UIPlugin {
     }
 }
 
-/// Extension trait with helpers the egui context and UI types
-pub trait EguiUiExt {
-    /// Clear the UI focus
-    fn clear_focus(self);
-}
+/// Resource that store which ui widgets are adjacent to which other widgets.
+///
+/// This is used to figure out which widget to focus on next when you press a direction on the
+/// gamepad, for instance.
+#[derive(Debug, Clone, Default)]
+pub struct WidgetAdjacencies(HashMap<egui::Id, WidgetAdjacency>);
 
-impl EguiUiExt for &egui::Context {
-    fn clear_focus(self) {
-        self.memory().request_focus(egui::Id::null());
+impl std::ops::Deref for WidgetAdjacencies {
+    type Target = HashMap<egui::Id, WidgetAdjacency>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for WidgetAdjacencies {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
-impl EguiUiExt for &mut egui::Ui {
-    fn clear_focus(self) {
-        self.ctx().clear_focus();
+/// The list of widgets in each direction from another widget
+#[derive(Debug, Clone, Default)]
+pub struct WidgetAdjacency {
+    pub up: Option<egui::Id>,
+    pub down: Option<egui::Id>,
+    pub left: Option<egui::Id>,
+    pub right: Option<egui::Id>,
+}
+
+impl WidgetAdjacencies {
+    pub fn widget(&mut self, resp: &egui::Response) -> WidgetAdjacencyEntry {
+        WidgetAdjacencyEntry {
+            id: resp.id,
+            adjacencies: self,
+        }
+    }
+}
+
+pub struct WidgetAdjacencyEntry<'a> {
+    id: egui::Id,
+    adjacencies: &'a mut WidgetAdjacencies,
+}
+
+#[allow(dead_code)] // We haven't used all these helpers yet
+#[allow(clippy::wrong_self_convention)]
+impl<'a> WidgetAdjacencyEntry<'a> {
+    pub fn to_left_of(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().right = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().left = Some(self.id);
+        self
+    }
+    pub fn to_right_of(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().left = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().right = Some(self.id);
+        self
+    }
+    pub fn above(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().down = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().up = Some(self.id);
+        self
+    }
+    pub fn below(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().up = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().down = Some(self.id);
+        self
     }
 }
 
@@ -61,6 +119,8 @@ fn handle_menu_input(
     mut windows: ResMut<Windows>,
     input: Query<&ActionState<MenuAction>>,
     mut egui_inputs: ResMut<HashMap<WindowId, EguiInput>>,
+    adjacencies: Res<WidgetAdjacencies>,
+    mut egui_ctx: ResMut<EguiContext>,
 ) {
     use bevy::window::WindowMode;
     let input = input.single();
@@ -75,8 +135,6 @@ fn handle_menu_input(
         }
     }
 
-    // Emit tab / shift + tab Egui events in response to menu navigation inputs. This is pretty
-    // hacky and may need to be re-visited.
     let events = &mut egui_inputs
         .get_mut(&WindowId::primary())
         .unwrap()
@@ -91,20 +149,53 @@ fn handle_menu_input(
         });
     }
 
-    if input.just_pressed(MenuAction::Next) {
-        events.push(egui::Event::Key {
-            key: egui::Key::Tab,
-            pressed: true,
-            modifiers: egui::Modifiers::NONE,
-        });
-    }
+    // Helper to fall back on using tab order instead of adjacency map to determine next focused
+    // widget.
+    let mut tab_fallback = || {
+        if input.just_pressed(MenuAction::Up) || input.just_pressed(MenuAction::Left) {
+            events.push(egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                modifiers: egui::Modifiers::SHIFT,
+            });
+        } else if input.just_pressed(MenuAction::Down) || input.just_pressed(MenuAction::Right) {
+            events.push(egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            });
+        }
+    };
 
-    if input.just_pressed(MenuAction::Previous) {
-        events.push(egui::Event::Key {
-            key: egui::Key::Tab,
-            pressed: true,
-            modifiers: egui::Modifiers::SHIFT,
-        });
+    let mut memory = egui_ctx.ctx_mut().memory();
+    if let Some(adjacency) = memory.focus().and_then(|id| adjacencies.get(&id)) {
+        if input.just_pressed(MenuAction::Up) {
+            if let Some(adjacent) = adjacency.up {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        } else if input.just_pressed(MenuAction::Down) {
+            if let Some(adjacent) = adjacency.down {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        } else if input.just_pressed(MenuAction::Left) {
+            if let Some(adjacent) = adjacency.left {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        } else if input.just_pressed(MenuAction::Right) {
+            if let Some(adjacent) = adjacency.right {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        }
+    } else {
+        tab_fallback();
     }
 }
 

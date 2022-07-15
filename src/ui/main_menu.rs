@@ -14,7 +14,7 @@ use crate::{
 
 use super::{
     widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame, EguiUIExt},
-    EguiUiExt,
+    EguiContextExt, EguiResponseExt, WidgetAdjacencies,
 };
 
 #[derive(Component)]
@@ -94,6 +94,7 @@ pub fn main_menu_system(
     menu_input: Query<&ActionState<MenuAction>>,
     mut app_exit: EventWriter<AppExit>,
     mut storage: ResMut<Storage>,
+    mut adjacencies: ResMut<WidgetAdjacencies>,
 ) {
     let menu_input = menu_input.single();
 
@@ -147,6 +148,7 @@ pub fn main_menu_system(
                             &mut settings,
                             &mut menu_state,
                             &mut storage,
+                            &mut adjacencies,
                             tab,
                             &localization,
                             &game,
@@ -183,13 +185,8 @@ fn main_menu_ui(
             &localization.get("start-game"),
         )
         .min_size(min_button_size)
-        .show(ui);
-
-        // Focus the start button if nothing else is focused. That way you can
-        // play the game just by pressing Enter.
-        if ui.memory().focus().is_none() {
-            start_button.request_focus();
-        }
+        .show(ui)
+        .fous_by_default(ui);
 
         if start_button.clicked() || engine_config.auto_start {
             commands.insert_resource(game.start_level_handle.clone());
@@ -230,6 +227,7 @@ fn settings_menu_ui(
     modified_settings: &mut Option<Settings>,
     menu_page: &mut MenuPage,
     storage: &mut Storage,
+    adjacencies: &mut WidgetAdjacencies,
     current_tab: SettingsTab,
     localization: &Localization,
     game: &GameMeta,
@@ -244,8 +242,9 @@ fn settings_menu_ui(
         );
 
         // Add tab list to the top of the panel
+        let mut tabs = Vec::new();
         ui.horizontal(|ui| {
-            for (tab, name) in SettingsTab::TABS {
+            for (i, (tab, name)) in SettingsTab::TABS.iter().enumerate() {
                 let name = &localization.get(*name);
                 let mut name = egui::RichText::new(name);
 
@@ -253,12 +252,18 @@ fn settings_menu_ui(
                     name = name.underline();
                 }
 
-                if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, name)
-                    .show(ui)
-                    .clicked()
-                {
+                let mut button =
+                    BorderedButton::themed(ui_theme, &ButtonStyle::Normal, name).show(ui);
+
+                if i == 0 {
+                    button = button.fous_by_default(ui);
+                }
+
+                if button.clicked() {
                     *menu_page = MenuPage::Settings { tab: *tab };
                 }
+
+                tabs.push(button);
             }
         });
 
@@ -274,17 +279,22 @@ fn settings_menu_ui(
                 ui.add_space(button_spacing);
 
                 // Cancel button
-                if BorderedButton::themed(
+                let cancel_button = BorderedButton::themed(
                     ui_theme,
                     &ButtonStyle::Normal,
                     &localization.get("cancel"),
                 )
                 .min_size(button_min_size)
-                .show(ui)
-                .clicked()
-                {
+                .show(ui);
+
+                // Add ajacency record for tabs being above the cancel button.
+                for tab in tabs {
+                    adjacencies.widget(&tab).above(&cancel_button);
+                }
+
+                if cancel_button.clicked() {
                     *menu_page = MenuPage::Main;
-                    ui.clear_focus();
+                    ui.ctx().clear_focus();
                 }
 
                 ui.add_space(button_spacing);
@@ -300,7 +310,7 @@ fn settings_menu_ui(
                     storage.save();
 
                     *menu_page = MenuPage::Main;
-                    ui.clear_focus();
+                    ui.ctx().clear_focus();
                 }
             });
 
