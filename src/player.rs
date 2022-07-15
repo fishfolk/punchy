@@ -38,10 +38,9 @@ impl PlayerBundle {
 
         let input_manager_bundle = InputManagerBundle {
             input_map: game_meta
-                .default_input_maps
-                .get_player_map(player_i)
-                .map(|mut map| map.set_gamepad(Gamepad(player_i)).build())
-                .unwrap_or_default(),
+                .default_settings
+                .player_controls
+                .get_input_map(player_i),
             ..default()
         };
 

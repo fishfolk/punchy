@@ -5,9 +5,9 @@ use iyes_loopless::state::NextState;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    config::{EngineConfig, Settings},
+    config::EngineConfig,
     input::MenuAction,
-    metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
+    metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta, Settings},
     platform::Storage,
     GameState,
 };
@@ -85,7 +85,7 @@ impl SettingsTab {
 /// Render the main menu UI
 pub fn main_menu_system(
     mut menu_state: Local<MenuPage>,
-    mut settings: Local<Settings>,
+    mut settings: Local<Option<Settings>>,
     mut commands: Commands,
     mut egui_context: ResMut<EguiContext>,
     game: Res<GameMeta>,
@@ -158,7 +158,7 @@ pub fn main_menu_system(
 
 fn main_menu_ui(
     ui: &mut egui::Ui,
-    settings: &mut Settings,
+    modified_settings: &mut Option<Settings>,
     menu_page: &mut MenuPage,
     commands: &mut Commands,
     app_exit: &mut EventWriter<AppExit>,
@@ -207,7 +207,11 @@ fn main_menu_ui(
         .clicked()
         {
             *menu_page = MenuPage::Settings { tab: default() };
-            *settings = storage.get(Settings::STORAGE_KEY).unwrap_or_default();
+            *modified_settings = Some(
+                storage
+                    .get(Settings::STORAGE_KEY)
+                    .unwrap_or_else(|| game.default_settings.clone()),
+            );
         }
 
         // Quit button
@@ -223,7 +227,7 @@ fn main_menu_ui(
 
 fn settings_menu_ui(
     ui: &mut egui::Ui,
-    settings: &mut Settings,
+    modified_settings: &mut Option<Settings>,
     menu_page: &mut MenuPage,
     storage: &mut Storage,
     current_tab: SettingsTab,
@@ -292,7 +296,7 @@ fn settings_menu_ui(
                     .clicked()
                 {
                     // Save the new settings
-                    storage.set(Settings::STORAGE_KEY, settings);
+                    storage.set(Settings::STORAGE_KEY, modified_settings.as_ref().unwrap());
                     storage.save();
 
                     *menu_page = MenuPage::Main;
@@ -399,7 +403,5 @@ fn sound_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
         .unwrap()
         .colored(ui_theme.panel.font_color);
 
-    ui.centered_and_justified(|ui| {
-        ui.themed_label(&font, "Coming Soon!")
-    });
+    ui.centered_and_justified(|ui| ui.themed_label(&font, "Coming Soon!"));
 }

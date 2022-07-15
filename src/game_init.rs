@@ -3,11 +3,16 @@ use bevy_egui::{egui, EguiContext};
 use bevy_fluent::Locale;
 use bevy_parallax::ParallaxCameraComponent;
 use iyes_loopless::state::NextState;
-use leafwing_input_manager::InputManagerBundle;
+use leafwing_input_manager::{
+    axislike::{AxisType, SingleAxis},
+    prelude::InputMap,
+    InputManagerBundle,
+};
 
 use crate::{
     camera::Panning,
     consts,
+    input::MenuAction,
     metadata::{BorderImageMeta, GameMeta},
     GameState,
 };
@@ -107,14 +112,9 @@ impl<'w, 's> GameLoader<'w, 's> {
                     offset: Vec2::new(0., -consts::GROUND_Y),
                 })
                 .insert(ParallaxCameraComponent)
-                // Insert insert manager bundle for `CameraAction`s
-                .insert_bundle(InputManagerBundle {
-                    input_map: game.default_input_maps.get_camera_map().build(),
-                    ..default()
-                })
                 // We also add another input manager bundle for `MenuAction`s
                 .insert_bundle(InputManagerBundle {
-                    input_map: game.default_input_maps.get_menu_map().build(),
+                    input_map: menu_input_map(),
                     ..default()
                 });
 
@@ -174,4 +174,68 @@ impl<'w, 's> GameLoader<'w, 's> {
 
         false
     }
+}
+
+fn menu_input_map() -> InputMap<MenuAction> {
+    InputMap::default()
+        // Previous
+        .insert(KeyCode::Up, MenuAction::Previous)
+        .insert(KeyCode::Left, MenuAction::Previous)
+        .insert(GamepadButtonType::DPadLeft, MenuAction::Previous)
+        .insert(GamepadButtonType::DPadUp, MenuAction::Previous)
+        .insert(
+            SingleAxis {
+                axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickX),
+                positive_low: 1.0,
+                negative_low: -0.5,
+                value: None,
+            },
+            MenuAction::Previous,
+        )
+        .insert(
+            SingleAxis {
+                axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickY),
+                positive_low: 0.5,
+                negative_low: -1.0,
+                value: None,
+            },
+            MenuAction::Previous,
+        )
+        // Next
+        .insert(KeyCode::Down, MenuAction::Next)
+        .insert(KeyCode::Right, MenuAction::Next)
+        .insert(GamepadButtonType::DPadRight, MenuAction::Next)
+        .insert(GamepadButtonType::DPadDown, MenuAction::Next)
+        .insert(
+            SingleAxis {
+                axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickX),
+                positive_low: 0.5,
+                negative_low: -1.0,
+                value: None,
+            },
+            MenuAction::Next,
+        )
+        .insert(
+            SingleAxis {
+                axis_type: AxisType::Gamepad(GamepadAxisType::LeftStickY),
+                positive_low: 1.0,
+                negative_low: -0.5,
+                value: None,
+            },
+            MenuAction::Next,
+        )
+        // Confirm
+        .insert(KeyCode::Return, MenuAction::Confirm)
+        .insert(GamepadButtonType::South, MenuAction::Confirm)
+        .insert(GamepadButtonType::Start, MenuAction::Confirm)
+        // Back
+        .insert(KeyCode::Escape, MenuAction::Back)
+        .insert(GamepadButtonType::East, MenuAction::Back)
+        // Toggle Fullscreen
+        .insert(KeyCode::F11, MenuAction::ToggleFullscreen)
+        .insert(GamepadButtonType::Mode, MenuAction::ToggleFullscreen)
+        // Pause
+        .insert(KeyCode::Escape, MenuAction::Pause)
+        .insert(GamepadButtonType::Start, MenuAction::Pause)
+        .build()
 }

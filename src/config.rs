@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -26,16 +25,6 @@ pub struct EngineConfig {
     /// `module=level` items.
     #[structopt(short = "l", long, default_value = "info,wgpu=error,bevy_fluent=warn")]
     pub log_level: String,
-}
-
-/// Global settings, stored and accessed through [`crate::platform::Storage`]
-#[derive(Deserialize, Serialize, Default)]
-pub struct Settings {
-    pub test: String,
-}
-
-impl Settings {
-    pub const STORAGE_KEY: &'static str = "settings";
 }
 
 impl EngineConfig {

@@ -23,7 +23,7 @@ getrandom = { version = "0.2", features = ["js"] }
 bevy_mod_debugdump = { version = "0.4", optional = true }
 bevy-inspector-egui = { version = "0.11", optional = true }
 bevy-inspector-egui-rapier = { version = "0.4", optional = true, features = ["rapier2d"] }
-leafwing_input_manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager.git", rev = "e8bd6e0" }
+leafwing_input_manager = { git = "https://github.com/zicklag/leafwing-input-manager.git", branch = "backport-leafwing-dev-to-bevy-0.7" }
 unic-langid = "0.9.0"
 bevy_fluent = { git = "https://github.com/kgv/bevy_fluent", rev = "d41f514" }
 sys-locale = "0.2.1"
