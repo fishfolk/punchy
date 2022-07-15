@@ -313,10 +313,11 @@ pub fn update_left_movement_boundary(
     let max_player_x = query
         .iter()
         .map(|transform| transform.translation.x)
-        .max_by(|ax, bx| ax.total_cmp(bx))
-        .unwrap();
+        .max_by(|ax, bx| ax.total_cmp(bx));
 
-    boundary.0 = boundary
-        .0
-        .max(max_player_x - game_meta.camera_move_right_boundary - LEFT_BOUNDARY_MAX_DISTANCE);
+    if let Some(max_player_x) = max_player_x {
+        boundary.0 = boundary
+            .0
+            .max(max_player_x - game_meta.camera_move_right_boundary - LEFT_BOUNDARY_MAX_DISTANCE);
+    }
 }
