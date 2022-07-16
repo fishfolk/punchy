@@ -9,6 +9,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     assets::EguiFont,
+    audio::*,
     config::EngineConfig,
     input::MenuAction,
     metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
@@ -27,7 +28,9 @@ impl Plugin for UIPlugin {
         app.add_plugin(EguiPlugin)
             .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
             .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
+            .add_enter_system(GameState::MainMenu, play_menu_music)
             .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
+            .add_exit_system(GameState::MainMenu, stop_menu_music)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
             .add_system(update_egui_fonts)
             .add_system(update_ui_scale.run_if_resource_exists::<GameMeta>())

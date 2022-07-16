@@ -5,6 +5,7 @@ use bevy::{
     prelude::AddAsset,
     prelude::*,
     reflect::TypeUuid,
+    utils::HashMap,
 };
 use bevy_egui::egui;
 
@@ -40,7 +41,7 @@ fn relative_asset_path(asset_path: &Path, relative_path: &str) -> PathBuf {
 
 /// Helper to get relative asset paths and handles
 fn get_relative_asset<T: Asset>(
-    load_context: &mut bevy::asset::LoadContext,
+    load_context: &bevy::asset::LoadContext,
     self_path: &Path,
     relative_path: &str,
 ) -> (AssetPath<'static>, Handle<T>) {
@@ -73,11 +74,12 @@ impl AssetLoader for GameMetaLoader {
             debug!("Detected system locale: {}", locale);
             meta.translations.detected_locale = locale;
 
+            let mut dependencies = vec![];
+
             // Get locale handles
-            let mut locale_paths = Vec::new();
             for locale in &meta.translations.locales {
                 let (path, handle) = get_relative_asset(load_context, &self_path, locale);
-                locale_paths.push(path);
+                dependencies.push(path);
                 meta.translations.locale_handles.push(handle);
             }
 
@@ -85,6 +87,7 @@ impl AssetLoader for GameMetaLoader {
             let (start_level_path, start_level_handle) =
                 get_relative_asset(load_context, &self_path, &meta.start_level);
             meta.start_level_handle = start_level_handle;
+            dependencies.push(start_level_path);
 
             // Load the main menu background
             let (main_menu_background_path, main_menu_background) = get_relative_asset(
@@ -93,26 +96,29 @@ impl AssetLoader for GameMetaLoader {
                 &meta.main_menu.background_image.image,
             );
             meta.main_menu.background_image.image_handle = main_menu_background;
+            dependencies.push(main_menu_background_path);
+
+            // Load the music
+
+            let (music_path, music_handle) =
+                get_relative_asset(load_context, &self_path, &meta.main_menu.music);
+            meta.main_menu.music_handle = music_handle;
+            dependencies.push(music_path);
 
             // Load UI fonts
-            let mut font_paths = Vec::new();
+
             for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =
                     get_relative_asset(load_context, &self_path, font_relative_path);
 
-                font_paths.push(font_path);
+                dependencies.push(font_path);
 
                 meta.ui_theme
                     .font_handles
                     .insert(font_name.clone(), font_handle);
             }
 
-            load_context.set_default_asset(
-                LoadedAsset::new(meta)
-                    .with_dependencies(vec![start_level_path, main_menu_background_path])
-                    .with_dependencies(locale_paths)
-                    .with_dependencies(font_paths),
-            );
+            load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
         })
@@ -146,8 +152,9 @@ impl AssetLoader for LevelMetaLoader {
                     .to_owned();
             }
 
-            // Load the players
             let mut dependencies = Vec::new();
+
+            // Load the players
             for player in &mut meta.players {
                 let player_fighter_file_path = relative_asset_path(self_path, &player.fighter);
                 let player_fighter_path = AssetPath::new(player_fighter_file_path.clone(), None);
@@ -166,6 +173,13 @@ impl AssetLoader for LevelMetaLoader {
 
                 enemy.fighter_handle = enemy_fighter_handle;
             }
+
+            // Load the music
+
+            let (music_path, music_handle) =
+                get_relative_asset(load_context, self_path, &meta.music);
+            meta.music_handle = music_handle;
+            dependencies.push(music_path);
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
@@ -191,11 +205,30 @@ impl AssetLoader for FighterLoader {
             trace!(?meta, "Loaded fighter asset");
 
             let self_path = load_context.path();
+            let mut dependencies = Vec::new();
 
             let portrait_path = relative_asset_path(self_path, &meta.hud.portrait.image);
             let portrait_path = AssetPath::new(portrait_path, None);
             let portrait_handle = load_context.get_handle(portrait_path.clone());
+            dependencies.push(portrait_path);
             meta.hud.portrait.image_handle = portrait_handle;
+
+            for (state, frame_audio_files) in &meta.audio.effects {
+                for (animation_i, audio_file) in frame_audio_files {
+                    let (asset_path, effect_handle) =
+                        get_relative_asset(load_context, self_path, audio_file);
+
+                    dependencies.push(asset_path);
+
+                    let frame_audio_handles = meta
+                        .audio
+                        .effect_handles
+                        .entry(*state)
+                        .or_insert_with(HashMap::new);
+
+                    frame_audio_handles.insert(*animation_i, effect_handle);
+                }
+            }
 
             let texture_path = relative_asset_path(self_path, &meta.spritesheet.image);
             let texture_path = AssetPath::new(texture_path, None);
@@ -212,7 +245,7 @@ impl AssetLoader for FighterLoader {
             );
             meta.spritesheet.atlas_handle = atlas_handle;
 
-            load_context.set_default_asset(LoadedAsset::new(meta).with_dependency(portrait_path));
+            load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
         })

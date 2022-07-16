@@ -18,13 +18,13 @@ spritesheet:
 
   animation_fps: 0.12
   animations:
-    idle: 
+    idle:
       frames: [0, 13]
       repeat: true
-    running: 
+    running:
       frames: [14, 19]
       repeat: true
-    knocked_right: 
+    knocked_right:
       frames: [85, 90]
     knocked_left:
       frames: [71, 76]
@@ -32,3 +32,6 @@ spritesheet:
       frames: [71, 76]
     attacking:
       frames: [85, 90]
+
+audio:
+  effects: {}

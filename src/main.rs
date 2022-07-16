@@ -8,6 +8,7 @@ use bevy::{
     log::LogSettings,
     prelude::*,
 };
+use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use enemy::*;
@@ -28,6 +29,7 @@ use bevy::log::LogPlugin;
 mod animation;
 mod assets;
 mod attack;
+mod audio;
 mod camera;
 mod collisions;
 mod config;
@@ -47,6 +49,7 @@ mod y_sort;
 
 use animation::*;
 use attack::{enemy_attack, AttackPlugin};
+use audio::*;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
@@ -202,12 +205,18 @@ fn main() {
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
+        .add_plugin(AudioPlugin)
         .add_plugin(StatePlugin)
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
+        .add_audio_channel::<MusicChannel>()
+        .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
         .insert_resource(LeftMovementBoundary::default())
         .add_system(platform::load_storage.run_in_state(GameState::LoadingStorage))
+        .add_startup_system(set_audio_channels_volume)
+        .add_enter_system(GameState::InGame, play_level_music)
+        .add_exit_system(GameState::InGame, stop_level_music)
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
@@ -257,6 +266,7 @@ fn main() {
                 .with_system(rotate_system)
                 .with_system(camera_follow_player)
                 .with_system(update_left_movement_boundary)
+                .with_system(fighter_sound_effect)
                 .into(),
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
@@ -492,26 +502,39 @@ fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
 }
 
 fn player_flop(
+    mut commands: Commands,
     mut query: Query<
         (
+            Entity,
             &mut State,
             &mut Transform,
             &Animation,
             &Facing,
             &ActionState<PlayerAction>,
+            &Handle<FighterMeta>,
         ),
         With<Player>,
     >,
+    fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
     mut start_y: Local<Option<f32>>,
 ) {
-    for (mut state, mut transform, animation, facing, input) in query.iter_mut() {
+    for (entity, mut state, mut transform, animation, facing, input, fighter_meta) in
+        query.iter_mut()
+    {
         if *state != State::Attacking {
             if *state != State::Idle && *state != State::Running {
                 return;
             }
             if input.just_pressed(PlayerAction::FlopAttack) {
                 state.set(State::Attacking);
+
+                if let Some(fighter) = fighter_assets.get(fighter_meta) {
+                    if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+                        let fx_playback = FighterStateEffectsPlayback::new(*state, effects.clone());
+                        commands.entity(entity).insert(fx_playback);
+                    }
+                }
             }
         // } else if animation.is_finished() {
         // state.set(State::Idle);

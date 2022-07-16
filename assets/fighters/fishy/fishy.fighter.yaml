@@ -32,3 +32,8 @@ spritesheet:
       frames: [71, 76]
     attacking:
       frames: [85, 90]
+
+audio:
+  effects:
+    attacking:
+      87: flop.ogg

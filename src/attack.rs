@@ -5,8 +5,8 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt},
     math::Vec2,
     prelude::{
-        default, App, AssetServer, Commands, Component, Entity, EventReader, Plugin, Query, Res,
-        Transform, With,
+        default, App, AssetServer, Assets, Commands, Component, Entity, EventReader, Handle,
+        Plugin, Query, Res, Transform, With,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -17,9 +17,11 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::Facing,
+    audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
     consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
     input::PlayerAction,
+    metadata::FighterMeta,
     movement::{MoveInDirection, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
@@ -95,17 +97,19 @@ fn player_attack(
 }
 
 pub fn enemy_attack(
-    mut query: Query<&mut State, (With<Enemy>, With<Target>)>,
+    mut query: Query<(Entity, &mut State, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
+    fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for event in event_reader.iter() {
-        if let Ok(mut state) = query.get_mut(event.0) {
+        if let Ok((entity, mut state, fighter_handle)) = query.get_mut(event.0) {
             if *state != State::Attacking {
                 if rand::random() && *state != State::Waiting {
                     state.set(State::Waiting);
                 } else {
                     state.set(State::Attacking);
+
                     let attack_entity = commands
                         .spawn_bundle(TransformBundle::default())
                         .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8))
@@ -125,6 +129,14 @@ pub fn enemy_attack(
                         )))
                         .id();
                     commands.entity(event.0).push_children(&[attack_entity]);
+
+                    if let Some(fighter) = fighter_assets.get(fighter_handle) {
+                        if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+                            let fx_playback =
+                                FighterStateEffectsPlayback::new(*state, effects.clone());
+                            commands.entity(entity).insert(fx_playback);
+                        }
+                    }
                 }
             }
         }

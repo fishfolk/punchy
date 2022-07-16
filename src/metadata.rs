@@ -6,6 +6,7 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_egui::egui;
+use bevy_kira_audio::AudioSource;
 use bevy_parallax::{LayerData, ParallaxResource};
 use leafwing_input_manager::{prelude::InputMap, user_input::UserInput, Actionlike};
 use serde::Deserialize;
@@ -84,6 +85,9 @@ impl InputMapsMeta {
 pub struct MainMenuMeta {
     pub title_font: FontMeta,
     pub background_image: ImageMeta,
+    pub music: String,
+    #[serde(skip)]
+    pub music_handle: Handle<AudioSource>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -104,6 +108,9 @@ pub struct LevelMeta {
     pub players: Vec<FighterSpawnMeta>,
     #[serde(default)]
     pub enemies: Vec<FighterSpawnMeta>,
+    pub music: String,
+    #[serde(skip)]
+    pub music_handle: Handle<AudioSource>,
 }
 
 impl LevelMeta {
@@ -121,6 +128,7 @@ pub struct FighterMeta {
     pub stats: Stats,
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
+    pub audio: AudioMeta,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -140,6 +148,14 @@ pub struct FighterSpritesheetMeta {
     pub rows: usize,
     pub animation_fps: f32,
     pub animations: HashMap<State, Clip>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AudioMeta {
+    pub effects: HashMap<State, HashMap<usize, String>>,
+    #[serde(skip)]
+    pub effect_handles: HashMap<State, HashMap<usize, Handle<AudioSource>>>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

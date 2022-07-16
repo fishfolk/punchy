@@ -18,13 +18,13 @@ spritesheet:
 
   animation_fps: 0.12
   animations:
-    idle: 
+    idle:
       frames: [0, 7]
       repeat: true
-    running: 
+    running:
       frames: [8, 15]
       repeat: true
-    knocked_right: 
+    knocked_right:
       frames: [40, 46]
     knocked_left:
       frames: [40, 46]
@@ -35,3 +35,8 @@ spritesheet:
       repeat: false
     attacking:
       frames: [16, 23]
+
+audio:
+  effects:
+    attacking:
+      16: hit.ogg
