@@ -5,13 +5,14 @@ use bevy_egui::{egui, EguiContext};
 
 use crate::{
     metadata::{FighterMeta, GameMeta},
+    player::PlayerIndex,
     ui::widgets::{bordered_frame::BorderedFrame, progress_bar::ProgressBar, EguiUIExt},
     Player, Stats,
 };
 
 pub fn render_hud(
     mut egui_context: ResMut<EguiContext>,
-    players: Query<(&Stats, &Handle<FighterMeta>), With<Player>>,
+    players: Query<(&PlayerIndex, &Stats, &Handle<FighterMeta>), With<Player>>,
     game: Res<GameMeta>,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
@@ -26,8 +27,11 @@ pub fn render_hud(
     }
 
     // Collect player info
+    let mut players = players.iter().collect::<Vec<_>>();
+    players.sort_by_key(|(player_i, _, _)| player_i.0);
+
     let mut player_infos = Vec::new();
-    for (stats, fighter_handle) in players.iter() {
+    for (_, stats, fighter_handle) in players.into_iter() {
         if let Some(fighter) = fighter_assets.get(fighter_handle) {
             let portrait_size = fighter.hud.portrait.image_size;
             player_infos.push(PlayerInfo {
