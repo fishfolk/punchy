@@ -1,8 +1,8 @@
-use bevy::{app::AppExit, prelude::*};
+use bevy::{app::AppExit, ecs::system::SystemParam, input::keyboard::KeyboardInput, prelude::*};
 use bevy_egui::{egui::style::Margin, *};
 use bevy_fluent::Localization;
 use iyes_loopless::state::NextState;
-use leafwing_input_manager::prelude::ActionState;
+use leafwing_input_manager::{prelude::ActionState, user_input::InputKind};
 
 use crate::{
     config::EngineConfig,
@@ -82,26 +82,47 @@ impl SettingsTab {
         &[(Self::Controls, "controls"), (Self::Sound, "sound")];
 }
 
+#[derive(SystemParam)]
+pub struct MenuSystemParams<'w, 's> {
+    menu_page: Local<'s, MenuPage>,
+    modified_settings: Local<'s, Option<Settings>>,
+    currently_binding_input_idx: Local<'s, Option<usize>>,
+    commands: Commands<'w, 's>,
+    game: Res<'w, GameMeta>,
+    localization: Res<'w, Localization>,
+    engine_config: Res<'w, EngineConfig>,
+    menu_input: Query<'w, 's, &'static ActionState<MenuAction>>,
+    app_exit: EventWriter<'w, 's, AppExit>,
+    storage: ResMut<'w, Storage>,
+    adjacencies: ResMut<'w, WidgetAdjacencies>,
+    control_inputs: ControlInputEvents<'w, 's>,
+}
+
+#[derive(SystemParam)]
+pub struct ControlInputEvents<'w, 's> {
+    keys: EventReader<'w, 's, KeyboardInput>,
+    gamepad_events: EventReader<'w, 's, GamepadEvent>,
+}
+
+impl<'w, 's> ControlInputEvents<'w, 's> {
+    // Get the next event, if any
+    fn get_event(&mut self) -> Option<InputKind> {
+        if let Some(event) = self.keys.iter().next() {
+            event.key_code.map(Into::into)
+        } else {
+            None
+        }
+    }
+}
+
 /// Render the main menu UI
-pub fn main_menu_system(
-    mut menu_state: Local<MenuPage>,
-    mut settings: Local<Option<Settings>>,
-    mut commands: Commands,
-    mut egui_context: ResMut<EguiContext>,
-    game: Res<GameMeta>,
-    localization: Res<Localization>,
-    engine_config: Res<EngineConfig>,
-    menu_input: Query<&ActionState<MenuAction>>,
-    mut app_exit: EventWriter<AppExit>,
-    mut storage: ResMut<Storage>,
-    mut adjacencies: ResMut<WidgetAdjacencies>,
-) {
-    let menu_input = menu_input.single();
+pub fn main_menu_system(mut params: MenuSystemParams, mut egui_context: ResMut<EguiContext>) {
+    let menu_input = params.menu_input.single();
 
     // Go to previous menu if back button is pressed
     if menu_input.pressed(MenuAction::Back) {
-        if let MenuPage::Settings { .. } = *menu_state {
-            *menu_state = MenuPage::Main;
+        if let MenuPage::Settings { .. } = *params.menu_page {
+            *params.menu_page = MenuPage::Main;
             egui_context.ctx_mut().clear_focus();
         }
     }
@@ -121,9 +142,10 @@ pub fn main_menu_system(
                 bottom: outer_margin.y / 1.5,
             };
 
-            BorderedFrame::new(&game.ui_theme.panel.border)
+            // Create menu panel
+            BorderedFrame::new(&params.game.ui_theme.panel.border)
                 .margin(outer_margin)
-                .padding(game.ui_theme.panel.padding.into())
+                .padding(params.game.ui_theme.panel.padding.into())
                 .show(ui, |ui| {
                     // Make sure the frame ocupies the entire rect that we allocated for it.
                     //
@@ -131,44 +153,28 @@ pub fn main_menu_system(
                     ui.set_min_size(ui.available_size());
 
                     // Render the menu based on the current menu selection
-                    match *menu_state {
-                        MenuPage::Main => main_menu_ui(
-                            ui,
-                            &mut settings,
-                            &mut menu_state,
-                            &mut commands,
-                            &mut app_exit,
-                            &mut storage,
-                            &localization,
-                            &game,
-                            &engine_config,
-                        ),
-                        MenuPage::Settings { tab } => settings_menu_ui(
-                            ui,
-                            &mut settings,
-                            &mut menu_state,
-                            &mut storage,
-                            &mut adjacencies,
-                            tab,
-                            &localization,
-                            &game,
-                        ),
+                    match *params.menu_page {
+                        MenuPage::Main => main_menu_ui(&mut params, ui),
+                        MenuPage::Settings { tab } => settings_menu_ui(&mut params, ui, tab),
                     }
                 });
         });
 }
 
-fn main_menu_ui(
-    ui: &mut egui::Ui,
-    modified_settings: &mut Option<Settings>,
-    menu_page: &mut MenuPage,
-    commands: &mut Commands,
-    app_exit: &mut EventWriter<AppExit>,
-    storage: &mut Storage,
-    localization: &Localization,
-    game: &GameMeta,
-    engine_config: &EngineConfig,
-) {
+/// Render the main menu
+fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
+    let MenuSystemParams {
+        menu_page,
+        modified_settings,
+        commands,
+        game,
+        localization,
+        engine_config,
+        app_exit,
+        storage,
+        ..
+    } = params;
+
     let ui_theme = &game.ui_theme;
 
     // Create a vertical list of items, centered horizontally
@@ -203,8 +209,8 @@ fn main_menu_ui(
         .show(ui)
         .clicked()
         {
-            *menu_page = MenuPage::Settings { tab: default() };
-            *modified_settings = Some(
+            **menu_page = MenuPage::Settings { tab: default() };
+            **modified_settings = Some(
                 storage
                     .get(Settings::STORAGE_KEY)
                     .unwrap_or_else(|| game.default_settings.clone()),
@@ -222,30 +228,25 @@ fn main_menu_ui(
     });
 }
 
-fn settings_menu_ui(
-    ui: &mut egui::Ui,
-    modified_settings: &mut Option<Settings>,
-    menu_page: &mut MenuPage,
-    storage: &mut Storage,
-    adjacencies: &mut WidgetAdjacencies,
-    current_tab: SettingsTab,
-    localization: &Localization,
-    game: &GameMeta,
-) {
-    let ui_theme = &game.ui_theme;
-
+/// Render the settings menu
+fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_tab: SettingsTab) {
     ui.vertical_centered(|ui| {
         // Settings Heading
         ui.themed_label(
-            game.ui_theme.font_styles.get(&FontStyle::Heading).unwrap(),
-            &localization.get("settings"),
+            params
+                .game
+                .ui_theme
+                .font_styles
+                .get(&FontStyle::Heading)
+                .unwrap(),
+            &params.localization.get("settings"),
         );
 
-        // Add tab list to the top of the panel
+        // Add tab list at the top of the panel
         let mut tabs = Vec::new();
         ui.horizontal(|ui| {
             for (i, (tab, name)) in SettingsTab::TABS.iter().enumerate() {
-                let name = &localization.get(*name);
+                let name = &params.localization.get(*name);
                 let mut name = egui::RichText::new(name);
 
                 if tab == &current_tab {
@@ -253,14 +254,15 @@ fn settings_menu_ui(
                 }
 
                 let mut button =
-                    BorderedButton::themed(ui_theme, &ButtonStyle::Normal, name).show(ui);
+                    BorderedButton::themed(&params.game.ui_theme, &ButtonStyle::Normal, name)
+                        .show(ui);
 
                 if i == 0 {
                     button = button.fous_by_default(ui);
                 }
 
                 if button.clicked() {
-                    *menu_page = MenuPage::Settings { tab: *tab };
+                    *params.menu_page = MenuPage::Settings { tab: *tab };
                 }
 
                 tabs.push(button);
@@ -269,67 +271,82 @@ fn settings_menu_ui(
 
         // Add buttons to the bottom
         ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-            ui.horizontal(|ui| {
-                // Calculate button size and spacing
-                let width = ui.available_width();
-                let button_width = 0.3 * width;
-                let button_min_size = egui::vec2(button_width, 0.0);
-                let button_spacing = (width - 2.0 * button_width) / 3.0;
+            let save_button = ui
+                .horizontal(|ui| {
+                    // Calculate button size and spacing
+                    let width = ui.available_width();
+                    let button_width = 0.3 * width;
+                    let button_min_size = egui::vec2(button_width, 0.0);
+                    let button_spacing = (width - 2.0 * button_width) / 3.0;
 
-                ui.add_space(button_spacing);
+                    ui.add_space(button_spacing);
 
-                // Cancel button
-                let cancel_button = BorderedButton::themed(
-                    ui_theme,
-                    &ButtonStyle::Normal,
-                    &localization.get("cancel"),
-                )
-                .min_size(button_min_size)
-                .show(ui);
-
-                // Add ajacency record for tabs being above the cancel button.
-                for tab in tabs {
-                    adjacencies.widget(&tab).above(&cancel_button);
-                }
-
-                if cancel_button.clicked() {
-                    *menu_page = MenuPage::Main;
-                    ui.ctx().clear_focus();
-                }
-
-                ui.add_space(button_spacing);
-
-                // Save button
-                if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, &localization.get("save"))
+                    // Cancel button
+                    let cancel_button = BorderedButton::themed(
+                        &params.game.ui_theme,
+                        &ButtonStyle::Normal,
+                        &params.localization.get("cancel"),
+                    )
                     .min_size(button_min_size)
-                    .show(ui)
-                    .clicked()
-                {
-                    // Save the new settings
-                    storage.set(Settings::STORAGE_KEY, modified_settings.as_ref().unwrap());
-                    storage.save();
+                    .show(ui);
 
-                    *menu_page = MenuPage::Main;
-                    ui.ctx().clear_focus();
-                }
-            });
+                    if cancel_button.clicked() {
+                        *params.menu_page = MenuPage::Main;
+                        ui.ctx().clear_focus();
+                    }
+
+                    ui.add_space(button_spacing);
+
+                    // Save button
+                    let save_button = BorderedButton::themed(
+                        &params.game.ui_theme,
+                        &ButtonStyle::Normal,
+                        &params.localization.get("save"),
+                    )
+                    .min_size(button_min_size)
+                    .show(ui);
+
+                    if save_button.clicked() {
+                        // Save the new settings
+                        params.storage.set(
+                            Settings::STORAGE_KEY,
+                            params.modified_settings.as_ref().unwrap(),
+                        );
+                        params.storage.save();
+
+                        *params.menu_page = MenuPage::Main;
+                        ui.ctx().clear_focus();
+                    }
+
+                    // Return the save button so that controls settings can use it's response for
+                    // adjacency.
+                    save_button
+                })
+                .inner;
 
             ui.vertical(|ui| {
                 // Render selected tab
                 match current_tab {
-                    SettingsTab::Controls => controls_settings_ui(ui, game),
-                    SettingsTab::Sound => sound_settings_ui(ui, game),
+                    SettingsTab::Controls => controls_settings_ui(params, ui, &tabs, save_button),
+                    SettingsTab::Sound => sound_settings_ui(ui, &params.game),
                 }
             });
         });
     });
 }
 
-fn controls_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
+// Render the control input grid
+fn controls_settings_ui(
+    params: &mut MenuSystemParams,
+    ui: &mut egui::Ui,
+    settings_tabs: &[egui::Response],
+    save_button: egui::Response,
+) {
     use egui_extras::Size;
 
-    let ui_theme = &game.ui_theme;
+    let ui_theme = &params.game.ui_theme;
 
+    // Get the font meta for the table headings and labels
     let bigger_font = ui_theme
         .font_styles
         .get(&FontStyle::Bigger)
@@ -343,67 +360,194 @@ fn controls_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
 
     ui.add_space(2.0);
 
-    let row_height = label_font.size * 1.5;
+    // Calculate the row height so that it can fit the buttons
+    let small_button_style = ui_theme.button_styles.get(&ButtonStyle::Small).unwrap();
+    let row_height = small_button_style.font.size
+        + small_button_style.padding.top
+        + small_button_style.padding.bottom;
 
+    // Mutably borrow the player controlls settings
+    let controls = &mut params.modified_settings.as_mut().unwrap().player_controls;
+
+    // Build the grid of control bindings as an array of mutable InputKind's
+    let mut input_rows = [
+        (
+            &params.localization.get("move-up"),
+            [
+                &mut controls.keyboard1.movement.up,
+                &mut controls.keyboard2.movement.up,
+                &mut controls.gamepad.movement.up,
+            ],
+        ),
+        (
+            &params.localization.get("move-down"),
+            [
+                &mut controls.keyboard1.movement.down,
+                &mut controls.keyboard2.movement.down,
+                &mut controls.gamepad.movement.down,
+            ],
+        ),
+        (
+            &params.localization.get("move-left"),
+            [
+                &mut controls.keyboard1.movement.left,
+                &mut controls.keyboard2.movement.left,
+                &mut controls.gamepad.movement.left,
+            ],
+        ),
+        (
+            &params.localization.get("move-right"),
+            [
+                &mut controls.keyboard1.movement.right,
+                &mut controls.keyboard2.movement.right,
+                &mut controls.gamepad.movement.right,
+            ],
+        ),
+        (
+            &params.localization.get("flop-attack"),
+            [
+                &mut controls.keyboard1.flop_attack,
+                &mut controls.keyboard2.flop_attack,
+                &mut controls.gamepad.flop_attack,
+            ],
+        ),
+        (
+            &params.localization.get("shoot"),
+            [
+                &mut controls.keyboard1.shoot,
+                &mut controls.keyboard2.shoot,
+                &mut controls.gamepad.shoot,
+            ],
+        ),
+        (
+            &params.localization.get("throw"),
+            [
+                &mut controls.keyboard1.throw,
+                &mut controls.keyboard2.throw,
+                &mut controls.gamepad.throw,
+            ],
+        ),
+    ];
+
+    // Collect input button responses for building adjacency graph
+    let mut input_buttons = Vec::new();
+
+    // Create input table
     egui_extras::TableBuilder::new(ui)
-        .cell_layout(egui::Layout::left_to_right().with_cross_align(egui::Align::Center))
+        .cell_layout(egui::Layout::centered_and_justified(
+            egui::Direction::LeftToRight,
+        ))
         .column(Size::exact(label_font.size * 7.0))
         .column(Size::remainder())
         .column(Size::remainder())
         .column(Size::remainder())
-        .header(bigger_font.size, |mut row| {
+        .header(bigger_font.size * 1.5, |mut row| {
             row.col(|ui| {
-                ui.themed_label(&bigger_font, "Action");
+                ui.themed_label(&bigger_font, &params.localization.get("action"));
             });
             row.col(|ui| {
-                ui.themed_label(&bigger_font, "Keyboard 1");
+                ui.themed_label(&bigger_font, &params.localization.get("keyboard-1"));
             });
             row.col(|ui| {
-                ui.themed_label(&bigger_font, "Keyboard 2");
+                ui.themed_label(&bigger_font, &params.localization.get("keyboard-2"));
             });
             row.col(|ui| {
-                ui.themed_label(&bigger_font, "Gampead");
+                ui.themed_label(&bigger_font, &params.localization.get("gamepad"));
             });
         })
         .body(|mut body| {
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Move Up");
+            // Loop through the input rows
+            let mut input_idx = 0;
+            for (title, inputs) in &mut input_rows {
+                body.row(row_height, |mut row| {
+                    // Add row label
+                    row.col(|ui| {
+                        ui.themed_label(&label_font, title);
+                    });
+
+                    // Add buttons for each kind of input
+                    for input in inputs {
+                        row.col(|ui| {
+                            ui.set_enabled(params.currently_binding_input_idx.is_none());
+
+                            let button = BorderedButton::themed(
+                                ui_theme,
+                                &ButtonStyle::Small,
+                                format_input(input),
+                            )
+                            .show(ui);
+
+                            if button.clicked() {
+                                *params.currently_binding_input_idx = Some(input_idx);
+                            }
+
+                            if *params.currently_binding_input_idx == Some(input_idx) {
+                                egui::Window::new("overlay")
+                                    .auto_sized()
+                                    .collapsible(false)
+                                    .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                                    .frame(egui::Frame::none())
+                                    .title_bar(false)
+                                    .show(ui.ctx(), |ui| {
+                                        ui.label("Press something");
+
+                                        if let Some(input_kind) = params.control_inputs.get_event()
+                                        {
+                                            *params.currently_binding_input_idx = None;
+                                            **input = input_kind;
+                                        }
+                                    });
+                            }
+
+                            input_buttons.push(button);
+                        });
+
+                        input_idx += 1;
+                    }
                 });
-            });
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Move Down");
-                });
-            });
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Move Left");
-                });
-            });
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Move Right");
-                });
-            });
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Flop Attack");
-                });
-            });
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Throw");
-                });
-            });
-            body.row(row_height, |mut row| {
-                row.col(|ui| {
-                    ui.themed_label(&label_font, "Shoot");
-                });
-            });
+            }
         });
+
+    // Set adjacency for all of the gamepad input buttons
+    for row_idx in 0..input_rows.len() {
+        if row_idx == 0 {
+            // Reverse button order here so that the first button gets priority when navigating down
+            // from the tabs.
+            for i in (0..3).rev() {
+                let button = &input_buttons[row_idx * 3 + i];
+
+                // The top row of buttons is below the settings tabs
+                for tab in settings_tabs {
+                    params.adjacencies.widget(tab).above(button);
+                }
+            }
+
+        // If this is the last row, the buttons are above the save button
+        } else if row_idx == input_rows.len() - 1 {
+            for i in 0..3 {
+                let button_above = &input_buttons[(row_idx - 1) * 3 + i];
+                let button = &input_buttons[row_idx * 3 + i];
+
+                params
+                    .adjacencies
+                    .widget(button)
+                    .above(&save_button)
+                    .below(button_above);
+            }
+
+        // If this is a middle row, set the buttons to be below the ones in the row above
+        } else {
+            for i in 0..3 {
+                let button_above = &input_buttons[(row_idx - 1) * 3 + i];
+                let button = &input_buttons[row_idx * 3 + i];
+
+                params.adjacencies.widget(button).below(button_above);
+            }
+        }
+    }
 }
 
+/// Render the sound settings
 fn sound_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
     let ui_theme = &game.ui_theme;
 
@@ -414,4 +558,22 @@ fn sound_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
         .colored(ui_theme.panel.font_color);
 
     ui.centered_and_justified(|ui| ui.themed_label(&font, "Coming Soon!"));
+}
+
+fn format_input(input: &InputKind) -> String {
+    match input {
+        InputKind::SingleAxis(axis) => {
+            // If we set the positive low to 1.0, then that means we don't trigger on positive
+            // movement, and it must be a negative movement binding.
+            let direction = if axis.positive_low == 1.0 { "-" } else { "+" };
+
+            let stick = match axis.axis_type {
+                leafwing_input_manager::axislike::AxisType::Gamepad(axis) => format!("{:?}", axis),
+                other => format!("{:?}", other),
+            };
+
+            format!("{} {}", stick, direction)
+        }
+        other => other.to_string(),
+    }
 }

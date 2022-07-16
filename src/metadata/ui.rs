@@ -80,6 +80,7 @@ impl FontMeta {
 #[serde(try_from = "String")]
 pub enum ButtonStyle {
     Normal,
+    Small,
 }
 
 impl TryFrom<String> for ButtonStyle {
@@ -89,6 +90,7 @@ impl TryFrom<String> for ButtonStyle {
         use ButtonStyle::*;
         Ok(match value.as_str() {
             "normal" => Normal,
+            "small" => Small,
             _ => {
                 return Err("Invalid button style");
             }

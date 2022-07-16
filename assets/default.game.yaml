@@ -160,7 +160,7 @@ ui_theme:
       font:
         family: ark
         color: [255, 255, 255]
-        size: 20
+        size: 17
       padding:
         top: 8
         left: 8
@@ -194,6 +194,45 @@ ui_theme:
             right: 5
             left: 5
           scale: 2
+
+    small:
+      font:
+        family: ark
+        color: [255, 255, 255]
+        size: 15
+      padding:
+        top: 4
+        left: 4
+        right: 4
+        bottom: 6
+      borders:
+        default:
+          image: ui/green-button.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+        focused:
+          image: ui/green-button-focused.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+        clicked:
+          image: ui/green-button-down.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
 
 translations:
   # This is the locale that we will fallback to if the selected locale doesn't have
