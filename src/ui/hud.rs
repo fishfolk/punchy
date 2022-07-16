@@ -5,13 +5,14 @@ use bevy_egui::{egui, EguiContext};
 
 use crate::{
     metadata::{FighterMeta, GameMeta},
+    player::PlayerIndex,
     ui::widgets::{bordered_frame::BorderedFrame, progress_bar::ProgressBar, EguiUIExt},
     Player, Stats,
 };
 
 pub fn render_hud(
     mut egui_context: ResMut<EguiContext>,
-    players: Query<(&Stats, &Handle<FighterMeta>), With<Player>>,
+    players: Query<(&PlayerIndex, &Stats, &Handle<FighterMeta>), With<Player>>,
     game: Res<GameMeta>,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
@@ -26,19 +27,24 @@ pub fn render_hud(
     }
 
     // Collect player info
-    let mut player_infos = Vec::new();
-    for (stats, fighter_handle) in players.iter() {
-        if let Some(fighter) = fighter_assets.get(fighter_handle) {
-            let portrait_size = fighter.hud.portrait.image_size;
-            player_infos.push(PlayerInfo {
-                name: fighter.name.clone(),
-                life: stats.health as f32 / fighter.stats.health as f32,
-                portrait_texture_id: egui_context
-                    .add_image(fighter.hud.portrait.image_handle.clone_weak()),
-                portrait_size: egui::Vec2::new(portrait_size.x, portrait_size.y),
-            });
-        }
-    }
+    let mut players = players.iter().collect::<Vec<_>>();
+    players.sort_by_key(|(player_i, _, _)| player_i.0);
+
+    let player_infos = players
+        .into_iter()
+        .filter_map(|(_, stats, fighter_handle)| {
+            fighter_assets.get(fighter_handle).map(|fighter| {
+                let portrait_size = fighter.hud.portrait.image_size;
+                PlayerInfo {
+                    name: fighter.name.clone(),
+                    life: stats.health as f32 / fighter.stats.health as f32,
+                    portrait_texture_id: egui_context
+                        .add_image(fighter.hud.portrait.image_handle.clone_weak()),
+                    portrait_size: egui::Vec2::new(portrait_size.x, portrait_size.y),
+                }
+            })
+        })
+        .collect::<Vec<_>>();
 
     let border = ui_theme.hud.portrait_frame.border_size;
     let scale = ui_theme.hud.portrait_frame.scale;
