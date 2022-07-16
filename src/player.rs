@@ -11,9 +11,13 @@ use crate::{
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+pub struct PlayerIndex(pub usize);
+
 #[derive(Bundle)]
 pub struct PlayerBundle {
     player: Player,
+    index: PlayerIndex,
     facing: Facing,
     #[bundle]
     transform_bundle: TransformBundle,
@@ -43,6 +47,7 @@ impl PlayerBundle {
 
         PlayerBundle {
             player: Player,
+            index: PlayerIndex(player_i),
             facing: Facing::Right,
             transform_bundle,
             fighter_handle,
