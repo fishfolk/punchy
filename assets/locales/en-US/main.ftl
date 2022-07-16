@@ -16,6 +16,7 @@ main-menu = Main Menu
 # Settings Menu
 controls = Controls
 sound = Sound
+reset = Reset
 
 # Controls
 action = Action
@@ -29,3 +30,4 @@ move-right = Move Right
 flop-attack = Flop Attack
 shoot = Shoot
 throw = Throw
+bind-input = Make an input to bind or press Escape to cancel.

@@ -1,7 +1,7 @@
 use bevy::{prelude::*, utils::HashMap, window::WindowId};
 use bevy_egui::{egui, EguiContext, EguiInput, EguiPlugin, EguiSettings};
 use iyes_loopless::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
+use leafwing_input_manager::{plugin::ToggleActions, prelude::ActionState};
 
 use crate::{assets::EguiFont, audio::*, input::MenuAction, metadata::GameMeta, GameState};
 
@@ -118,12 +118,17 @@ impl<'a> WidgetAdjacencyEntry<'a> {
 fn handle_menu_input(
     mut windows: ResMut<Windows>,
     input: Query<&ActionState<MenuAction>>,
+    input_toggle: Res<ToggleActions<MenuAction>>,
     mut egui_inputs: ResMut<HashMap<WindowId, EguiInput>>,
     adjacencies: Res<WidgetAdjacencies>,
     mut egui_ctx: ResMut<EguiContext>,
 ) {
     use bevy::window::WindowMode;
     let input = input.single();
+
+    if !input_toggle.enabled {
+        return;
+    }
 
     // Handle fullscreen toggling
     if input.just_pressed(MenuAction::ToggleFullscreen) {

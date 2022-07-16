@@ -15,6 +15,7 @@ use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
+use platform::Storage;
 use player::*;
 use rand::{seq::SliceRandom, Rng};
 
@@ -64,6 +65,7 @@ use crate::{
     attack::{attack_cleanup, attack_tick},
     config::EngineConfig,
     input::PlayerAction,
+    metadata::Settings,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -202,6 +204,7 @@ fn main() {
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
+        .insert_resource(ToggleActions::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(AudioPlugin)
@@ -335,6 +338,7 @@ fn load_level(
     asset_server: Res<AssetServer>,
     game: Res<GameMeta>,
     windows: Res<Windows>,
+    mut storage: ResMut<Storage>,
 ) {
     if let Some(level) = assets.get(level_handle.clone_weak()) {
         debug!("Loaded level");
@@ -350,7 +354,12 @@ fn load_level(
 
         // Spawn the players
         for (i, player) in level.players.iter().enumerate() {
-            commands.spawn_bundle(PlayerBundle::new(player, i, &game));
+            commands.spawn_bundle(PlayerBundle::new(
+                player,
+                i,
+                &game,
+                storage.get(Settings::STORAGE_KEY).as_ref(),
+            ));
         }
 
         // Spawn the enemies

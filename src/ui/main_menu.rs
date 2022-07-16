@@ -1,8 +1,10 @@
-use bevy::{app::AppExit, ecs::system::SystemParam, input::keyboard::KeyboardInput, prelude::*};
+use bevy::{app::AppExit, ecs::system::SystemParam, prelude::*};
 use bevy_egui::{egui::style::Margin, *};
 use bevy_fluent::Localization;
 use iyes_loopless::state::NextState;
-use leafwing_input_manager::{prelude::ActionState, user_input::InputKind};
+use leafwing_input_manager::{
+    axislike::SingleAxis, prelude::ActionState, user_input::InputKind, Actionlike,
+};
 
 use crate::{
     config::EngineConfig,
@@ -91,37 +93,28 @@ pub struct MenuSystemParams<'w, 's> {
     game: Res<'w, GameMeta>,
     localization: Res<'w, Localization>,
     engine_config: Res<'w, EngineConfig>,
-    menu_input: Query<'w, 's, &'static ActionState<MenuAction>>,
+    menu_input: Query<'w, 's, &'static mut ActionState<MenuAction>>,
     app_exit: EventWriter<'w, 's, AppExit>,
     storage: ResMut<'w, Storage>,
     adjacencies: ResMut<'w, WidgetAdjacencies>,
-    control_inputs: ControlInputEvents<'w, 's>,
+    control_inputs: ControlInputBindingEvents<'w, 's>,
 }
 
-#[derive(SystemParam)]
-pub struct ControlInputEvents<'w, 's> {
-    keys: EventReader<'w, 's, KeyboardInput>,
-    gamepad_events: EventReader<'w, 's, GamepadEvent>,
-}
-
-impl<'w, 's> ControlInputEvents<'w, 's> {
-    // Get the next event, if any
-    fn get_event(&mut self) -> Option<InputKind> {
-        if let Some(event) = self.keys.iter().next() {
-            event.key_code.map(Into::into)
-        } else {
-            None
-        }
-    }
+enum BindingKind {
+    Keyboard,
+    Gamepad,
 }
 
 /// Render the main menu UI
 pub fn main_menu_system(mut params: MenuSystemParams, mut egui_context: ResMut<EguiContext>) {
-    let menu_input = params.menu_input.single();
+    let mut menu_input = params.menu_input.single_mut();
 
     // Go to previous menu if back button is pressed
     if menu_input.pressed(MenuAction::Back) {
-        if let MenuPage::Settings { .. } = *params.menu_page {
+        // Don't go back if we are the middle of making an input binding
+        if params.currently_binding_input_idx.is_some() {
+            menu_input.consume(MenuAction::Back);
+        } else if let MenuPage::Settings { .. } = *params.menu_page {
             *params.menu_page = MenuPage::Main;
             egui_context.ctx_mut().clear_focus();
         }
@@ -230,6 +223,8 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
 
 /// Render the settings menu
 fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_tab: SettingsTab) {
+    ui.set_enabled(params.currently_binding_input_idx.is_none());
+
     ui.vertical_centered(|ui| {
         // Settings Heading
         ui.themed_label(
@@ -271,13 +266,13 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
 
         // Add buttons to the bottom
         ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-            let save_button = ui
+            let (save_button, reset_button) = ui
                 .horizontal(|ui| {
                     // Calculate button size and spacing
                     let width = ui.available_width();
-                    let button_width = 0.3 * width;
+                    let button_width = width / 4.0;
                     let button_min_size = egui::vec2(button_width, 0.0);
-                    let button_spacing = (width - 2.0 * button_width) / 3.0;
+                    let button_spacing = (width - 3.0 * button_width) / 4.0;
 
                     ui.add_space(button_spacing);
 
@@ -294,6 +289,17 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
                         *params.menu_page = MenuPage::Main;
                         ui.ctx().clear_focus();
                     }
+
+                    ui.add_space(button_spacing);
+
+                    // Reset button
+                    let reset_button = BorderedButton::themed(
+                        &params.game.ui_theme,
+                        &ButtonStyle::Normal,
+                        &params.localization.get("reset"),
+                    )
+                    .min_size(button_min_size)
+                    .show(ui);
 
                     ui.add_space(button_spacing);
 
@@ -318,16 +324,16 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
                         ui.ctx().clear_focus();
                     }
 
-                    // Return the save button so that controls settings can use it's response for
-                    // adjacency.
-                    save_button
+                    (save_button, reset_button)
                 })
                 .inner;
 
             ui.vertical(|ui| {
                 // Render selected tab
                 match current_tab {
-                    SettingsTab::Controls => controls_settings_ui(params, ui, &tabs, save_button),
+                    SettingsTab::Controls => {
+                        controls_settings_ui(params, ui, reset_button.clicked(), &tabs, save_button)
+                    }
                     SettingsTab::Sound => sound_settings_ui(ui, &params.game),
                 }
             });
@@ -339,12 +345,19 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
 fn controls_settings_ui(
     params: &mut MenuSystemParams,
     ui: &mut egui::Ui,
+    should_reset: bool,
     settings_tabs: &[egui::Response],
     save_button: egui::Response,
 ) {
     use egui_extras::Size;
 
     let ui_theme = &params.game.ui_theme;
+
+    // Reset the settings when reset button is clicked
+    if should_reset {
+        params.modified_settings.as_mut().unwrap().player_controls =
+            params.game.default_settings.player_controls.clone();
+    }
 
     // Get the font meta for the table headings and labels
     let bigger_font = ui_theme
@@ -466,10 +479,14 @@ fn controls_settings_ui(
                     });
 
                     // Add buttons for each kind of input
-                    for input in inputs {
-                        row.col(|ui| {
-                            ui.set_enabled(params.currently_binding_input_idx.is_none());
+                    for (button_idx, input) in inputs.iter_mut().enumerate() {
+                        let binding_kind = if button_idx == 2 {
+                            BindingKind::Gamepad
+                        } else {
+                            BindingKind::Keyboard
+                        };
 
+                        row.col(|ui| {
                             let button = BorderedButton::themed(
                                 ui_theme,
                                 &ButtonStyle::Small,
@@ -489,13 +506,51 @@ fn controls_settings_ui(
                                     .frame(egui::Frame::none())
                                     .title_bar(false)
                                     .show(ui.ctx(), |ui| {
-                                        ui.label("Press something");
+                                        let font = params
+                                            .game
+                                            .ui_theme
+                                            .font_styles
+                                            .get(&FontStyle::Normal)
+                                            .unwrap()
+                                            .colored(params.game.ui_theme.panel.font_color);
+                                        let border = &params.game.ui_theme.panel.border;
+                                        let m = &border.border_size;
+                                        let s = border.scale;
+                                        BorderedFrame::new(border)
+                                            .padding(Margin {
+                                                left: m.left * s,
+                                                right: m.right * s,
+                                                top: m.top * s,
+                                                bottom: m.bottom * s,
+                                            })
+                                            .show(ui, |ui| {
+                                                ui.themed_label(
+                                                    &font,
+                                                    &params.localization.get("bind-input"),
+                                                );
 
-                                        if let Some(input_kind) = params.control_inputs.get_event()
-                                        {
-                                            *params.currently_binding_input_idx = None;
-                                            **input = input_kind;
-                                        }
+                                                let get_input =
+                                                    params.control_inputs.get_event(binding_kind);
+
+                                                if let Ok(Some(input_kind)) = get_input {
+                                                    *params.currently_binding_input_idx = None;
+                                                    button.request_focus();
+                                                    if input_kind
+                                                        != InputKind::Keyboard(KeyCode::Escape)
+                                                    {
+                                                        **input = input_kind;
+                                                    }
+                                                } else if get_input.is_err() {
+                                                    button.request_focus();
+                                                    *params.currently_binding_input_idx = None;
+                                                }
+
+                                                // Make sure we don't double-trigger any menu actions while on this menu
+                                                let mut menu_input = params.menu_input.single_mut();
+                                                for action in MenuAction::variants() {
+                                                    menu_input.consume(action);
+                                                }
+                                            });
                                     });
                             }
 
@@ -575,5 +630,65 @@ fn format_input(input: &InputKind) -> String {
             format!("{} {}", stick, direction)
         }
         other => other.to_string(),
+    }
+}
+
+#[derive(SystemParam)]
+pub struct ControlInputBindingEvents<'w, 's> {
+    keys: Res<'w, Input<KeyCode>>,
+    gamepad_buttons: Res<'w, Input<GamepadButton>>,
+    gamepad_events: EventReader<'w, 's, GamepadEvent>,
+}
+
+impl<'w, 's> ControlInputBindingEvents<'w, 's> {
+    // Get the next event, if any
+    fn get_event(&mut self, binding_kind: BindingKind) -> Result<Option<InputKind>, ()> {
+        if self.keys.just_pressed(KeyCode::Escape) {
+            return Err(());
+        }
+
+        Ok(match binding_kind {
+            BindingKind::Keyboard => {
+                if let Some(&key_code) = self.keys.get_just_pressed().next() {
+                    Some(key_code.into())
+                } else {
+                    None
+                }
+            }
+            BindingKind::Gamepad => {
+                if let Some(&button) = self.gamepad_buttons.get_just_pressed().next() {
+                    Some(button.1.into())
+                } else {
+                    // Look for axes tilted more than 0.5 in either direction and return an axis binding if one is found.
+                    for gamepad_event in self.gamepad_events.iter() {
+                        if let GamepadEventType::AxisChanged(axis, value) = gamepad_event.1 {
+                            if value > 0.5 {
+                                return Ok(Some(
+                                    SingleAxis {
+                                        axis_type: axis.into(),
+                                        positive_low: 0.1,
+                                        negative_low: -1.0,
+                                        value: None,
+                                    }
+                                    .into(),
+                                ));
+                            } else if value < -0.5 {
+                                return Ok(Some(
+                                    SingleAxis {
+                                        axis_type: axis.into(),
+                                        positive_low: 1.0,
+                                        negative_low: -0.1,
+                                        value: None,
+                                    }
+                                    .into(),
+                                ));
+                            }
+                        }
+                    }
+
+                    None
+                }
+            }
+        })
     }
 }
