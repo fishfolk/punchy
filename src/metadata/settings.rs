@@ -7,18 +7,28 @@ use crate::input::PlayerAction;
 /// Global settings, stored and accessed through [`crate::platform::Storage`]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Settings {
+    // The player controller bindings
     pub player_controls: PlayerControlMethods,
+}
+
+impl Settings {
+    /// The key used to store the settings in the [`crate::platform::Storage`] resource.
+    pub const STORAGE_KEY: &'static str = "settings";
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PlayerControlMethods {
+    /// Controls for game remotes
     pub gamepad: PlayerControls,
+    /// Controls for keyboard player 1
     pub keyboard1: PlayerControls,
+    /// Controls for keyboard player 2
     pub keyboard2: PlayerControls,
 }
 
 impl PlayerControlMethods {
-    pub(crate) fn get_input_map(&self, player_idx: usize) -> InputMap<PlayerAction> {
+    /// Get the input map for the given player index
+    pub fn get_input_map(&self, player_idx: usize) -> InputMap<PlayerAction> {
         let mut input_map = InputMap::default();
 
         input_map.set_gamepad(Gamepad(player_idx));
@@ -42,14 +52,11 @@ impl PlayerControlMethods {
     }
 }
 
+/// Binds inputs to player actions
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PlayerControls {
     pub movement: VirtualDPad,
     pub flop_attack: InputKind,
     pub throw: InputKind,
     pub shoot: InputKind,
-}
-
-impl Settings {
-    pub const STORAGE_KEY: &'static str = "settings";
 }

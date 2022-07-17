@@ -3,7 +3,7 @@ use bevy_egui::{egui, EguiContext, EguiInput, EguiPlugin, EguiSettings};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use crate::{assets::EguiFont, audio::*, input::MenuAction, metadata::GameMeta, GameState};
+use crate::{assets::EguiFont, audio, input::MenuAction, metadata::GameMeta, GameState};
 
 pub mod hud;
 pub mod widgets;
@@ -22,9 +22,9 @@ impl Plugin for UIPlugin {
             .add_plugin(EguiPlugin)
             .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
             .add_enter_system(GameState::MainMenu, main_menu::spawn_main_menu_background)
-            .add_enter_system(GameState::MainMenu, play_menu_music)
+            .add_enter_system(GameState::MainMenu, audio::play_menu_music)
             .add_exit_system(GameState::MainMenu, main_menu::despawn_main_menu_background)
-            .add_exit_system(GameState::MainMenu, stop_menu_music)
+            .add_exit_system(GameState::MainMenu, audio::stop_menu_music)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
             .add_system(update_egui_fonts)
             .add_system(update_ui_scale.run_if_resource_exists::<GameMeta>())
@@ -43,7 +43,7 @@ impl Plugin for UIPlugin {
     }
 }
 
-/// Resource that store which ui widgets are adjacent to which other widgets.
+/// Resource that stores which ui widgets are adjacent to which other widgets.
 ///
 /// This is used to figure out which widget to focus on next when you press a direction on the
 /// gamepad, for instance.
@@ -86,7 +86,6 @@ pub struct WidgetAdjacencyEntry<'a> {
     adjacencies: &'a mut WidgetAdjacencies,
 }
 
-#[allow(dead_code)] // We haven't used all these helpers yet
 #[allow(clippy::wrong_self_convention)]
 impl<'a> WidgetAdjacencyEntry<'a> {
     pub fn to_left_of(self, resp: &egui::Response) -> Self {
