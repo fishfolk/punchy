@@ -45,6 +45,7 @@ debug = false
 
 [profile.dev]
 opt-level = 1
+lto = "off"
 
 [profile.release]
 strip = true
