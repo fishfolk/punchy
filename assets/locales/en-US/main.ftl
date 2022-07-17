@@ -30,4 +30,4 @@ move-right = Move Right
 flop-attack = Flop Attack
 shoot = Shoot
 throw = Throw
-bind-input = Make an input to bind or press Escape to cancel.
+bind-input = Press an input or press Escape to cancel.
