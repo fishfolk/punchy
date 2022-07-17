@@ -55,15 +55,18 @@ pub fn despawn_main_menu_background(
     commands.entity(bg).despawn();
 }
 
+/// Which page of the menu we are on
 #[derive(Clone, Copy)]
 pub enum MenuPage {
     Main,
     Settings { tab: SettingsTab },
 }
 
+/// Which settings tab we are on
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SettingsTab {
     Controls,
+    #[allow(unused)] // Just for now until we get sound settings setup
     Sound,
 }
 
@@ -80,10 +83,14 @@ impl Default for SettingsTab {
 }
 
 impl SettingsTab {
-    const TABS: &'static [(Self, &'static str)] =
-        &[(Self::Controls, "controls"), (Self::Sound, "sound")];
+    const TABS: &'static [(Self, &'static str)] = &[
+        (Self::Controls, "controls"),
+        // For now, hide the sound tab because we don't have it working yet.
+        // (Self::Sound, "sound")
+    ];
 }
 
+/// Group of parameters needed by the main menu system
 #[derive(SystemParam)]
 pub struct MenuSystemParams<'w, 's> {
     menu_page: Local<'s, MenuPage>,
@@ -98,11 +105,6 @@ pub struct MenuSystemParams<'w, 's> {
     storage: ResMut<'w, Storage>,
     adjacencies: ResMut<'w, WidgetAdjacencies>,
     control_inputs: ControlInputBindingEvents<'w, 's>,
-}
-
-enum BindingKind {
-    Keyboard,
-    Gamepad,
 }
 
 /// Render the main menu UI
@@ -266,7 +268,7 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
 
         // Add buttons to the bottom
         ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-            let (save_button, reset_button) = ui
+            let bottom_buttons = ui
                 .horizontal(|ui| {
                     // Calculate button size and spacing
                     let width = ui.available_width();
@@ -324,15 +326,28 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
                         ui.ctx().clear_focus();
                     }
 
-                    (save_button, reset_button)
+                    [cancel_button, reset_button, save_button]
                 })
                 .inner;
+
+            // Set the last bottom button on the "left" of the first tab
+            params
+                .adjacencies
+                .widget(&bottom_buttons[bottom_buttons.len() - 1])
+                .to_left_of(&tabs[0]);
 
             ui.vertical(|ui| {
                 // Render selected tab
                 match current_tab {
                     SettingsTab::Controls => {
-                        controls_settings_ui(params, ui, reset_button.clicked(), &tabs, save_button)
+                        controls_settings_ui(
+                            params,
+                            ui,
+                            // Reset if the reset button is clicked
+                            bottom_buttons[1].clicked(),
+                            &tabs,
+                            &bottom_buttons,
+                        )
                     }
                     SettingsTab::Sound => sound_settings_ui(ui, &params.game),
                 }
@@ -347,7 +362,7 @@ fn controls_settings_ui(
     ui: &mut egui::Ui,
     should_reset: bool,
     settings_tabs: &[egui::Response],
-    save_button: egui::Response,
+    bottom_buttons: &[egui::Response],
 ) {
     use egui_extras::Size;
 
@@ -575,9 +590,17 @@ fn controls_settings_ui(
                 for tab in settings_tabs {
                     params.adjacencies.widget(tab).above(button);
                 }
+
+                // The last tab is considered to the left of the first button
+                if i == 0 {
+                    params
+                        .adjacencies
+                        .widget(button)
+                        .to_right_of(&settings_tabs[settings_tabs.len() - 1]);
+                }
             }
 
-        // If this is the last row, the buttons are above the save button
+        // If this is the last row, the buttons are above the bottom buttons
         } else if row_idx == input_rows.len() - 1 {
             for i in 0..3 {
                 let button_above = &input_buttons[(row_idx - 1) * 3 + i];
@@ -586,8 +609,16 @@ fn controls_settings_ui(
                 params
                     .adjacencies
                     .widget(button)
-                    .above(&save_button)
+                    .above(&bottom_buttons[i])
                     .below(button_above);
+
+                // The first bottom button is to the right of the last input button
+                if i == 2 {
+                    params
+                        .adjacencies
+                        .widget(button)
+                        .to_left_of(&bottom_buttons[0]);
+                }
             }
 
         // If this is a middle row, set the buttons to be below the ones in the row above
@@ -602,7 +633,7 @@ fn controls_settings_ui(
     }
 }
 
-/// Render the sound settings
+/// Render the sound settings UI
 fn sound_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
     let ui_theme = &game.ui_theme;
 
@@ -615,6 +646,7 @@ fn sound_settings_ui(ui: &mut egui::Ui, game: &GameMeta) {
     ui.centered_and_justified(|ui| ui.themed_label(&font, "Coming Soon!"));
 }
 
+/// Format an input as a user-facing string
 fn format_input(input: &InputKind) -> String {
     match input {
         InputKind::SingleAxis(axis) => {
@@ -633,11 +665,18 @@ fn format_input(input: &InputKind) -> String {
     }
 }
 
+/// Helper system param to get input events that we are interested in for input binding.
 #[derive(SystemParam)]
 pub struct ControlInputBindingEvents<'w, 's> {
     keys: Res<'w, Input<KeyCode>>,
     gamepad_buttons: Res<'w, Input<GamepadButton>>,
     gamepad_events: EventReader<'w, 's, GamepadEvent>,
+}
+
+/// The kind of input binding to listen for.
+enum BindingKind {
+    Keyboard,
+    Gamepad,
 }
 
 impl<'w, 's> ControlInputBindingEvents<'w, 's> {
