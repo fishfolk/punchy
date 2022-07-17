@@ -213,6 +213,7 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
         }
 
         // Quit button
+        #[cfg(not(target_arch = "wasm"))] // Quitting doesn't make sense in a web context
         if BorderedButton::themed(ui_theme, &ButtonStyle::Normal, &localization.get("quit"))
             .min_size(min_button_size)
             .show(ui)
@@ -220,6 +221,10 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
         {
             app_exit.send(AppExit);
         }
+
+        // use the app exit variable on WASM to avoid warnings
+        #[cfg(target_arch = "wasm32")]
+        let _ = app_exit;
     });
 }
 
