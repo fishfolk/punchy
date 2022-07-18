@@ -44,8 +44,13 @@ opt-level = 3
 debug = false
 
 [profile.dev]
-opt-level = 1
-lto = "off"
+# As of Jul/2022, opt-level=1 takes a considerable compilation time; with such configuration,
+# profiling a (incremental) build showed that the large part of the time is spent in optimization
+# passes.
+# Since it's not clear why this happens and how to mitigate it, optimizations are entirely
+# disabled.
+# It's possible to specify opt-level=1 with lto=false, which is faster, but it's still considerably
+# slower than opt-level=0.
 
 [profile.release]
 strip = true
