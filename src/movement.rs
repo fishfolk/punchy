@@ -85,7 +85,7 @@ pub fn player_controller(
                 let mut dir = Vec2::ZERO;
 
                 if input.pressed(PlayerAction::Move) {
-                    dir = input.action_axis_pair(PlayerAction::Move).unwrap().xy();
+                    dir = input.axis_pair(PlayerAction::Move).unwrap().xy();
                 }
 
                 // Apply speed

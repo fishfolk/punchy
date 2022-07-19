@@ -5,7 +5,7 @@ use crate::{
     animation::Facing,
     consts,
     input::PlayerAction,
-    metadata::{FighterMeta, FighterSpawnMeta, GameMeta},
+    metadata::{FighterMeta, FighterSpawnMeta, GameMeta, Settings},
 };
 
 #[derive(Component)]
@@ -27,7 +27,12 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(player_meta: &FighterSpawnMeta, player_i: usize, game_meta: &GameMeta) -> Self {
+    pub fn new(
+        player_meta: &FighterSpawnMeta,
+        player_i: usize,
+        game_meta: &GameMeta,
+        settings: Option<&Settings>,
+    ) -> Self {
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
         let player_pos = player_meta.location + ground_offset;
 
@@ -37,11 +42,10 @@ impl PlayerBundle {
         let fighter_handle = player_meta.fighter_handle.clone();
 
         let input_manager_bundle = InputManagerBundle {
-            input_map: game_meta
-                .default_input_maps
-                .get_player_map(player_i)
-                .map(|mut map| map.set_gamepad(Gamepad(player_i)).build())
-                .unwrap_or_default(),
+            input_map: settings
+                .unwrap_or(&game_meta.default_settings)
+                .player_controls
+                .get_input_map(player_i),
             ..default()
         };
 

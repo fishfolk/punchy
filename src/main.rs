@@ -15,6 +15,7 @@ use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
+use platform::Storage;
 use player::*;
 use rand::{seq::SliceRandom, Rng};
 
@@ -63,7 +64,8 @@ use y_sort::*;
 use crate::{
     attack::{attack_cleanup, attack_tick},
     config::EngineConfig,
-    input::{CameraAction, PlayerAction},
+    input::PlayerAction,
+    metadata::Settings,
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -201,7 +203,6 @@ fn main() {
         .add_plugin(localization::LocalizationPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
-        .add_plugin(InputManagerPlugin::<CameraAction>::default())
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
@@ -226,7 +227,6 @@ fn main() {
                 .with_system(spawn_throwable_items)
                 .with_system(player_controller)
                 .with_system(player_flop)
-                .with_system(helper_camera_controller)
                 .with_system(y_sort)
                 .with_system(player_attack_enemy_collision)
                 .with_system(enemy_attack_player_collision)
@@ -337,6 +337,7 @@ fn load_level(
     asset_server: Res<AssetServer>,
     game: Res<GameMeta>,
     windows: Res<Windows>,
+    mut storage: ResMut<Storage>,
 ) {
     if let Some(level) = assets.get(level_handle.clone_weak()) {
         debug!("Loaded level");
@@ -352,7 +353,12 @@ fn load_level(
 
         // Spawn the players
         for (i, player) in level.players.iter().enumerate() {
-            commands.spawn_bundle(PlayerBundle::new(player, i, &game));
+            commands.spawn_bundle(PlayerBundle::new(
+                player,
+                i,
+                &game,
+                storage.get(Settings::STORAGE_KEY).as_ref(),
+            ));
         }
 
         // Spawn the enemies

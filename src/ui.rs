@@ -1,51 +1,116 @@
 use bevy::{prelude::*, utils::HashMap, window::WindowId};
-use bevy_egui::{
-    egui::{self, style::Margin},
-    EguiContext, EguiInput, EguiPlugin, EguiSettings,
-};
-use bevy_fluent::Localization;
+use bevy_egui::{egui, EguiContext, EguiInput, EguiPlugin, EguiSettings};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use crate::{
-    assets::EguiFont,
-    audio::*,
-    config::EngineConfig,
-    input::MenuAction,
-    metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
-    GameState,
-};
-
-use self::widgets::{bordered_button::BorderedButton, bordered_frame::BorderedFrame, EguiUIExt};
+use crate::{assets::EguiFont, audio, input::MenuAction, metadata::GameMeta, GameState};
 
 pub mod hud;
 pub mod widgets;
+
+pub mod main_menu;
+pub mod pause_menu;
+
+pub mod extensions;
+pub use extensions::*;
 
 pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(EguiPlugin)
+        app.init_resource::<WidgetAdjacencies>()
+            .add_plugin(EguiPlugin)
             .add_system(handle_menu_input.run_if_resource_exists::<GameMeta>())
-            .add_enter_system(GameState::MainMenu, spawn_main_menu_background)
-            .add_enter_system(GameState::MainMenu, play_menu_music)
-            .add_exit_system(GameState::MainMenu, despawn_main_menu_background)
-            .add_exit_system(GameState::MainMenu, stop_menu_music)
+            .add_enter_system(GameState::MainMenu, main_menu::spawn_main_menu_background)
+            .add_enter_system(GameState::MainMenu, audio::play_menu_music)
+            .add_exit_system(GameState::MainMenu, main_menu::despawn_main_menu_background)
+            .add_exit_system(GameState::MainMenu, audio::stop_menu_music)
             .add_system(hud::render_hud.run_in_state(GameState::InGame))
             .add_system(update_egui_fonts)
             .add_system(update_ui_scale.run_if_resource_exists::<GameMeta>())
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::Paused)
-                    .with_system(pause_menu)
+                    .with_system(pause_menu::pause_menu)
                     .into(),
             )
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::MainMenu)
-                    .with_system(main_menu)
+                    .with_system(main_menu::main_menu_system)
                     .into(),
             );
+    }
+}
+
+/// Resource that stores which ui widgets are adjacent to which other widgets.
+///
+/// This is used to figure out which widget to focus on next when you press a direction on the
+/// gamepad, for instance.
+#[derive(Debug, Clone, Default)]
+pub struct WidgetAdjacencies(HashMap<egui::Id, WidgetAdjacency>);
+
+impl std::ops::Deref for WidgetAdjacencies {
+    type Target = HashMap<egui::Id, WidgetAdjacency>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for WidgetAdjacencies {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// The list of widgets in each direction from another widget
+#[derive(Debug, Clone, Default)]
+pub struct WidgetAdjacency {
+    pub up: Option<egui::Id>,
+    pub down: Option<egui::Id>,
+    pub left: Option<egui::Id>,
+    pub right: Option<egui::Id>,
+}
+
+impl WidgetAdjacencies {
+    pub fn widget(&mut self, resp: &egui::Response) -> WidgetAdjacencyEntry {
+        WidgetAdjacencyEntry {
+            id: resp.id,
+            adjacencies: self,
+        }
+    }
+}
+
+pub struct WidgetAdjacencyEntry<'a> {
+    id: egui::Id,
+    adjacencies: &'a mut WidgetAdjacencies,
+}
+
+#[allow(clippy::wrong_self_convention)]
+impl<'a> WidgetAdjacencyEntry<'a> {
+    pub fn to_left_of(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().right = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().left = Some(self.id);
+        self
+    }
+    pub fn to_right_of(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().left = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().right = Some(self.id);
+        self
+    }
+    pub fn above(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().down = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().up = Some(self.id);
+        self
+    }
+    pub fn below(self, resp: &egui::Response) -> Self {
+        let other_id = resp.id;
+        self.adjacencies.0.entry(self.id).or_default().up = Some(other_id);
+        self.adjacencies.0.entry(other_id).or_default().down = Some(self.id);
+        self
     }
 }
 
@@ -53,6 +118,8 @@ fn handle_menu_input(
     mut windows: ResMut<Windows>,
     input: Query<&ActionState<MenuAction>>,
     mut egui_inputs: ResMut<HashMap<WindowId, EguiInput>>,
+    adjacencies: Res<WidgetAdjacencies>,
+    mut egui_ctx: ResMut<EguiContext>,
 ) {
     use bevy::window::WindowMode;
     let input = input.single();
@@ -67,8 +134,6 @@ fn handle_menu_input(
         }
     }
 
-    // Emit tab / shift + tab Egui events in response to menu navigation inputs. This is pretty
-    // hacky and may need to be re-visited.
     let events = &mut egui_inputs
         .get_mut(&WindowId::primary())
         .unwrap()
@@ -83,20 +148,53 @@ fn handle_menu_input(
         });
     }
 
-    if input.just_pressed(MenuAction::Forward) {
-        events.push(egui::Event::Key {
-            key: egui::Key::Tab,
-            pressed: true,
-            modifiers: egui::Modifiers::NONE,
-        });
-    }
+    // Helper to fall back on using tab order instead of adjacency map to determine next focused
+    // widget.
+    let mut tab_fallback = || {
+        if input.just_pressed(MenuAction::Up) || input.just_pressed(MenuAction::Left) {
+            events.push(egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                modifiers: egui::Modifiers::SHIFT,
+            });
+        } else if input.just_pressed(MenuAction::Down) || input.just_pressed(MenuAction::Right) {
+            events.push(egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            });
+        }
+    };
 
-    if input.just_pressed(MenuAction::Backward) {
-        events.push(egui::Event::Key {
-            key: egui::Key::Tab,
-            pressed: true,
-            modifiers: egui::Modifiers::SHIFT,
-        });
+    let mut memory = egui_ctx.ctx_mut().memory();
+    if let Some(adjacency) = memory.focus().and_then(|id| adjacencies.get(&id)) {
+        if input.just_pressed(MenuAction::Up) {
+            if let Some(adjacent) = adjacency.up {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        } else if input.just_pressed(MenuAction::Down) {
+            if let Some(adjacent) = adjacency.down {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        } else if input.just_pressed(MenuAction::Left) {
+            if let Some(adjacent) = adjacency.left {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        } else if input.just_pressed(MenuAction::Right) {
+            if let Some(adjacent) = adjacency.right {
+                memory.request_focus(adjacent);
+            } else {
+                tab_fallback()
+            }
+        }
+    } else {
+        tab_fallback();
     }
 }
 
@@ -181,181 +279,4 @@ fn update_ui_scale(
             }
         }
     }
-}
-
-fn pause_menu(
-    mut commands: Commands,
-    mut egui_context: ResMut<EguiContext>,
-    game: Res<GameMeta>,
-    non_camera_entities: Query<Entity, Without<Camera>>,
-    mut camera_transform: Query<&mut Transform, With<Camera>>,
-    localization: Res<Localization>,
-) {
-    let ui_theme = &game.ui_theme;
-
-    egui::CentralPanel::default()
-        .frame(egui::Frame::none())
-        .show(egui_context.ctx_mut(), |ui| {
-            let screen_rect = ui.max_rect();
-
-            let pause_menu_width = 300.0;
-            let x_margin = (screen_rect.width() - pause_menu_width) / 2.0;
-            let outer_margin = egui::style::Margin::symmetric(x_margin, screen_rect.height() * 0.2);
-
-            BorderedFrame::new(&ui_theme.panel.border)
-                .margin(outer_margin)
-                .padding(ui_theme.panel.padding.into())
-                .show(ui, |ui| {
-                    ui.set_min_width(ui.available_width());
-
-                    let heading_font = ui_theme
-                        .font_styles
-                        .get(&FontStyle::Heading)
-                        .expect("Missing 'heading' font style")
-                        .colored(ui_theme.panel.font_color);
-
-                    ui.vertical_centered(|ui| {
-                        ui.themed_label(&heading_font, &localization.get("paused"));
-
-                        ui.add_space(10.0);
-
-                        let width = ui.available_width();
-
-                        let continue_button = BorderedButton::themed(
-                            ui_theme,
-                            &ButtonStyle::Normal,
-                            &localization.get("continue"),
-                        )
-                        .min_size(egui::vec2(width, 0.0))
-                        .show(ui);
-
-                        // Focus continue button by default
-                        if ui.memory().focus().is_none() {
-                            continue_button.request_focus();
-                        }
-
-                        if continue_button.clicked() {
-                            commands.insert_resource(NextState(GameState::InGame));
-                        }
-
-                        if BorderedButton::themed(
-                            ui_theme,
-                            &ButtonStyle::Normal,
-                            &localization.get("main-menu"),
-                        )
-                        .min_size(egui::vec2(width, 0.0))
-                        .show(ui)
-                        .clicked()
-                        {
-                            // Clean up all entities other than the camera
-                            for entity in non_camera_entities.iter() {
-                                commands.entity(entity).despawn();
-                            }
-                            // Reset camera position
-                            let mut camera_transform = camera_transform.single_mut();
-                            camera_transform.translation.x = 0.0;
-                            camera_transform.translation.y = 0.0;
-
-                            // Show the main menu
-                            commands.insert_resource(NextState(GameState::MainMenu));
-                        }
-                    });
-                })
-        });
-}
-
-#[derive(Component)]
-struct MainMenuBackground;
-
-/// Spawns the background image for the main menu
-fn spawn_main_menu_background(mut commands: Commands, game: Res<GameMeta>, windows: Res<Windows>) {
-    let window = windows.primary();
-    let bg_handle = game.main_menu.background_image.image_handle.clone();
-    let img_size = game.main_menu.background_image.image_size;
-    let ratio = img_size.x / img_size.y;
-    let height = window.height();
-    let width = height * ratio;
-    commands
-        .spawn_bundle(SpriteBundle {
-            texture: bg_handle,
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(width, height)),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(MainMenuBackground);
-}
-
-/// Despawns the background image for the main menu
-fn despawn_main_menu_background(
-    mut commands: Commands,
-    background: Query<Entity, With<MainMenuBackground>>,
-) {
-    let bg = background.single();
-    commands.entity(bg).despawn();
-}
-
-/// Render the main menu UI
-fn main_menu(
-    mut commands: Commands,
-    mut egui_context: ResMut<EguiContext>,
-    game: Res<GameMeta>,
-    localization: Res<Localization>,
-    engine_config: Res<EngineConfig>,
-) {
-    let ui_theme = &game.ui_theme;
-
-    egui::CentralPanel::default()
-        .frame(egui::Frame::none())
-        .show(egui_context.ctx_mut(), |ui| {
-            let screen_rect = ui.max_rect();
-
-            // Calculate a margin of 20% of the screen size
-            let outer_margin = screen_rect.size() * 0.20;
-            let outer_margin = Margin {
-                left: outer_margin.x,
-                right: outer_margin.x,
-                // Make top and bottom margins smaller
-                top: outer_margin.y / 1.5,
-                bottom: outer_margin.y / 1.5,
-            };
-
-            BorderedFrame::new(&ui_theme.panel.border)
-                .margin(outer_margin)
-                .padding(ui_theme.panel.padding.into())
-                .show(ui, |ui| {
-                    // Make sure the frame ocupies the entire rect that we allocated for it.
-                    //
-                    // Without this it would only take up enough size to fit it's content.
-                    ui.set_min_size(ui.available_size());
-
-                    // Create a vertical list of items, centered horizontally
-                    ui.vertical_centered(|ui| {
-                        ui.themed_label(&game.main_menu.title_font, &localization.get("title"));
-
-                        // Now switch the layout to bottom_up so that we can start adding widgets
-                        // from the bottom of the frame.
-                        ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                            let start_button = BorderedButton::themed(
-                                ui_theme,
-                                &ButtonStyle::Jumbo,
-                                &localization.get("start-game"),
-                            )
-                            .show(ui);
-
-                            // Focus the start button if nothing else is focused. That way you can
-                            // play the game just by pressing Enter.
-                            if ui.memory().focus().is_none() {
-                                start_button.request_focus();
-                            }
-
-                            if start_button.clicked() || engine_config.auto_start {
-                                commands.insert_resource(game.start_level_handle.clone());
-                                commands.insert_resource(NextState(GameState::LoadingLevel));
-                            }
-                        });
-                    });
-                })
-        });
 }

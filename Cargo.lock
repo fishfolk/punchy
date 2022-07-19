@@ -1550,6 +1550,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_extras"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "877bfcce06463cdbcfd7f4efd57608b1384d6d9ae03b33e503fbba1d1a899a52"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "either"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2282,7 +2291,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leafwing_input_manager"
 version = "0.5.0"
-source = "git+https://github.com/Leafwing-Studios/leafwing-input-manager.git?rev=e8bd6e0#e8bd6e00886f45cd37c3289cf2a726b514058fda"
+source = "git+https://github.com/zicklag/leafwing-input-manager.git?branch=backport-leafwing-dev-to-bevy-0.7#000cee2ae7bc1bf206d63c3a2dfbacbb07fa23f2"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -2303,7 +2312,7 @@ dependencies = [
 [[package]]
 name = "leafwing_input_manager_macros"
 version = "0.5.0"
-source = "git+https://github.com/Leafwing-Studios/leafwing-input-manager.git?rev=e8bd6e0#e8bd6e00886f45cd37c3289cf2a726b514058fda"
+source = "git+https://github.com/zicklag/leafwing-input-manager.git?branch=backport-leafwing-dev-to-bevy-0.7#000cee2ae7bc1bf206d63c3a2dfbacbb07fa23f2"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3156,6 +3165,7 @@ dependencies = [
  "bevy_mod_debugdump",
  "bevy_rapier2d",
  "directories",
+ "egui_extras",
  "fluent",
  "getrandom",
  "iyes_loopless",

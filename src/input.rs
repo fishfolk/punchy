@@ -11,20 +11,13 @@ pub enum PlayerAction {
 }
 
 #[derive(Debug, Copy, Clone, Actionlike, Deserialize, Eq, PartialEq, Hash)]
-pub enum CameraAction {
+pub enum MenuAction {
     Up,
     Down,
-    Right,
     Left,
-    ZoomIn,
-    ZoomOut,
-}
-
-#[derive(Debug, Copy, Clone, Actionlike, Deserialize, Eq, PartialEq, Hash)]
-pub enum MenuAction {
+    Right,
     Confirm,
-    Forward,
-    Backward,
+    Back,
     Pause,
     ToggleFullscreen,
 }

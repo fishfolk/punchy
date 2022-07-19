@@ -8,7 +8,7 @@ main_menu:
   title_font:
     family: ark
     color: [0, 0, 0]
-    size: 55
+    size: 40
 
   background_image:
     image: ui/main-menu-background.png
@@ -16,179 +16,77 @@ main_menu:
 
   music: ui/Fishycuffs [title screen].ogg
 
-default_input_maps:
-  players:
-    # Player 1
-    - Move:
-      - VirtualDPad:
-          up:
-            Keyboard: W
-          down:
-            Keyboard: S
-          left:
-            Keyboard: A
-          right:
-            Keyboard: D
-      - VirtualDPad:
-          up:
-            GamepadButton: DPadUp
-          down:
-            GamepadButton: DPadDown
-          left:
-            GamepadButton: DPadLeft
-          right:
-            GamepadButton: DPadRight
-      - Single:
-          DualGamepadAxis:
-            x_axis: LeftStickX
-            y_axis: LeftStickY
-            x_positive_low: 0.1
-            x_negative_low: -0.1
-            y_positive_low: 0.1
-            y_negative_low: -0.1
-      FlopAttack:
-        - Single:
-            Keyboard: Space
-        - Single:
-            GamepadButton: South
-      Throw:
-        - Single:
-            Keyboard: C
-        - Single:
-            GamepadButton: West
-      Shoot:
-        - Single:
-            Keyboard: V
-        - Single:
-            GamepadButton: East
-    # Player 2
-    - Move:
-      - VirtualDPad:
-          up:
-            Keyboard: Up
-          down:
-            Keyboard: Down
-          left:
-            Keyboard: Left
-          right:
-            Keyboard: Right
-      - Single:
-          DualGamepadAxis:
-            x_axis: LeftStickX
-            y_axis: LeftStickY
-            x_positive_low: 0.1
-            x_negative_low: -0.1
-            y_positive_low: 0.1
-            y_negative_low: -0.1
-      - VirtualDPad:
-          up:
-            GamepadButton: DPadUp
-          down:
-            GamepadButton: DPadDown
-          left:
-            GamepadButton: DPadLeft
-          right:
-            GamepadButton: DPadRight
-      FlopAttack:
-        - Single:
-            Keyboard: Comma
-        - Single:
-            GamepadButton: South
-      Throw:
-        - Single:
-            Keyboard: Period
-        - Single:
-            GamepadButton: West
-      Shoot:
-        - Single:
-            Keyboard: RShift
-        - Single:
-            GamepadButton: East
-
-  camera:
-    Up:
-      - Chord:
-          - Keyboard: Up
-          - Keyboard: LControl
-    Down:
-      - Chord:
-          - Keyboard: Down
-          - Keyboard: LControl
-    Left:
-      - Chord:
-          - Keyboard: Left
-          - Keyboard: LControl
-    Right:
-      - Chord:
-          - Keyboard: Right
-          - Keyboard: LControl
-    ZoomIn:
-      - Chord:
-          - Keyboard: Equals
-          - Keyboard: LControl
-    ZoomOut:
-      - Chord:
-          - Keyboard: Minus
-          - Keyboard: LControl
-
-  menu:
-    Confirm:
-      - Single:
-          GamepadButton: South
-      - Single:
-          GamepadButton: Start
-    Forward:
-      - Single:
-          Keyboard: Down
-      - Single:
-          Keyboard: Right
-      - Single:
-          GamepadButton: DPadDown
-      - Single:
-          GamepadButton: DPadRight
-      - Single:
-          GamepadButton: Select
-      - Single:
-          SingleGamepadAxis:
-            axis: LeftStickY
-            positive_low: 1.0
-            negative_low: -0.5
-      - Single:
-          SingleGamepadAxis:
-            axis: LeftStickX
+default_settings:
+  player_controls:
+    # Gamepad controls
+    gamepad:
+      movement:
+        up:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickY
+            positive_low: 0.1
             negative_low: -1.0
-            positive_low: 0.5
-    Backward:
-      - Single:
-          Keyboard: Left
-      - Single:
+        left:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickX
+            positive_low: 1.0
+            negative_low: -0.1
+        down:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickY
+            positive_low: 1.0
+            negative_low: -0.1
+        right:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickX
+            positive_low: 0.1
+            negative_low: -1.0
+      flop_attack:
+        GamepadButton: South
+      shoot:
+        GamepadButton: East
+      throw:
+        GamepadButton: West
+
+    # Controls for the first keyboard player ( left side )
+    keyboard1:
+      movement:
+        up:
+          Keyboard: W
+        down:
+          Keyboard: S
+        left:
+          Keyboard: A
+        right:
+          Keyboard: D
+      flop_attack:
+        Keyboard: Space
+      shoot:
+        Keyboard: V
+      throw:
+        Keyboard: C
+
+    # Controls for the second keyboard player ( right side )
+    keyboard2:
+      movement:
+        up:
           Keyboard: Up
-      - Single:
-          GamepadButton: DPadLeft
-      - Single:
-          GamepadButton: DPadUp
-      - Single:
-          SingleGamepadAxis:
-            axis: LeftStickY
-            negative_low: -1.0
-            positive_low: 0.5
-      - Single:
-          SingleGamepadAxis:
-            axis: LeftStickX
-            negative_low: -0.5
-            positive_low: 1.0
-    Pause:
-      - Single:
-          Keyboard: Escape
-      - Single:
-          Keyboard: P
-      - Single:
-          GamepadButton: Start
-    ToggleFullscreen:
-      - Single:
-          Keyboard: F11
-      - Single:
-          GamepadButton: Mode
+        down:
+          Keyboard: Down
+        left:
+          Keyboard: Left
+        right:
+          Keyboard: Right
+      flop_attack:
+        Keyboard: Comma
+      shoot:
+        Keyboard: RShift
+      throw:
+        Keyboard: Period
 
 ui_theme:
   font_families:
@@ -198,6 +96,14 @@ ui_theme:
     heading:
       family: ark
       size: 30
+      color: [0, 0, 0]
+    bigger:
+      family: ark
+      size: 20
+      color: [0, 0, 0]
+    normal:
+      family: ark
+      size: 15
       color: [0, 0, 0]
 
   hud:
@@ -247,53 +153,14 @@ ui_theme:
         bottom: 11
         left: 11
         right: 11
-      scale: 4.0
+      scale: 3.0
 
   button_styles:
-    jumbo:
-      font:
-        family: ark
-        color: [255, 255, 255]
-        size: 30
-      padding:
-        top: 12
-        left: 12
-        right: 12
-        bottom: 16
-      borders:
-        default:
-          image: ui/green-button.png
-          image_size: [14, 14]
-          border_size:
-            top: 5
-            bottom: 5
-            right: 5
-            left: 5
-          scale: 3
-        focused:
-          image: ui/green-button-focused.png
-          image_size: [14, 14]
-          border_size:
-            top: 5
-            bottom: 5
-            right: 5
-            left: 5
-          scale: 3
-        clicked:
-          image: ui/green-button-down.png
-          image_size: [14, 14]
-          border_size:
-            top: 5
-            bottom: 5
-            right: 5
-            left: 5
-          scale: 3
-
     normal:
       font:
         family: ark
         color: [255, 255, 255]
-        size: 20
+        size: 17
       padding:
         top: 8
         left: 8
@@ -327,6 +194,45 @@ ui_theme:
             right: 5
             left: 5
           scale: 2
+
+    small:
+      font:
+        family: ark
+        color: [255, 255, 255]
+        size: 15
+      padding:
+        top: 4
+        left: 4
+        right: 4
+        bottom: 6
+      borders:
+        default:
+          image: ui/green-button.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+        focused:
+          image: ui/green-button-focused.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+        clicked:
+          image: ui/green-button-down.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
 
 translations:
   # This is the locale that we will fallback to if the selected locale doesn't have

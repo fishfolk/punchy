@@ -43,7 +43,7 @@ impl<'a> BorderedButton<'a> {
     pub fn themed(
         ui_theme: &'a UIThemeMeta,
         button_style: &'a ButtonStyle,
-        label: &'a str,
+        label: impl Into<RichText>,
     ) -> BorderedButton<'a> {
         let style = ui_theme
             .button_styles
@@ -51,7 +51,8 @@ impl<'a> BorderedButton<'a> {
             .expect("Missing button theme");
 
         BorderedButton::new(
-            egui::RichText::new(label)
+            label
+                .into()
                 .font(style.font.font_id())
                 .color(style.font.color),
         )
@@ -164,8 +165,8 @@ impl<'a> Widget for BorderedButton<'a> {
         let (rect, response) = ui.allocate_at_least(desired_size, sense);
         response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, text.text()));
 
-        // Focus the button automatically when it is hovered
-        if response.hovered() {
+        // Focus the button automatically when it is hovered and the mouse is moving
+        if response.hovered() && ui.ctx().input().pointer.velocity().length_sq() > 0.0 {
             response.request_focus();
         }
 
