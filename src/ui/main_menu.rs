@@ -184,7 +184,7 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
         )
         .min_size(min_button_size)
         .show(ui)
-        .fous_by_default(ui);
+        .focus_by_default(ui);
 
         if start_button.clicked() || engine_config.auto_start {
             commands.insert_resource(game.start_level_handle.clone());
@@ -260,7 +260,7 @@ fn settings_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui, current_ta
 
                 // Focus the first tab by default
                 if i == 0 {
-                    button = button.fous_by_default(ui);
+                    button = button.focus_by_default(ui);
                 }
 
                 // Change tab when clicked
@@ -673,7 +673,7 @@ fn sound_settings_ui(_ui: &mut egui::Ui, _game: &GameMeta) {
     todo!("Implement sound settings UI");
 }
 
-/// Format an InpubKind as a user-facing string
+/// Format an InputKind as a user-facing string
 fn format_input(input: &InputKind) -> String {
     match input {
         InputKind::SingleAxis(axis) => {

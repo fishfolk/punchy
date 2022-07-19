@@ -17,11 +17,11 @@ impl EguiContextExt for &egui::Context {
 /// Extension trait with helpers for egui responses
 pub trait EguiResponseExt {
     /// Set this response to focused if nothing else is focused
-    fn fous_by_default(self, ui: &mut egui::Ui) -> egui::Response;
+    fn focus_by_default(self, ui: &mut egui::Ui) -> egui::Response;
 }
 
 impl EguiResponseExt for egui::Response {
-    fn fous_by_default(self, ui: &mut egui::Ui) -> egui::Response {
+    fn focus_by_default(self, ui: &mut egui::Ui) -> egui::Response {
         if ui.ctx().memory().focus().is_none() {
             ui.ctx().memory().request_focus(self.id);
 
