@@ -1,4 +1,4 @@
-'Fish Fight: Jumpy' source code is dual-licensed under either
+'Fish Fight: Punchy' source code is dual-licensed under either
 
 * MIT License (licenses/LICENSE-MIT or http://opensource.org/licenses/MIT)
 * Apache License, Version 2.0 (licenses/LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
