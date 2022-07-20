@@ -1,5 +1,7 @@
 # Fish Fight: Punchy
 
+[![Build Status](https://img.shields.io/github/workflow/status/fishfight/punchy/CI?logo=github&labelColor=1e1c24&color=216e9b)](https://github.com/fishfight/punchy/actions)
+[![License](https://img.shields.io/badge/License-MIT%20or%20Apache%202-green.svg?label=license&labelColor=1e1c24&color=34925e)](./LICENSE.md)
 [![Discord](https://img.shields.io/badge/chat-on%20discord-green.svg?logo=discord&logoColor=fff&labelColor=1e1c24&color=8d5b3f)](https://discord.gg/4smxjcheE5)
 
 A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little Fighter 2, River City Ransom and [many more](https://fextralife.com/a-history-of-the-side-scrolling-beat-em-up-part-1/).
