@@ -1,5 +1,7 @@
 use structopt::StructOpt;
 
+const DEFAULT_LOG_LEVEL: &str = "info,wgpu=error,bevy_fluent=warn,symphonia_core=warn,symphonia_format_ogg=warn,symphonia_bundle_mp3=warn";
+
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(name = "Puncy", about = "A 2.5D side-scroller beatemup.")]
 pub struct EngineConfig {
@@ -23,7 +25,7 @@ pub struct EngineConfig {
     ///
     /// May additionally specify log levels for specific modules as a comma-separated list of
     /// `module=level` items.
-    #[structopt(short = "l", long, default_value = "info,wgpu=error,bevy_fluent=warn")]
+    #[structopt(short = "l", long, default_value = DEFAULT_LOG_LEVEL)]
     pub log_level: String,
 }
 
@@ -66,7 +68,7 @@ impl EngineConfig {
             asset_dir: None,
             game_asset: "default.game.yaml".into(),
             auto_start: false,
-            log_level: "info,wgpu=error,bevy_fluent=warn".into(),
+            log_level: DEFAULT_LOG_LEVEL.into(),
         }
     }
 }
