@@ -14,19 +14,6 @@ https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a
 
 https://fishfight.github.io/punchy/demo/
 
-## Controls
-
-| Action            | ⌨️ Keyboard                      | ⌨️ Player 2               | 🎮 Gamepad       |
-| ----------------- | ------------------------------- | ------------------------ | ---------------- |
-| Movement          | W / S / A / D                   | Up / Down / Left / Right | Left Stick, DPad |
-| Throw Item        | C                               | Period                   | West             |
-| Shoot             | V                               | Right Shift              | East             |
-| Flop Attack       | Spacebar                        | Comma                    | South            |
-| Zoom Camera       | Ctrl + + / -                    | ❌️                       | ❌️               |
-| Pan Camera        | Ctrl + Up / Down / Left / Right | ❌️                       | ❌️               |
-| Pause/Unpause     | Escape / P                      | ❌ ️                      | Start            |
-| Toggle Fullscreen | F11                             | ❌️                       | Select           |
-
 ## Contributing
 
 Anyone involved in the Fish Fight community must follow our [code of conduct](https://github.com/fishfight/FishFight/blob/main/CODE_OF_CONDUCT.md).
