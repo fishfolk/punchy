@@ -10,8 +10,6 @@ use leafwing_input_manager::{
 };
 
 use crate::{
-    camera::Panning,
-    consts,
     input::MenuAction,
     metadata::{BorderImageMeta, GameMeta},
     GameState,
@@ -108,9 +106,6 @@ impl<'w, 's> GameLoader<'w, 's> {
             camera_bundle.orthographic_projection.scale = game.camera_height as f32 / 2.0;
             commands
                 .spawn_bundle(camera_bundle)
-                .insert(Panning {
-                    offset: Vec2::new(0., -consts::GROUND_Y),
-                })
                 .insert(ParallaxCameraComponent)
                 // We also add another input manager bundle for `MenuAction`s
                 .insert_bundle(InputManagerBundle {
