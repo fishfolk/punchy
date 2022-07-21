@@ -226,7 +226,6 @@ fn main() {
                 .with_system(load_fighters)
                 .with_system(spawn_throwable_items)
                 .with_system(player_controller)
-                .with_system(player_flop)
                 .with_system(y_sort)
                 .with_system(player_attack_enemy_collision)
                 .with_system(enemy_attack_player_collision)
@@ -504,74 +503,6 @@ fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
     let input = input.single();
     if input.just_pressed(MenuAction::Pause) {
         commands.insert_resource(NextState(GameState::InGame));
-    }
-}
-
-fn player_flop(
-    mut commands: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &mut State,
-            &mut Transform,
-            &Animation,
-            &Facing,
-            &ActionState<PlayerAction>,
-            &Handle<FighterMeta>,
-        ),
-        With<Player>,
-    >,
-    fighter_assets: Res<Assets<FighterMeta>>,
-    time: Res<Time>,
-    mut start_y: Local<Option<f32>>,
-) {
-    for (entity, mut state, mut transform, animation, facing, input, fighter_meta) in
-        query.iter_mut()
-    {
-        if *state != State::Attacking {
-            if *state != State::Idle && *state != State::Running {
-                return;
-            }
-            if input.just_pressed(PlayerAction::FlopAttack) {
-                state.set(State::Attacking);
-
-                if let Some(fighter) = fighter_assets.get(fighter_meta) {
-                    if let Some(effects) = fighter.audio.effect_handles.get(&state) {
-                        let fx_playback = FighterStateEffectsPlayback::new(*state, effects.clone());
-                        commands.entity(entity).insert(fx_playback);
-                    }
-                }
-            }
-        // } else if animation.is_finished() {
-        // state.set(State::Idle);
-        } else {
-            //TODO: Fix hacky way to get a forward jump
-            if animation.current_frame < 3 {
-                if facing.is_left() {
-                    transform.translation.x -= 200. * time.delta_seconds();
-                } else {
-                    transform.translation.x += 200. * time.delta_seconds();
-                }
-            }
-
-            // For currently unclear reasons, the first Animation frame may run for less Bevy frames
-            // than expected. When this is the case, the player jumps less then it should, netting,
-            // at the end of the animation, a slightly negative Y than the beginning, which causes
-            // problems. This is a workaround.
-            //
-            if start_y.is_none() {
-                *start_y = Some(transform.translation.y);
-            }
-
-            if animation.current_frame < 1 {
-                transform.translation.y += 180. * time.delta_seconds();
-            } else if animation.current_frame < 3 {
-                transform.translation.y -= 90. * time.delta_seconds();
-            } else if animation.is_finished() {
-                transform.translation.y = start_y.unwrap();
-                *start_y = None;
-            }
-        }
     }
 }
 
