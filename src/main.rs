@@ -49,7 +49,7 @@ mod ui;
 mod y_sort;
 
 use animation::*;
-use attack::{enemy_attack, AttackPlugin};
+use attack::AttackPlugin;
 use audio::*;
 use camera::*;
 use collisions::*;
@@ -250,11 +250,6 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .after("set_target_near_player")
                 .label("move_to_target"),
-        )
-        .add_system(
-            enemy_attack
-                .run_in_state(GameState::InGame)
-                .after("move_to_target"),
         )
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(

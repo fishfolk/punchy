@@ -31,8 +31,15 @@ pub struct AttackPlugin;
 
 impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
+        // Can't be currently converted to a ConditionSet, since (it seems that) systems inside
+        // don't have temporal methods available (e.g. after()).
         app.add_system(player_attack.run_in_state(GameState::InGame))
-            .add_system(player_flop.run_in_state(GameState::InGame));
+            .add_system(player_flop.run_in_state(GameState::InGame))
+            .add_system(
+                enemy_attack
+                    .run_in_state(GameState::InGame)
+                    .after("move_to_target"),
+            );
     }
 }
 
@@ -165,7 +172,7 @@ fn player_flop(
     }
 }
 
-pub fn enemy_attack(
+fn enemy_attack(
     mut query: Query<(Entity, &mut State, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
