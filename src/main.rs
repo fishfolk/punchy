@@ -218,6 +218,7 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
+        .add_exit_system(GameState::InGame, clean_in_game_data)
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
@@ -601,6 +602,12 @@ fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMar
 fn game_over_on_players_death(mut commands: Commands, query: Query<(), With<Player>>) {
     if query.is_empty() {
         commands.insert_resource(NextState(GameState::MainMenu));
+    }
+}
+
+fn clean_in_game_data(mut commands: Commands, query: Query<Entity, Without<Camera>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
 
