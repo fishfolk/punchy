@@ -16,9 +16,6 @@ use crate::{
 #[derive(Component)]
 pub struct Item;
 
-#[derive(Component)]
-struct Pickable;
-
 pub struct ThrowItemEvent {
     pub position: Vec2,
     pub facing: Facing,
@@ -42,7 +39,6 @@ pub fn spawn_throwable_items(
                 ..default()
             })
             .insert(Item)
-            .insert(Pickable)
             .insert(Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.))
             .insert(Sensor(true))
             .insert(ActiveEvents::COLLISION_EVENTS)
