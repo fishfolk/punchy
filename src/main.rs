@@ -218,6 +218,7 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
+        .add_exit_system(GameState::InGame, clean_in_game_data)
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
@@ -261,6 +262,7 @@ fn main() {
                 .with_system(camera_follow_player)
                 .with_system(update_left_movement_boundary)
                 .with_system(fighter_sound_effect)
+                .with_system(game_over_on_players_death)
                 .into(),
         )
         .add_system_to_stage(CoreStage::Last, despawn_entities);
@@ -518,6 +520,18 @@ fn kill_entities(
 }
 
 fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMarker>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn game_over_on_players_death(mut commands: Commands, query: Query<(), With<Player>>) {
+    if query.is_empty() {
+        commands.insert_resource(NextState(GameState::MainMenu));
+    }
+}
+
+fn clean_in_game_data(mut commands: Commands, query: Query<Entity, Without<Camera>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
