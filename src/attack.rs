@@ -5,8 +5,8 @@ use bevy::{
     hierarchy::{BuildChildren, DespawnRecursiveExt},
     math::Vec2,
     prelude::{
-        default, App, AssetServer, Assets, Commands, Component, Entity, EventReader, Handle, Local,
-        Plugin, Query, Res, Transform, With,
+        default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
+        Handle, Local, Plugin, Query, Res, Transform, With,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -52,6 +52,56 @@ pub struct Attack {
 #[derive(Component)]
 pub struct AttackTimer(pub Timer);
 
+#[derive(Bundle)]
+pub struct ThrownWeapon {
+    #[bundle]
+    sprite_bundle: SpriteBundle,
+    rotate: Rotate,
+    collider: Collider,
+    sensor: Sensor,
+    events: ActiveEvents,
+    collision_types: ActiveCollisionTypes,
+    collision_groups: CollisionGroups,
+    facing: Facing,
+    move_in_direction: MoveInDirection,
+    attack: Attack,
+    attack_timer: AttackTimer,
+}
+
+impl ThrownWeapon {
+    pub fn new(
+        transform: &Transform,
+        facing: &Facing,
+        dir: Vec2,
+        asset_server: &Res<AssetServer>,
+    ) -> Self {
+        Self {
+            sprite_bundle: SpriteBundle {
+                texture: asset_server.load("bottled_seaweed11x31.png"),
+                transform: Transform::from_xyz(
+                    transform.translation.x,
+                    transform.translation.y,
+                    ATTACK_LAYER,
+                ),
+                ..default()
+            },
+            rotate: Rotate {
+                speed: THROW_ITEM_ROTATION_SPEED,
+                to_right: !facing.is_left(),
+            },
+            collider: Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.),
+            sensor: Sensor(true),
+            events: ActiveEvents::COLLISION_EVENTS,
+            collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
+            facing: facing.clone(),
+            move_in_direction: MoveInDirection(dir * 300.), //TODO: Put the velocity in a cons,
+            attack: Attack { damage: 10 },
+            attack_timer: AttackTimer(Timer::new(Duration::from_secs(1), false)),
+        }
+    }
+}
+
 fn player_attack(
     query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
     mut commands: Commands,
@@ -68,38 +118,9 @@ fn player_attack(
                 dir = -dir;
             }
 
-            commands
-                // .spawn_bundle(TransformBundle::from_transform(Transform::from_xyz(
-                //     transform.translation.x,
-                //     transform.translation.y,
-                //     ATTACK_LAYER,
-                // )))
-                .spawn_bundle(SpriteBundle {
-                    texture: asset_server.load("bottled_seaweed11x31.png"),
-                    transform: Transform::from_xyz(
-                        transform.translation.x,
-                        transform.translation.y,
-                        ATTACK_LAYER,
-                    ),
-                    ..default()
-                })
-                .insert(Rotate {
-                    speed: THROW_ITEM_ROTATION_SPEED,
-                    to_right: !facing.is_left(),
-                })
-                .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
-                .insert(Sensor(true))
-                .insert(ActiveEvents::COLLISION_EVENTS)
-                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                .insert(CollisionGroups::new(
-                    BodyLayers::PLAYER_ATTACK,
-                    BodyLayers::ENEMY,
-                ))
-                .insert(facing.clone())
-                .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
-                // .insert(Velocity::from_linear(dir * 300.))
-                .insert(Attack { damage: 10 })
-                .insert(AttackTimer(Timer::new(Duration::from_secs(1), false)));
+            let thrown_weapon = ThrownWeapon::new(transform, facing, dir, &asset_server);
+
+            commands.spawn_bundle(thrown_weapon);
         }
     }
 }
