@@ -20,6 +20,8 @@ pub fn register(app: &mut bevy::prelude::App) {
         .add_asset_loader(LevelMetaLoader)
         .add_asset::<FighterMeta>()
         .add_asset_loader(FighterLoader)
+        .add_asset::<ItemMeta>()
+        .add_asset_loader(ItemLoader)
         .add_asset::<EguiFont>()
         .add_asset_loader(EguiFontLoader);
 }
@@ -172,6 +174,16 @@ impl AssetLoader for LevelMetaLoader {
                 enemy.fighter_handle = enemy_fighter_handle;
             }
 
+            // Load the items
+            for item in &mut meta.items {
+                let (item_path, item_handle) =
+                    get_relative_asset(load_context, self_path, &item.item);
+
+                dependencies.push(item_path);
+
+                item.item_handle = item_handle;
+            }
+
             // Load the music
 
             let (music_path, music_handle) =
@@ -249,6 +261,37 @@ impl AssetLoader for FighterLoader {
 
     fn extensions(&self) -> &[&str] {
         &["fighter.yml", "fighter.yaml"]
+    }
+}
+
+pub struct ItemLoader;
+
+impl AssetLoader for ItemLoader {
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::utils::BoxedFuture<'a, Result<(), anyhow::Error>> {
+        Box::pin(async move {
+            let mut meta: ItemMeta = serde_yaml::from_slice(bytes)?;
+            trace!(?meta, "Loaded item asset");
+
+            let self_path = load_context.path();
+            let mut dependencies = Vec::new();
+
+            let (image_path, image_handle) =
+                get_relative_asset(load_context, self_path, &meta.image.image);
+            dependencies.push(image_path);
+            meta.image.image_handle = image_handle;
+
+            load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
+
+            Ok(())
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["item.yml", "item.yaml"]
     }
 }
 
