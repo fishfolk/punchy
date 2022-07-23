@@ -19,11 +19,14 @@ use crate::{
     animation::{Animation, Facing},
     audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
-    consts::{self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
+    consts::{
+        self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_HEIGHT, ITEM_LAYER, ITEM_WIDTH,
+        THROW_ITEM_ROTATION_SPEED,
+    },
     input::PlayerAction,
-    item::ThrowItemEvent,
+    item::{Item, ThrowItemEvent},
     metadata::FighterMeta,
-    movement::{MoveInDirection, Rotate, Target},
+    movement::{MoveInArc, MoveInDirection, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
 };
@@ -102,6 +105,58 @@ impl ShotWeapon {
             move_in_direction: MoveInDirection(dir * 300.), //TODO: Put the velocity in a cons,
             attack: Attack { damage: 10 },
             attack_timer: AttackTimer(Timer::new(Duration::from_secs(1), false)),
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub struct ThrownWeapon {
+    #[bundle]
+    sprite_bundle: SpriteBundle,
+    rotate: Rotate,
+    move_in_arc: MoveInArc,
+    item: Item,
+    collider: Collider,
+    sensor: Sensor,
+    events: ActiveEvents,
+    collision_types: ActiveCollisionTypes,
+    collision_groups: CollisionGroups,
+    attack: Attack,
+}
+
+impl ThrownWeapon {
+    pub fn new(angles: (f32, f32), ev: &ThrowItemEvent, asset_server: &AssetServer) -> Self {
+        Self {
+            sprite_bundle: SpriteBundle {
+                texture: asset_server.load("bottled_seaweed11x31.png"),
+                transform: Transform::from_xyz(ev.position.x, ev.position.y, ITEM_LAYER),
+                ..default()
+            },
+            rotate: Rotate {
+                speed: consts::THROW_ITEM_ROTATION_SPEED,
+                to_right: !ev.facing.is_left(),
+            },
+            move_in_arc: MoveInArc {
+                //TODO: Set in consts
+                radius: Vec2::new(
+                    50.,
+                    consts::PLAYER_HEIGHT + consts::THROW_ITEM_Y_OFFSET + consts::ITEM_HEIGHT,
+                ),
+                speed: consts::THROW_ITEM_SPEED,
+                angle: angles.0,
+                end_angle: angles.1,
+                inverse_direction: ev.facing.is_left(),
+                origin: ev.position,
+            },
+            item: Item,
+            collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
+            sensor: Sensor(true),
+            events: ActiveEvents::COLLISION_EVENTS,
+            collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            collision_groups: CollisionGroups::new(BodyLayers::ITEM, BodyLayers::ENEMY),
+            attack: Attack {
+                damage: consts::THROW_ITEM_DAMAGE,
+            },
         }
     }
 }
