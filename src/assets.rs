@@ -156,9 +156,8 @@ impl AssetLoader for LevelMetaLoader {
 
             // Load the players
             for player in &mut meta.players {
-                let player_fighter_file_path = relative_asset_path(self_path, &player.fighter);
-                let player_fighter_path = AssetPath::new(player_fighter_file_path.clone(), None);
-                let player_fighter_handle = load_context.get_handle(player_fighter_path.clone());
+                let (player_fighter_path, player_fighter_handle) =
+                    get_relative_asset(load_context, self_path, &player.fighter);
                 dependencies.push(player_fighter_path);
 
                 player.fighter_handle = player_fighter_handle;
@@ -166,9 +165,8 @@ impl AssetLoader for LevelMetaLoader {
 
             // Load the enemies
             for enemy in &mut meta.enemies {
-                let enemy_fighter_file_path = relative_asset_path(self_path, &enemy.fighter);
-                let enemy_fighter_path = AssetPath::new(enemy_fighter_file_path.clone(), None);
-                let enemy_fighter_handle = load_context.get_handle(enemy_fighter_path.clone());
+                let (enemy_fighter_path, enemy_fighter_handle) =
+                    get_relative_asset(load_context, self_path, &enemy.fighter);
                 dependencies.push(enemy_fighter_path);
 
                 enemy.fighter_handle = enemy_fighter_handle;
@@ -207,9 +205,8 @@ impl AssetLoader for FighterLoader {
             let self_path = load_context.path();
             let mut dependencies = Vec::new();
 
-            let portrait_path = relative_asset_path(self_path, &meta.hud.portrait.image);
-            let portrait_path = AssetPath::new(portrait_path, None);
-            let portrait_handle = load_context.get_handle(portrait_path.clone());
+            let (portrait_path, portrait_handle) =
+                get_relative_asset(load_context, self_path, &meta.hud.portrait.image);
             dependencies.push(portrait_path);
             meta.hud.portrait.image_handle = portrait_handle;
 
@@ -230,9 +227,8 @@ impl AssetLoader for FighterLoader {
                 }
             }
 
-            let texture_path = relative_asset_path(self_path, &meta.spritesheet.image);
-            let texture_path = AssetPath::new(texture_path, None);
-            let texture_handle = load_context.get_handle(texture_path.clone());
+            let (texture_path, texture_handle) =
+                get_relative_asset(load_context, self_path, &meta.spritesheet.image);
             let atlas_handle = load_context.set_labeled_asset(
                 "atlas",
                 LoadedAsset::new(TextureAtlas::from_grid(
