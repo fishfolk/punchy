@@ -6,7 +6,7 @@ use bevy::{
     math::Vec2,
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
-        Handle, Local, Plugin, Query, Res, Transform, With,
+        EventWriter, Handle, Local, Plugin, Query, Res, Transform, With,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -19,8 +19,9 @@ use crate::{
     animation::{Animation, Facing},
     audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
-    consts::{ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
+    consts::{self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, THROW_ITEM_ROTATION_SPEED},
     input::PlayerAction,
+    item::ThrowItemEvent,
     metadata::FighterMeta,
     movement::{MoveInDirection, Rotate, Target},
     state::State,
@@ -34,6 +35,7 @@ impl Plugin for AttackPlugin {
         // Can't be currently converted to a ConditionSet, since (it seems that) systems inside
         // don't have temporal methods available (e.g. after()).
         app.add_system(player_shoot.run_in_state(GameState::InGame))
+            .add_system(player_throw.run_in_state(GameState::InGame))
             .add_system(player_flop.run_in_state(GameState::InGame))
             .add_system(
                 enemy_attack
@@ -121,6 +123,36 @@ fn player_shoot(
             let shot_weapon = ShotWeapon::new(transform, facing, dir, &asset_server);
 
             commands.spawn_bundle(shot_weapon);
+        }
+    }
+}
+
+fn player_throw(
+    query: Query<(&Transform, Option<&Facing>, &ActionState<PlayerAction>), With<Player>>,
+    mut ev_throw_item: EventWriter<ThrowItemEvent>,
+) {
+    for (transform, facing_option, input) in query.iter() {
+        if input.just_pressed(PlayerAction::Throw) {
+            let facing = match facing_option {
+                Some(f) => f.clone(),
+                None => Facing::Right,
+            };
+
+            let mut position = transform.translation.truncate();
+
+            //Offset the position depending on the facing
+            if facing.is_left() {
+                position.x -= consts::THROW_ITEM_X_OFFSET;
+            } else {
+                position.x += consts::THROW_ITEM_X_OFFSET;
+            }
+
+            position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
+
+            ev_throw_item.send(ThrowItemEvent {
+                position,
+                facing: facing.clone(),
+            })
         }
     }
 }

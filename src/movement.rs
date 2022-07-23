@@ -1,6 +1,6 @@
 use bevy::{
     core::{Time, Timer},
-    math::{Quat, Vec2, Vec3Swizzles},
+    math::{Quat, Vec2},
     prelude::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
         With,
@@ -12,7 +12,6 @@ use crate::{
     animation::Facing,
     consts::{self, LEFT_BOUNDARY_MAX_DISTANCE},
     input::PlayerAction,
-    item::ThrowItemEvent,
     metadata::GameMeta,
     state::State,
     ArrivedEvent, DespawnMarker, Player, Stats,
@@ -157,36 +156,6 @@ pub fn player_controller(
             } else {
                 state.set(State::Running);
             }
-        }
-    }
-}
-
-pub fn throw_item_system(
-    query: Query<(&Transform, Option<&Facing>, &ActionState<PlayerAction>), With<Player>>,
-    mut ev_throw_item: EventWriter<ThrowItemEvent>,
-) {
-    for (transform, facing_option, input) in query.iter() {
-        if input.just_pressed(PlayerAction::Throw) {
-            let facing = match facing_option {
-                Some(f) => f.clone(),
-                None => Facing::Right,
-            };
-
-            let mut position = transform.translation.xy();
-
-            //Offset the position depending on the facing
-            if facing.is_left() {
-                position.x -= consts::THROW_ITEM_X_OFFSET;
-            } else {
-                position.x += consts::THROW_ITEM_X_OFFSET;
-            }
-
-            position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
-
-            ev_throw_item.send(ThrowItemEvent {
-                position,
-                facing: facing.clone(),
-            })
         }
     }
 }

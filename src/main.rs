@@ -238,7 +238,6 @@ fn main() {
                 .with_system(kill_entities)
                 .with_system(knockback_system)
                 .with_system(move_direction_system)
-                .with_system(throw_item_system)
                 .with_system(item_attacks_enemy_collision)
                 .with_system(pause)
                 .into(),
