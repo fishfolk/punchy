@@ -61,13 +61,7 @@ use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
 
-use crate::{
-    attack::{attack_cleanup, attack_tick},
-    config::EngineConfig,
-    input::PlayerAction,
-    item::ItemSpawnBundle,
-    metadata::Settings,
-};
+use crate::{config::EngineConfig, input::PlayerAction, item::ItemSpawnBundle, metadata::Settings};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -232,8 +226,6 @@ fn main() {
                 .with_system(y_sort)
                 .with_system(player_attack_enemy_collision)
                 .with_system(enemy_attack_player_collision)
-                .with_system(attack_tick)
-                .with_system(attack_cleanup)
                 .with_system(player_enemy_collision)
                 .with_system(kill_entities)
                 .with_system(knockback_system)

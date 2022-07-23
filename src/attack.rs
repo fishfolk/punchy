@@ -37,6 +37,8 @@ impl Plugin for AttackPlugin {
         app.add_system(player_shoot.run_in_state(GameState::InGame))
             .add_system(player_throw.run_in_state(GameState::InGame))
             .add_system(player_flop.run_in_state(GameState::InGame))
+            .add_system(attack_tick.run_in_state(GameState::InGame))
+            .add_system(attack_cleanup.run_in_state(GameState::InGame))
             .add_system(
                 enemy_attack
                     .run_in_state(GameState::InGame)
@@ -272,7 +274,7 @@ fn enemy_attack(
     }
 }
 
-pub fn attack_cleanup(query: Query<(Entity, &AttackTimer), With<Attack>>, mut commands: Commands) {
+fn attack_cleanup(query: Query<(Entity, &AttackTimer), With<Attack>>, mut commands: Commands) {
     for (entity, timer) in query.iter() {
         if timer.0.finished() {
             commands.entity(entity).despawn_recursive();
@@ -280,7 +282,7 @@ pub fn attack_cleanup(query: Query<(Entity, &AttackTimer), With<Attack>>, mut co
     }
 }
 
-pub fn attack_tick(mut query: Query<&mut AttackTimer, With<Attack>>, time: Res<Time>) {
+fn attack_tick(mut query: Query<&mut AttackTimer, With<Attack>>, time: Res<Time>) {
     for mut timer in query.iter_mut() {
         timer.0.tick(time.delta());
     }
