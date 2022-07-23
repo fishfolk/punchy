@@ -65,6 +65,8 @@ pub struct LevelMeta {
     pub players: Vec<FighterSpawnMeta>,
     #[serde(default)]
     pub enemies: Vec<FighterSpawnMeta>,
+    #[serde(default)]
+    pub items: Vec<ItemSpawnMeta>,
     pub music: String,
     #[serde(skip)]
     pub music_handle: Handle<AudioSource>,
@@ -86,6 +88,14 @@ pub struct FighterMeta {
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
     pub audio: AudioMeta,
+}
+
+#[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
+#[serde(deny_unknown_fields)]
+#[uuid = "5e2db270-ec2e-013a-92a8-2cf05d71216b"]
+pub struct ItemMeta {
+    pub name: String,
+    pub image: ImageMeta,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -121,6 +131,16 @@ pub struct FighterSpawnMeta {
     pub fighter: String,
     #[serde(skip)]
     pub fighter_handle: Handle<FighterMeta>,
+    pub location: Vec3,
+}
+
+#[derive(TypeUuid, Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+#[uuid = "f5092550-ec30-013a-92a9-2cf05d71216b"]
+pub struct ItemSpawnMeta {
+    pub item: String,
+    #[serde(skip)]
+    pub item_handle: Handle<ItemMeta>,
     pub location: Vec3,
 }
 
