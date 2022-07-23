@@ -1,6 +1,6 @@
 use bevy::{
     math::Vec3,
-    prelude::{Bundle, Component, Handle, Transform},
+    prelude::{Bundle, Handle, Transform},
     transform::TransformBundle,
 };
 
@@ -8,9 +8,6 @@ use crate::{
     consts::{self, ITEM_LAYER},
     metadata::{ItemMeta, ItemSpawnMeta},
 };
-
-#[derive(Component)]
-pub struct Item;
 
 #[derive(Bundle)]
 pub struct ItemSpawnBundle {

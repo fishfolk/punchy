@@ -24,7 +24,6 @@ use crate::{
         THROW_ITEM_ROTATION_SPEED,
     },
     input::PlayerAction,
-    item::Item,
     metadata::FighterMeta,
     movement::{MoveInArc, MoveInDirection, Rotate, Target},
     state::State,
@@ -49,6 +48,9 @@ impl Plugin for AttackPlugin {
             );
     }
 }
+
+#[derive(Component)]
+pub struct Weapon;
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
@@ -111,11 +113,11 @@ impl ShotWeapon {
 
 #[derive(Bundle)]
 pub struct ThrownWeapon {
+    weapon: Weapon,
     #[bundle]
     sprite_bundle: SpriteBundle,
     rotate: Rotate,
     move_in_arc: MoveInArc,
-    item: Item,
     collider: Collider,
     sensor: Sensor,
     events: ActiveEvents,
@@ -153,7 +155,7 @@ impl ThrownWeapon {
                 inverse_direction: facing.is_left(),
                 origin: position,
             },
-            item: Item,
+            weapon: Weapon,
             collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
             sensor: Sensor(true),
             events: ActiveEvents::COLLISION_EVENTS,

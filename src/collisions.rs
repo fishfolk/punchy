@@ -6,7 +6,9 @@ use bevy::{
 };
 use bevy_rapier2d::prelude::*;
 
-use crate::{attack::Attack, item::Item, movement::Knockback, state::State, Enemy, Player, Stats};
+use crate::{
+    attack::Attack, attack::Weapon, movement::Knockback, state::State, Enemy, Player, Stats,
+};
 
 #[derive(Copy, Clone)]
 pub struct BodyLayers;
@@ -151,8 +153,8 @@ pub fn enemy_attack_player_collision(
 pub fn item_attacks_enemy_collision(
     mut commands: Commands,
     mut events: EventReader<CollisionEvent>,
-    mut enemy_query: Query<(&mut State, &mut Stats, &Transform), (With<Enemy>, Without<Item>)>,
-    item_query: Query<(&Attack, &Transform), (With<Item>, Without<Enemy>)>,
+    mut enemy_query: Query<(&mut State, &mut Stats, &Transform), (With<Enemy>, Without<Weapon>)>,
+    item_query: Query<(&Attack, &Transform), (With<Weapon>, Without<Enemy>)>,
 ) {
     for event in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = event {
