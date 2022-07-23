@@ -1,7 +1,10 @@
 use bevy::{
-    math::Vec2,
-    prelude::{default, AssetServer, Commands, Component, EventReader, Res, Transform},
+    math::{Vec2, Vec3},
+    prelude::{
+        default, AssetServer, Bundle, Commands, Component, EventReader, Handle, Res, Transform,
+    },
     sprite::SpriteBundle,
+    transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::*;
 
@@ -10,11 +13,35 @@ use crate::{
     attack::Attack,
     collisions::BodyLayers,
     consts::{self, ITEM_HEIGHT, ITEM_LAYER, ITEM_WIDTH},
+    metadata::{ItemMeta, ItemSpawnMeta},
     movement::{MoveInArc, Rotate},
 };
 
 #[derive(Component)]
 pub struct Item;
+
+#[derive(Bundle)]
+pub struct ItemSpawnBundle {
+    item_meta_handle: Handle<ItemMeta>,
+    #[bundle]
+    transform_bundle: TransformBundle,
+}
+
+impl ItemSpawnBundle {
+    pub fn new(item_spawn_meta: &ItemSpawnMeta) -> Self {
+        let item_meta_handle = item_spawn_meta.item_handle.clone();
+
+        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, ITEM_LAYER);
+        let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
+            item_spawn_meta.location + ground_offset,
+        ));
+
+        Self {
+            item_meta_handle,
+            transform_bundle,
+        }
+    }
+}
 
 pub struct ThrowItemEvent {
     pub position: Vec2,
