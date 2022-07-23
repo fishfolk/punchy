@@ -63,6 +63,7 @@ pub struct AttackTimer(pub Timer);
 
 #[derive(Bundle)]
 pub struct ShotWeapon {
+    weapon: Weapon,
     #[bundle]
     sprite_bundle: SpriteBundle,
     rotate: Rotate,
@@ -85,6 +86,7 @@ impl ShotWeapon {
         asset_server: &Res<AssetServer>,
     ) -> Self {
         Self {
+            weapon: Weapon,
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("bottled_seaweed11x31.png"),
                 transform: Transform::from_xyz(
@@ -134,6 +136,7 @@ impl ThrownWeapon {
         asset_server: &AssetServer,
     ) -> Self {
         Self {
+            weapon: Weapon,
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("bottled_seaweed11x31.png"),
                 transform: Transform::from_xyz(position.x, position.y, ITEM_LAYER),
@@ -155,7 +158,6 @@ impl ThrownWeapon {
                 inverse_direction: facing.is_left(),
                 origin: position,
             },
-            weapon: Weapon,
             collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
             sensor: Sensor(true),
             events: ActiveEvents::COLLISION_EVENTS,
