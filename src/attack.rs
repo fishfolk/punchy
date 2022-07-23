@@ -6,7 +6,7 @@ use bevy::{
     math::Vec2,
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
-        EventWriter, Handle, Local, Plugin, Query, Res, Transform, With,
+        Handle, Local, Plugin, Query, Res, Transform, With,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -24,7 +24,7 @@ use crate::{
         THROW_ITEM_ROTATION_SPEED,
     },
     input::PlayerAction,
-    item::{Item, ThrowItemEvent},
+    item::Item,
     metadata::FighterMeta,
     movement::{MoveInArc, MoveInDirection, Rotate, Target},
     state::State,
@@ -125,16 +125,21 @@ pub struct ThrownWeapon {
 }
 
 impl ThrownWeapon {
-    pub fn new(angles: (f32, f32), ev: &ThrowItemEvent, asset_server: &AssetServer) -> Self {
+    pub fn new(
+        angles: (f32, f32),
+        position: Vec2,
+        facing: Facing,
+        asset_server: &AssetServer,
+    ) -> Self {
         Self {
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("bottled_seaweed11x31.png"),
-                transform: Transform::from_xyz(ev.position.x, ev.position.y, ITEM_LAYER),
+                transform: Transform::from_xyz(position.x, position.y, ITEM_LAYER),
                 ..default()
             },
             rotate: Rotate {
                 speed: consts::THROW_ITEM_ROTATION_SPEED,
-                to_right: !ev.facing.is_left(),
+                to_right: !facing.is_left(),
             },
             move_in_arc: MoveInArc {
                 //TODO: Set in consts
@@ -145,8 +150,8 @@ impl ThrownWeapon {
                 speed: consts::THROW_ITEM_SPEED,
                 angle: angles.0,
                 end_angle: angles.1,
-                inverse_direction: ev.facing.is_left(),
-                origin: ev.position,
+                inverse_direction: facing.is_left(),
+                origin: position,
             },
             item: Item,
             collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
@@ -185,8 +190,9 @@ fn player_shoot(
 }
 
 fn player_throw(
+    mut commands: Commands,
     query: Query<(&Transform, Option<&Facing>, &ActionState<PlayerAction>), With<Player>>,
-    mut ev_throw_item: EventWriter<ThrowItemEvent>,
+    asset_server: Res<AssetServer>,
 ) {
     for (transform, facing_option, input) in query.iter() {
         if input.just_pressed(PlayerAction::Throw) {
@@ -206,10 +212,14 @@ fn player_throw(
 
             position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
 
-            ev_throw_item.send(ThrowItemEvent {
-                position,
-                facing: facing.clone(),
-            })
+            let angles = match facing {
+                Facing::Left => (90. - consts::THROW_ITEM_ANGLE_OFFSET, 180.),
+                Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
+            };
+
+            let thrown_weapon = ThrownWeapon::new(angles, position, facing, &asset_server);
+
+            commands.spawn_bundle(thrown_weapon);
         }
     }
 }

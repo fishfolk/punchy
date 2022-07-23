@@ -53,7 +53,6 @@ use attack::AttackPlugin;
 use audio::*;
 use camera::*;
 use collisions::*;
-use item::{spawn_throwable_items, ThrowItemEvent};
 use metadata::{FighterMeta, GameMeta, ItemMeta, LevelMeta};
 use movement::*;
 use serde::Deserialize;
@@ -192,7 +191,6 @@ fn main() {
             SystemStage::parallel(),
         )
         .add_event::<ArrivedEvent>()
-        .add_event::<ThrowItemEvent>()
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
@@ -221,7 +219,6 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(load_fighters)
                 .with_system(load_items)
-                .with_system(spawn_throwable_items)
                 .with_system(player_controller)
                 .with_system(y_sort)
                 .with_system(player_attack_enemy_collision)

@@ -1,12 +1,10 @@
 use bevy::{
-    math::{Vec2, Vec3},
-    prelude::{AssetServer, Bundle, Commands, Component, EventReader, Handle, Res, Transform},
+    math::Vec3,
+    prelude::{Bundle, Component, Handle, Transform},
     transform::TransformBundle,
 };
 
 use crate::{
-    animation::Facing,
-    attack::ThrownWeapon,
     consts::{self, ITEM_LAYER},
     metadata::{ItemMeta, ItemSpawnMeta},
 };
@@ -34,27 +32,5 @@ impl ItemSpawnBundle {
             item_meta_handle,
             transform_bundle,
         }
-    }
-}
-
-pub struct ThrowItemEvent {
-    pub position: Vec2,
-    pub facing: Facing,
-}
-
-pub fn spawn_throwable_items(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut event: EventReader<ThrowItemEvent>,
-) {
-    for ev in event.iter() {
-        let angles = match ev.facing {
-            Facing::Left => (90. - consts::THROW_ITEM_ANGLE_OFFSET, 180.),
-            Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
-        };
-
-        let thrown_weapon = ThrownWeapon::new(angles, ev, &asset_server);
-
-        commands.spawn_bundle(thrown_weapon);
     }
 }
