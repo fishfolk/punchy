@@ -33,7 +33,7 @@ impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
         // Can't be currently converted to a ConditionSet, since (it seems that) systems inside
         // don't have temporal methods available (e.g. after()).
-        app.add_system(player_attack.run_in_state(GameState::InGame))
+        app.add_system(player_shoot.run_in_state(GameState::InGame))
             .add_system(player_flop.run_in_state(GameState::InGame))
             .add_system(
                 enemy_attack
@@ -53,7 +53,7 @@ pub struct Attack {
 pub struct AttackTimer(pub Timer);
 
 #[derive(Bundle)]
-pub struct ThrownWeapon {
+pub struct ShotWeapon {
     #[bundle]
     sprite_bundle: SpriteBundle,
     rotate: Rotate,
@@ -68,7 +68,7 @@ pub struct ThrownWeapon {
     attack_timer: AttackTimer,
 }
 
-impl ThrownWeapon {
+impl ShotWeapon {
     pub fn new(
         transform: &Transform,
         facing: &Facing,
@@ -102,7 +102,7 @@ impl ThrownWeapon {
     }
 }
 
-fn player_attack(
+fn player_shoot(
     query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -118,9 +118,9 @@ fn player_attack(
                 dir = -dir;
             }
 
-            let thrown_weapon = ThrownWeapon::new(transform, facing, dir, &asset_server);
+            let shot_weapon = ShotWeapon::new(transform, facing, dir, &asset_server);
 
-            commands.spawn_bundle(thrown_weapon);
+            commands.spawn_bundle(shot_weapon);
         }
     }
 }
