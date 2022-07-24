@@ -1,0 +1,5 @@
+name: Bottle
+
+image:
+    image: bottle.png
+    image_size: [11, 31]

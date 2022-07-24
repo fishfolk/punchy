@@ -54,7 +54,7 @@ use audio::*;
 use camera::*;
 use collisions::*;
 use item::{spawn_throwable_items, ThrowItemEvent};
-use metadata::{FighterMeta, GameMeta, LevelMeta};
+use metadata::{FighterMeta, GameMeta, ItemMeta, LevelMeta};
 use movement::*;
 use serde::Deserialize;
 use state::{State, StatePlugin};
@@ -65,6 +65,7 @@ use crate::{
     attack::{attack_cleanup, attack_tick},
     config::EngineConfig,
     input::PlayerAction,
+    item::ItemSpawnBundle,
     metadata::Settings,
 };
 
@@ -225,6 +226,7 @@ fn main() {
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(load_fighters)
+                .with_system(load_items)
                 .with_system(spawn_throwable_items)
                 .with_system(player_controller)
                 .with_system(y_sort)
@@ -362,6 +364,11 @@ fn load_level(
             commands.spawn_bundle(EnemyBundle::new(enemy));
         }
 
+        // Spawn the items
+        for item_spawn_meta in &level.items {
+            commands.spawn_bundle(ItemSpawnBundle::new(item_spawn_meta));
+        }
+
         commands.insert_resource(level.clone());
         commands.insert_resource(NextState(GameState::InGame));
     } else {
@@ -393,6 +400,22 @@ fn hot_reload_level(
 
                 commands.insert_resource(ClearColor(level.background_color()));
             }
+        }
+    }
+}
+
+fn load_items(
+    mut commands: Commands,
+    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>), Without<Sprite>>,
+    item_assets: Res<Assets<ItemMeta>>,
+) {
+    for (entity, transform, item_handle) in item_spawns.iter() {
+        if let Some(item_meta) = item_assets.get(item_handle) {
+            commands.entity(entity).insert_bundle(SpriteBundle {
+                texture: item_meta.image.image_handle.clone(),
+                transform: *transform,
+                ..default()
+            });
         }
     }
 }

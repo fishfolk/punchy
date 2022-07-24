@@ -58,3 +58,7 @@ enemies:
     location: [200, -10, 0]
   - fighter: *bandit
     location: [250, -50, 0]
+
+items:
+  - item: &bottle /items/bottle/bottle.item.yaml
+    location: [275, 0, 0]
