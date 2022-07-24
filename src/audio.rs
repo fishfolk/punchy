@@ -6,6 +6,7 @@ use bevy_kira_audio::{AudioChannel, AudioSource};
 
 use crate::{
     animation::Animation,
+    config::EngineConfig,
     metadata::{GameMeta, LevelMeta},
     state::State,
 };
@@ -75,8 +76,20 @@ pub fn fighter_sound_effect(
     }
 }
 
-pub fn play_menu_music(game_meta: Res<GameMeta>, music_channel: Res<AudioChannel<MusicChannel>>) {
-    music_channel.play(game_meta.main_menu.music_handle.clone());
+pub fn play_menu_music(
+    game_meta: Res<GameMeta>,
+    music_channel: Res<AudioChannel<MusicChannel>>,
+    engine_config: Res<EngineConfig>,
+) {
+    // When the autostart flag is set, the main menu music playback is not stopped, resulting in both the main menu and the level tracks being played.
+    // I've to introduce a few frames of delay before the stop invocation, but the problem persists.
+    // My educated guess is that the audio plugin has a small delay before it starts playing a given music/sound, and if a stop command is issued in the meanwhile, it's ignored.
+    //
+    // See issue #121.
+    //
+    if !engine_config.auto_start {
+        music_channel.play(game_meta.main_menu.music_handle.clone());
+    }
 }
 
 pub fn stop_menu_music(music_channel: Res<AudioChannel<MusicChannel>>) {
