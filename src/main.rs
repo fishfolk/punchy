@@ -53,7 +53,6 @@ use attack::AttackPlugin;
 use audio::*;
 use camera::*;
 use collisions::*;
-use item::{spawn_throwable_items, ThrowItemEvent};
 use metadata::{FighterMeta, GameMeta, ItemMeta, LevelMeta};
 use movement::*;
 use serde::Deserialize;
@@ -61,13 +60,7 @@ use state::{State, StatePlugin};
 use ui::UIPlugin;
 use y_sort::*;
 
-use crate::{
-    attack::{attack_cleanup, attack_tick},
-    config::EngineConfig,
-    input::PlayerAction,
-    item::ItemSpawnBundle,
-    metadata::Settings,
-};
+use crate::{config::EngineConfig, input::PlayerAction, item::ItemSpawnBundle, metadata::Settings};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -198,7 +191,6 @@ fn main() {
             SystemStage::parallel(),
         )
         .add_event::<ArrivedEvent>()
-        .add_event::<ThrowItemEvent>()
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
@@ -227,19 +219,14 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(load_fighters)
                 .with_system(load_items)
-                .with_system(spawn_throwable_items)
                 .with_system(player_controller)
                 .with_system(y_sort)
-                .with_system(player_attack_enemy_collision)
+                .with_system(player_weapon_with_enemy_collision)
                 .with_system(enemy_attack_player_collision)
-                .with_system(attack_tick)
-                .with_system(attack_cleanup)
                 .with_system(player_enemy_collision)
                 .with_system(kill_entities)
                 .with_system(knockback_system)
                 .with_system(move_direction_system)
-                .with_system(throw_item_system)
-                .with_system(item_attacks_enemy_collision)
                 .with_system(pause)
                 .into(),
         )
