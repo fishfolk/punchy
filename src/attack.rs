@@ -189,7 +189,7 @@ fn player_projectile_attack(
         ),
         With<Player>,
     >,
-    carried_items_query: Query<(&Handle<ItemMeta>, &CarriedBy)>,
+    carried_items_query: Query<((Entity, &Handle<ItemMeta>), &CarriedBy)>,
     items_meta: Res<Assets<ItemMeta>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -199,25 +199,27 @@ fn player_projectile_attack(
             continue;
         }
 
-        if !item_carried_by_player(
+        let carried_item = item_carried_by_player(
             player_id,
             ITEM_BOTTLE_NAME,
             &carried_items_query,
             &items_meta,
-        ) {
-            continue;
-        }
+        );
 
-        if input.just_pressed(PlayerAction::Shoot) {
-            let mut dir = Vec2::X;
+        if let Some(bottle_id) = carried_item {
+            if input.just_pressed(PlayerAction::Shoot) {
+                let mut dir = Vec2::X;
 
-            if facing.is_left() {
-                dir = -dir;
+                if facing.is_left() {
+                    dir = -dir;
+                }
+
+                let projectile = Projectile::new(transform, facing, dir, &asset_server);
+
+                commands.spawn_bundle(projectile);
+
+                commands.entity(bottle_id).despawn();
             }
-
-            let projectile = Projectile::new(transform, facing, dir, &asset_server);
-
-            commands.spawn_bundle(projectile);
         }
     }
 }
@@ -233,45 +235,47 @@ fn player_throw(
         ),
         With<Player>,
     >,
-    carried_items_query: Query<(&Handle<ItemMeta>, &CarriedBy)>,
+    carried_items_query: Query<((Entity, &Handle<ItemMeta>), &CarriedBy)>,
     items_meta: Res<Assets<ItemMeta>>,
     asset_server: Res<AssetServer>,
 ) {
     for (player_id, transform, facing_option, input) in player_query.iter() {
-        if !item_carried_by_player(
+        let carried_item = item_carried_by_player(
             player_id,
             ITEM_BOTTLE_NAME,
             &carried_items_query,
             &items_meta,
-        ) {
-            continue;
-        }
+        );
 
-        if input.just_pressed(PlayerAction::Throw) {
-            let facing = match facing_option {
-                Some(f) => f.clone(),
-                None => Facing::Right,
-            };
+        if let Some(bottle_id) = carried_item {
+            if input.just_pressed(PlayerAction::Throw) {
+                let facing = match facing_option {
+                    Some(f) => f.clone(),
+                    None => Facing::Right,
+                };
 
-            let mut position = transform.translation.truncate();
+                let mut position = transform.translation.truncate();
 
-            //Offset the position depending on the facing
-            if facing.is_left() {
-                position.x -= consts::THROW_ITEM_X_OFFSET;
-            } else {
-                position.x += consts::THROW_ITEM_X_OFFSET;
+                //Offset the position depending on the facing
+                if facing.is_left() {
+                    position.x -= consts::THROW_ITEM_X_OFFSET;
+                } else {
+                    position.x += consts::THROW_ITEM_X_OFFSET;
+                }
+
+                position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
+
+                let angles = match facing {
+                    Facing::Left => (90. - consts::THROW_ITEM_ANGLE_OFFSET, 180.),
+                    Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
+                };
+
+                let thrown_item = ThrownItem::new(angles, position, facing, &asset_server);
+
+                commands.spawn_bundle(thrown_item);
+
+                commands.entity(bottle_id).despawn()
             }
-
-            position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
-
-            let angles = match facing {
-                Facing::Left => (90. - consts::THROW_ITEM_ANGLE_OFFSET, 180.),
-                Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
-            };
-
-            let thrown_item = ThrownItem::new(angles, position, facing, &asset_server);
-
-            commands.spawn_bundle(thrown_item);
         }
     }
 }

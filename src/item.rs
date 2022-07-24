@@ -89,20 +89,20 @@ pub fn pick_items(
 pub fn item_carried_by_player(
     player_id: Entity,
     item_name: &str,
-    carried_items_query: &Query<(&Handle<ItemMeta>, &CarriedBy)>,
+    carried_items_query: &Query<((Entity, &Handle<ItemMeta>), &CarriedBy)>,
     items_meta: &Assets<ItemMeta>,
-) -> bool {
+) -> Option<Entity> {
     carried_items_query
         .iter()
-        .any(|(item_meta_handle, carried_by)| {
+        .find_map(|((item_entity, item_meta_handle), carried_by)| {
             if carried_by.0 == player_id {
                 if let Some(item_meta) = items_meta.get(item_meta_handle) {
                     if item_meta.name == item_name {
-                        return true;
+                        return Some(item_entity);
                     }
                 }
             }
 
-            false
+            None
         })
 }
