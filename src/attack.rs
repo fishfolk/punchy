@@ -20,11 +20,12 @@ use crate::{
     audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
     consts::{
-        self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_HEIGHT, ITEM_LAYER, ITEM_WIDTH,
-        THROW_ITEM_ROTATION_SPEED,
+        self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_BOTTLE_NAME, ITEM_HEIGHT, ITEM_LAYER,
+        ITEM_WIDTH, THROW_ITEM_ROTATION_SPEED,
     },
     input::PlayerAction,
-    metadata::FighterMeta,
+    item::{item_carried_by_player, CarriedBy},
+    metadata::{FighterMeta, ItemMeta},
     movement::{MoveInArc, MoveInDirection, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
@@ -178,14 +179,35 @@ impl ThrownItem {
 }
 
 fn player_projectile_attack(
-    query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
+    player_query: Query<
+        (
+            Entity,
+            &Transform,
+            &Facing,
+            &State,
+            &ActionState<PlayerAction>,
+        ),
+        With<Player>,
+    >,
+    carried_items_query: Query<(&Handle<ItemMeta>, &CarriedBy)>,
+    items_meta: Res<Assets<ItemMeta>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    for (transform, facing, state, input) in query.iter() {
+    for (player_id, transform, facing, state, input) in player_query.iter() {
         if *state != State::Idle && *state != State::Running {
             continue;
         }
+
+        if !item_carried_by_player(
+            player_id,
+            ITEM_BOTTLE_NAME,
+            &carried_items_query,
+            &items_meta,
+        ) {
+            continue;
+        }
+
         if input.just_pressed(PlayerAction::Shoot) {
             let mut dir = Vec2::X;
 
@@ -202,10 +224,29 @@ fn player_projectile_attack(
 
 fn player_throw(
     mut commands: Commands,
-    query: Query<(&Transform, Option<&Facing>, &ActionState<PlayerAction>), With<Player>>,
+    player_query: Query<
+        (
+            Entity,
+            &Transform,
+            Option<&Facing>,
+            &ActionState<PlayerAction>,
+        ),
+        With<Player>,
+    >,
+    carried_items_query: Query<(&Handle<ItemMeta>, &CarriedBy)>,
+    items_meta: Res<Assets<ItemMeta>>,
     asset_server: Res<AssetServer>,
 ) {
-    for (transform, facing_option, input) in query.iter() {
+    for (player_id, transform, facing_option, input) in player_query.iter() {
+        if !item_carried_by_player(
+            player_id,
+            ITEM_BOTTLE_NAME,
+            &carried_items_query,
+            &items_meta,
+        ) {
+            continue;
+        }
+
         if input.just_pressed(PlayerAction::Throw) {
             let facing = match facing_option {
                 Some(f) => f.clone(),

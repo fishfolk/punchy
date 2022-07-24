@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use bevy::{
     ecs::system::EntityCommands,
     math::Vec3,
-    prelude::{Bundle, Commands, Component, Entity, Handle, Query, Transform, With},
+    prelude::{Assets, Bundle, Commands, Component, Entity, Handle, Query, Transform, With},
     transform::TransformBundle,
 };
 use leafwing_input_manager::prelude::ActionState;
@@ -83,4 +83,26 @@ pub fn pick_items(
             }
         }
     }
+}
+
+/// Utility method, not system!
+pub fn item_carried_by_player(
+    player_id: Entity,
+    item_name: &str,
+    carried_items_query: &Query<(&Handle<ItemMeta>, &CarriedBy)>,
+    items_meta: &Assets<ItemMeta>,
+) -> bool {
+    carried_items_query
+        .iter()
+        .any(|(item_meta_handle, carried_by)| {
+            if carried_by.0 == player_id {
+                if let Some(item_meta) = items_meta.get(item_meta_handle) {
+                    if item_meta.name == item_name {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        })
 }

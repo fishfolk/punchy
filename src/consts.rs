@@ -32,3 +32,5 @@ pub const THROW_ITEM_DAMAGE: i32 = 10;
 pub const THROW_ITEM_ROTATION_SPEED: f32 = 10.;
 
 pub const PICK_ITEM_RADIUS: f32 = 24.;
+
+pub const ITEM_BOTTLE_NAME: &str = "Bottle";
