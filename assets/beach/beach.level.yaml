@@ -51,14 +51,16 @@ players:
 
 enemies:
   - fighter: &slinger /fighters/slinger/slinger.fighter.yaml
-    location: [300, 0, 0]
+    location: [325, 0, 0]
   - fighter: *slinger
-    location: [200, 50, 0]
+    location: [225, 50, 0]
   - fighter: &bandit /fighters/bandit/bandit.fighter.yaml
-    location: [200, -10, 0]
+    location: [225, -10, 0]
   - fighter: *bandit
-    location: [250, -50, 0]
+    location: [275, -50, 0]
 
 items:
   - item: &bottle /items/bottle/bottle.item.yaml
-    location: [275, 0, 0]
+    location: [50, -20, 0]
+  - item: &bottle /items/bottle/bottle.item.yaml
+    location: [50, 20, 0]
