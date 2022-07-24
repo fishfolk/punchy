@@ -12,7 +12,7 @@ use crate::{
     config::EngineConfig,
     enemy::{Enemy, EnemyBundle},
     input::MenuAction,
-    item::ItemSpawnBundle,
+    item::ItemBundle,
     metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
     platform::Storage,
     player::{Player, PlayerBundle},
@@ -338,7 +338,8 @@ fn load_level(
 
         // Spawn the items
         for item_spawn_meta in &level.items {
-            commands.spawn_bundle(ItemSpawnBundle::new(item_spawn_meta));
+            let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
+            ItemBundle::spawn(item_commands, item_spawn_meta)
         }
 
         commands.insert_resource(level.clone());
