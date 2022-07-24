@@ -184,7 +184,7 @@ fn player_projectile_attack(
 ) {
     for (transform, facing, state, input) in query.iter() {
         if *state != State::Idle && *state != State::Running {
-            break;
+            continue;
         }
         if input.just_pressed(PlayerAction::Shoot) {
             let mut dir = Vec2::X;
