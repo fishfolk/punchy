@@ -56,7 +56,7 @@ use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
 
-use crate::{config::EngineConfig, input::PlayerAction};
+use crate::{config::EngineConfig, input::PlayerAction, item::pick_items};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -212,6 +212,7 @@ fn main() {
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(player_controller)
+                .with_system(pick_items)
                 .with_system(y_sort)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
