@@ -6,7 +6,7 @@ use bevy::{
     math::Vec2,
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
-        Handle, Local, Plugin, Query, Res, Transform, With,
+        Handle, Local, Parent, Plugin, Query, Res, Transform, With,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -36,16 +36,22 @@ impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
         // Can't be currently converted to a ConditionSet, since (it seems that) systems inside
         // don't have temporal methods available (e.g. after()).
-        app.add_system(player_shoot.run_in_state(GameState::InGame))
-            .add_system(player_throw.run_in_state(GameState::InGame))
-            .add_system(player_flop.run_in_state(GameState::InGame))
-            .add_system(attack_tick.run_in_state(GameState::InGame))
-            .add_system(attack_cleanup.run_in_state(GameState::InGame))
-            .add_system(
-                enemy_attack
-                    .run_in_state(GameState::InGame)
-                    .after("move_to_target"),
-            );
+        app.add_system_set(
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(player_shoot)
+                .with_system(player_throw)
+                .with_system(player_flop)
+                .with_system(attack_tick)
+                .with_system(activate_attack)
+                .with_system(attack_cleanup)
+                .into(),
+        )
+        .add_system(
+            enemy_attack
+                .run_in_state(GameState::InGame)
+                .after("move_to_target"),
+        );
     }
 }
 
@@ -59,7 +65,23 @@ pub struct Attack {
 }
 
 #[derive(Component)]
+pub struct AttackFrames {
+    pub startup: usize,
+    pub active: usize,
+    pub recovery: usize,
+}
+
+// #[derive(Component)]
+// pub enum AttackState {
+//     Startup,
+//     Active,
+//     Recovery,
+//     Finished,
+// }
+
+#[derive(Component)]
 pub struct AttackTimer(pub Timer);
+//TODO: maybe make not pub/maybe get rid of in favor of AttackLife/AttackDuration
 
 #[derive(Bundle)]
 pub struct ShotWeapon {
@@ -224,6 +246,70 @@ fn player_throw(
             let thrown_weapon = ThrownWeapon::new(angles, position, facing, &asset_server);
 
             commands.spawn_bundle(thrown_weapon);
+            // =======
+            //             commands
+            //                 .spawn_bundle(SpriteBundle {
+            //                     texture: asset_server.load("bottled_seaweed11x31.png"),
+            //                     transform: Transform::from_xyz(
+            //                         transform.translation.x,
+            //                         transform.translation.y,
+            //                         ATTACK_LAYER,
+            //                     ),
+            //                     ..default()
+            //                 })
+            //                 .insert(Rotate {
+            //                     speed: THROW_ITEM_ROTATION_SPEED,
+            //                     to_right: !facing.is_left(),
+            //                 })
+            //                 .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
+            //                 .insert(Sensor(true))
+            //                 .insert(ActiveEvents::COLLISION_EVENTS)
+            //                 .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+            //                 .insert(CollisionGroups::new(
+            //                     BodyLayers::PLAYER_ATTACK,
+            //                     BodyLayers::ENEMY,
+            //                 ))
+            //                 .insert(facing.clone())
+            //                 .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
+            //                 // .insert(Velocity::from_linear(dir * 300.))
+            //                 .insert(Attack { damage: 10 })
+            //                 // .insert(AttackState::Startup)
+            //                 .insert(AttackFrames {
+            //                     startup: 2,
+            //                     active: 4,
+            //                     recovery: 2,
+            //                 })
+            //                 .insert(AttackTimer(Timer::new(Duration::from_secs(1), false)));
+            // >>>>>>> Stashed changes
+        }
+    }
+}
+
+fn activate_attack(
+    mut attack_query: Query<(
+        Entity,
+        // &mut AttackState,
+        &AttackFrames,
+        &mut ActiveEvents,
+        &Parent,
+    )>,
+    fighter_query: Query<&Animation, With<State>>,
+    mut commands: Commands,
+) {
+    for (entity, attack_frames, mut active_events, parent) in attack_query.iter_mut() {
+        if let Ok(animation) = fighter_query.get(parent.0) {
+            println!("current frame {:?}", animation.current_frame);
+            if animation.current_frame < attack_frames.startup {
+                // *attack_state = AttackState::Startup;
+            } else if animation.current_frame > attack_frames.startup
+                && animation.current_frame < attack_frames.recovery
+            {
+                // *active_events = ActiveEvents::COLLISION_EVENTS;
+                // *attack_state = AttackState::Active;
+            } else {
+                *active_events = ActiveEvents::default();
+                commands.entity(entity).despawn_recursive();
+            }
         }
     }
 }
@@ -314,7 +400,8 @@ fn enemy_attack(
                         .spawn_bundle(TransformBundle::default())
                         .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8))
                         .insert(Sensor(true))
-                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        // .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(ActiveEvents::default())
                         .insert(
                             ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
                         )
@@ -323,10 +410,16 @@ fn enemy_attack(
                             BodyLayers::PLAYER,
                         ))
                         .insert(Attack { damage: 10 })
-                        .insert(AttackTimer(Timer::new(
-                            Duration::from_secs_f32(0.48),
-                            false,
-                        )))
+                        .insert(AttackFrames {
+                            startup: 2,
+                            active: 4,
+                            recovery: 6,
+                        })
+                        // .insert(AttackState::Startup)
+                        // .insert(AttackTimer(Timer::new(
+                        //     Duration::from_secs_f32(0.48),
+                        //     false,
+                        // )))
                         .id();
                     commands.entity(event.0).push_children(&[attack_entity]);
 

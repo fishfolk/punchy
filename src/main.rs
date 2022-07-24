@@ -268,8 +268,7 @@ fn main() {
         .register_inspectable::<Rotate>()
         .register_inspectable::<attack::Attack>()
         .register_inspectable::<YSort>()
-        .register_inspectable::<Facing>()
-        .register_inspectable::<Panning>();
+        .register_inspectable::<Facing>();
 
     // Register assets and loaders
     assets::register(&mut app);
