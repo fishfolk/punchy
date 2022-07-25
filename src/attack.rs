@@ -397,7 +397,7 @@ fn deactivate_hitbox(
 ) {
     for (entity, attack_frames, parent) in query.iter() {
         if let Ok(animation) = fighter_query.get(parent.0) {
-            if animation.current_frame == attack_frames.recovery {
+            if animation.current_frame >= attack_frames.recovery {
                 commands.entity(entity).despawn_recursive();
             }
         }
