@@ -6,7 +6,7 @@ use bevy::{
     math::Vec2,
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
-        Handle, Local, Parent, Plugin, Query, Res, Transform, With,
+        Handle, Local, Parent, Plugin, Query, Res, Transform, With, Without,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -34,17 +34,16 @@ pub struct AttackPlugin;
 
 impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
-        // Can't be currently converted to a ConditionSet, since (it seems that) systems inside
-        // don't have temporal methods available (e.g. after()).
         app.add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(player_shoot)
+                .with_system(player_projectile_attack)
                 .with_system(player_throw)
                 .with_system(player_flop)
-                .with_system(attack_tick)
-                .with_system(activate_attack)
-                .with_system(attack_cleanup)
+                .with_system(activate_hitbox)
+                .with_system(deactivate_hitbox)
+                .with_system(projectile_cleanup)
+                .with_system(projectile_tick)
                 .into(),
         )
         .add_system(
@@ -71,21 +70,11 @@ pub struct AttackFrames {
     pub recovery: usize,
 }
 
-// #[derive(Component)]
-// pub enum AttackState {
-//     Startup,
-//     Active,
-//     Recovery,
-//     Finished,
-// }
-
 #[derive(Component)]
-pub struct AttackTimer(pub Timer);
-//TODO: maybe make not pub/maybe get rid of in favor of AttackLife/AttackDuration
+pub struct ProjectileLifetime(pub Timer);
 
 #[derive(Bundle)]
-pub struct ShotWeapon {
-    weapon: Weapon,
+pub struct Projectile {
     #[bundle]
     sprite_bundle: SpriteBundle,
     rotate: Rotate,
@@ -97,10 +86,10 @@ pub struct ShotWeapon {
     facing: Facing,
     move_in_direction: MoveInDirection,
     attack: Attack,
-    attack_timer: AttackTimer,
+    attack_timer: ProjectileLifetime,
 }
 
-impl ShotWeapon {
+impl Projectile {
     pub fn new(
         transform: &Transform,
         facing: &Facing,
@@ -108,7 +97,6 @@ impl ShotWeapon {
         asset_server: &Res<AssetServer>,
     ) -> Self {
         Self {
-            weapon: Weapon,
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("bottled_seaweed11x31.png"),
                 transform: Transform::from_xyz(
@@ -130,14 +118,13 @@ impl ShotWeapon {
             facing: facing.clone(),
             move_in_direction: MoveInDirection(dir * 300.), //TODO: Put the velocity in a cons,
             attack: Attack { damage: 10 },
-            attack_timer: AttackTimer(Timer::new(Duration::from_secs(1), false)),
+            attack_timer: ProjectileLifetime(Timer::new(Duration::from_secs(1), false)),
         }
     }
 }
 
 #[derive(Bundle)]
 pub struct ThrownWeapon {
-    weapon: Weapon,
     #[bundle]
     sprite_bundle: SpriteBundle,
     rotate: Rotate,
@@ -158,7 +145,7 @@ impl ThrownWeapon {
         asset_server: &AssetServer,
     ) -> Self {
         Self {
-            weapon: Weapon,
+            // weapon: Weapon,
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("bottled_seaweed11x31.png"),
                 transform: Transform::from_xyz(position.x, position.y, ITEM_LAYER),
@@ -192,7 +179,7 @@ impl ThrownWeapon {
     }
 }
 
-fn player_shoot(
+fn player_projectile_attack(
     query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -208,9 +195,9 @@ fn player_shoot(
                 dir = -dir;
             }
 
-            let shot_weapon = ShotWeapon::new(transform, facing, dir, &asset_server);
+            let projectile = Projectile::new(transform, facing, dir, &asset_server);
 
-            commands.spawn_bundle(shot_weapon);
+            commands.spawn_bundle(projectile);
         }
     }
 }
@@ -246,70 +233,6 @@ fn player_throw(
             let thrown_weapon = ThrownWeapon::new(angles, position, facing, &asset_server);
 
             commands.spawn_bundle(thrown_weapon);
-            // =======
-            //             commands
-            //                 .spawn_bundle(SpriteBundle {
-            //                     texture: asset_server.load("bottled_seaweed11x31.png"),
-            //                     transform: Transform::from_xyz(
-            //                         transform.translation.x,
-            //                         transform.translation.y,
-            //                         ATTACK_LAYER,
-            //                     ),
-            //                     ..default()
-            //                 })
-            //                 .insert(Rotate {
-            //                     speed: THROW_ITEM_ROTATION_SPEED,
-            //                     to_right: !facing.is_left(),
-            //                 })
-            //                 .insert(Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.))
-            //                 .insert(Sensor(true))
-            //                 .insert(ActiveEvents::COLLISION_EVENTS)
-            //                 .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-            //                 .insert(CollisionGroups::new(
-            //                     BodyLayers::PLAYER_ATTACK,
-            //                     BodyLayers::ENEMY,
-            //                 ))
-            //                 .insert(facing.clone())
-            //                 .insert(MoveInDirection(dir * 300.)) //TODO: Put the velocity in a const
-            //                 // .insert(Velocity::from_linear(dir * 300.))
-            //                 .insert(Attack { damage: 10 })
-            //                 // .insert(AttackState::Startup)
-            //                 .insert(AttackFrames {
-            //                     startup: 2,
-            //                     active: 4,
-            //                     recovery: 2,
-            //                 })
-            //                 .insert(AttackTimer(Timer::new(Duration::from_secs(1), false)));
-            // >>>>>>> Stashed changes
-        }
-    }
-}
-
-fn activate_attack(
-    mut attack_query: Query<(
-        Entity,
-        // &mut AttackState,
-        &AttackFrames,
-        &mut ActiveEvents,
-        &Parent,
-    )>,
-    fighter_query: Query<&Animation, With<State>>,
-    mut commands: Commands,
-) {
-    for (entity, attack_frames, mut active_events, parent) in attack_query.iter_mut() {
-        if let Ok(animation) = fighter_query.get(parent.0) {
-            println!("current frame {:?}", animation.current_frame);
-            if animation.current_frame < attack_frames.startup {
-                // *attack_state = AttackState::Startup;
-            } else if animation.current_frame > attack_frames.startup
-                && animation.current_frame < attack_frames.recovery
-            {
-                // *active_events = ActiveEvents::COLLISION_EVENTS;
-                // *attack_state = AttackState::Active;
-            } else {
-                *active_events = ActiveEvents::default();
-                commands.entity(entity).despawn_recursive();
-            }
         }
     }
 }
@@ -342,16 +265,37 @@ fn player_flop(
             if input.just_pressed(PlayerAction::FlopAttack) {
                 state.set(State::Attacking);
 
+                let attack_entity = commands
+                    .spawn_bundle(TransformBundle::default())
+                    .insert(Sensor(true))
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                    .insert(CollisionGroups::new(
+                        BodyLayers::PLAYER_ATTACK,
+                        BodyLayers::ENEMY,
+                    ))
+                    .insert(Attack { damage: 10 })
+                    .insert(AttackFrames {
+                        startup: 0,
+                        active: 3,
+                        recovery: 4,
+                    })
+                    .id();
+                commands.entity(entity).push_children(&[attack_entity]);
+                //TODO: define hitbox size and placement through resources
+
+                //maybe move audio effects?
                 if let Some(fighter) = fighter_assets.get(fighter_meta) {
                     if let Some(effects) = fighter.audio.effect_handles.get(&state) {
                         let fx_playback = FighterStateEffectsPlayback::new(*state, effects.clone());
                         commands.entity(entity).insert(fx_playback);
                     }
                 }
+                // commands.
+                // commands.entity(entity)
             }
-        // } else if animation.is_finished() {
-        // state.set(State::Idle);
         } else {
+            //TODO: Replace with movement intent eventwriter in movement rewrite!
             //TODO: Fix hacky way to get a forward jump
             if animation.current_frame < 3 {
                 if facing.is_left() {
@@ -398,10 +342,8 @@ fn enemy_attack(
 
                     let attack_entity = commands
                         .spawn_bundle(TransformBundle::default())
-                        .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8))
                         .insert(Sensor(true))
-                        // .insert(ActiveEvents::COLLISION_EVENTS)
-                        .insert(ActiveEvents::default())
+                        .insert(ActiveEvents::COLLISION_EVENTS)
                         .insert(
                             ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
                         )
@@ -412,14 +354,9 @@ fn enemy_attack(
                         .insert(Attack { damage: 10 })
                         .insert(AttackFrames {
                             startup: 2,
-                            active: 4,
-                            recovery: 6,
+                            active: 3,
+                            recovery: 4,
                         })
-                        // .insert(AttackState::Startup)
-                        // .insert(AttackTimer(Timer::new(
-                        //     Duration::from_secs_f32(0.48),
-                        //     false,
-                        // )))
                         .id();
                     commands.entity(event.0).push_children(&[attack_entity]);
 
@@ -436,7 +373,44 @@ fn enemy_attack(
     }
 }
 
-fn attack_cleanup(query: Query<(Entity, &AttackTimer), With<Attack>>, mut commands: Commands) {
+fn activate_hitbox(
+    attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
+    fighter_query: Query<&Animation, With<State>>,
+    mut commands: Commands,
+) {
+    for (entity, attack_frames, parent) in attack_query.iter() {
+        if let Ok(animation) = fighter_query.get(parent.0) {
+            if animation.current_frame >= attack_frames.startup
+                && animation.current_frame <= attack_frames.active
+            {
+                //TODO: insert Collider based on size and transform offset in attack asset
+                commands
+                    .entity(entity)
+                    .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8));
+            }
+        }
+    }
+}
+
+fn deactivate_hitbox(
+    query: Query<(Entity, &AttackFrames, &Parent), (With<Attack>, With<Collider>)>,
+    fighter_query: Query<&Animation, With<State>>,
+    mut commands: Commands,
+) {
+    for (entity, attack_frames, parent) in query.iter() {
+        if let Ok(animation) = fighter_query.get(parent.0) {
+            if animation.current_frame == attack_frames.recovery {
+                commands.entity(entity).despawn_recursive();
+            }
+        }
+    }
+}
+
+//TODO: remove, in favor of cleanup based on frames of animation, or keep but only for projectile attacks
+fn projectile_cleanup(
+    query: Query<(Entity, &ProjectileLifetime), With<Attack>>,
+    mut commands: Commands,
+) {
     for (entity, timer) in query.iter() {
         if timer.0.finished() {
             commands.entity(entity).despawn_recursive();
@@ -444,7 +418,8 @@ fn attack_cleanup(query: Query<(Entity, &AttackTimer), With<Attack>>, mut comman
     }
 }
 
-fn attack_tick(mut query: Query<&mut AttackTimer, With<Attack>>, time: Res<Time>) {
+//TODO: remove, in favor of cleanup based on frames of animation
+fn projectile_tick(mut query: Query<&mut ProjectileLifetime, With<Attack>>, time: Res<Time>) {
     for mut timer in query.iter_mut() {
         timer.0.tick(time.delta());
     }

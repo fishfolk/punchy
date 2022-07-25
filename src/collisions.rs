@@ -2,12 +2,15 @@ use bevy::{
     core::Timer,
     hierarchy::DespawnRecursiveExt,
     math::Vec2,
-    prelude::{Commands, EventReader, Query, Transform, With, Without},
+    prelude::{Commands, EventReader, Query, Transform},
 };
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    attack::Attack, attack::Weapon, movement::Knockback, state::State, Enemy, Player, Stats,
+    attack::{Attack, ProjectileLifetime},
+    movement::Knockback,
+    state::State,
+    Stats,
 };
 
 #[derive(Copy, Clone)]
@@ -22,131 +25,55 @@ impl BodyLayers {
     pub const ENEMY: u32 = 1 << 0;
     pub const PLAYER: u32 = 1 << 1;
     pub const PLAYER_ATTACK: u32 = 1 << 2;
-    pub const ITEM: u32 = 1 << 3;
-    pub const ENEMY_ATTACK: u32 = 1 << 4;
+    pub const ENEMY_ATTACK: u32 = 1 << 3;
+    pub const ITEM: u32 = 1 << 4;
     // u32::MAX is a u32 with all of it's bits set to 1, so this will contain all of the layers.
     pub const ALL: u32 = u32::MAX;
 }
 
-pub fn player_enemy_collision(
+pub fn attack_fighter_collision(
     mut commands: Commands,
     mut events: EventReader<CollisionEvent>,
-    mut enemy_query: Query<(&mut State, &mut Stats, &Transform), (With<Enemy>, Without<Player>)>,
-    player_query: Query<(&State, &Stats, &Transform), (With<Player>, Without<Enemy>)>,
+    mut fighter_query: Query<(&mut State, &mut Stats, &Transform)>,
+    attack_query: Query<(&Attack, &Transform, Option<&ProjectileLifetime>)>,
 ) {
     for event in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = event {
-            let (player, enemy);
-            if player_query.contains(*e1) && enemy_query.contains(*e2) {
-                (player, enemy) = (*e1, *e2);
-            } else {
-                (player, enemy) = (*e2, *e1);
-            }
-
-            if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
-                if let Ok((p_state, p_stats, p_transform)) = player_query.get(player) {
-                    if *p_state == State::Attacking {
-                        e_stats.health -= p_stats.damage;
-                        let force = 150.; //TODO: set this to a constant
-                        let mut direction = Vec2::new(0., 0.);
-
-                        if p_transform.translation.x < e_transform.translation.x {
-                            e_state.set(State::KnockedLeft);
-                            direction.x = force;
-                        } else {
-                            e_state.set(State::KnockedRight);
-                            direction.x = -force;
-                        }
-
-                        commands.entity(enemy).insert(Knockback {
-                            direction,
-                            duration: Timer::from_seconds(0.15, false),
-                        });
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn player_weapon_with_enemy_collision(
-    mut commands: Commands,
-    mut events: EventReader<CollisionEvent>,
-    mut enemy_query: Query<(&mut State, &mut Stats, &Transform), (With<Enemy>, Without<Player>)>,
-    weapon_query: Query<(&Attack, &Transform), With<Weapon>>,
-) {
-    for event in events.iter() {
-        if let CollisionEvent::Started(e1, e2, _flags) = event {
-            let (weapon, enemy) = if weapon_query.contains(*e1) {
-                // In this case, it's guaranteed that e1 is found (as weapon), but e2 and the
+            let (attack_entity, fighter_entity) = if attack_query.contains(*e1) {
+                // In this case, it's guaranteed that e1 is found (as projectile), but e2 and the
                 // entities in the else case, may potentially not be found.
                 (*e1, *e2)
             } else {
                 (*e2, *e1)
             };
 
-            if let Ok((mut e_state, mut e_stats, e_transform)) = enemy_query.get_mut(enemy) {
-                if let Ok((w_attack, w_transform)) = weapon_query.get(weapon) {
-                    e_stats.health -= w_attack.damage;
+            if let Ok((mut f_state, mut f_stats, f_transform)) =
+                fighter_query.get_mut(fighter_entity)
+            {
+                if let Ok((a_attack, a_transform, maybe_projectile)) =
+                    attack_query.get(attack_entity)
+                {
+                    f_stats.health -= a_attack.damage;
 
                     let force = 150.; //TODO: set this to a constant
                     let mut direction = Vec2::new(0., 0.);
 
-                    if w_transform.translation.x < e_transform.translation.x {
-                        e_state.set(State::KnockedLeft);
+                    if a_transform.translation.x < f_transform.translation.x {
+                        f_state.set(State::KnockedLeft);
                         direction.x = force;
                     } else {
-                        e_state.set(State::KnockedRight);
+                        f_state.set(State::KnockedRight);
                         direction.x = -force;
                     }
 
-                    commands.entity(enemy).insert(Knockback {
+                    commands.entity(fighter_entity).insert(Knockback {
                         direction,
                         duration: Timer::from_seconds(0.15, false),
                     });
 
-                    commands.entity(weapon).despawn_recursive();
-                }
-            }
-        }
-    }
-}
-
-pub fn enemy_attack_player_collision(
-    mut commands: Commands,
-    mut events: EventReader<CollisionEvent>,
-    mut player_query: Query<(&mut State, &mut Stats, &Transform), (With<Player>, Without<Enemy>)>,
-    attack_query: Query<(&Attack, &Transform)>,
-) {
-    for event in events.iter() {
-        if let CollisionEvent::Started(e1, e2, _flags) = event {
-            let (attack, enemy);
-            if attack_query.contains(*e1) && player_query.contains(*e2) {
-                (attack, enemy) = (*e1, *e2);
-            } else {
-                (attack, enemy) = (*e2, *e1);
-            }
-            if let Ok((mut e_state, mut e_stats, e_transform)) = player_query.get_mut(enemy) {
-                if let Ok((a_attack, a_transform)) = attack_query.get(attack) {
-                    e_stats.health -= a_attack.damage;
-
-                    let force = 150.; //TODO: set this to a constant
-                    let mut direction = Vec2::new(0., 0.);
-
-                    if a_transform.translation.x < e_transform.translation.x {
-                        e_state.set(State::KnockedLeft);
-                        direction.x = force;
-                    } else {
-                        e_state.set(State::KnockedRight);
-                        direction.x = -force;
+                    if maybe_projectile.is_some() {
+                        commands.entity(attack_entity).despawn_recursive();
                     }
-
-                    commands.entity(enemy).insert(Knockback {
-                        direction,
-                        duration: Timer::from_seconds(0.15, false),
-                    });
-
-                    commands.entity(attack).despawn_recursive();
                 }
             }
         }
