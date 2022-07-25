@@ -1,1 +1,1 @@
-status = ["ci"]
+status = ["Build", "Check Rust formatting", "Clippy correctness checks"]
