@@ -54,9 +54,6 @@ impl Plugin for AttackPlugin {
     }
 }
 
-#[derive(Component)]
-pub struct Weapon;
-
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
 pub struct Attack {
@@ -114,6 +111,7 @@ impl Projectile {
             sensor: Sensor(true),
             events: ActiveEvents::COLLISION_EVENTS,
             collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            //TODO: define collision layer based on the fighter shooting projectile, load for asset files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
             facing: facing.clone(),
             move_in_direction: MoveInDirection(dir * 300.), //TODO: Put the velocity in a cons,
@@ -124,7 +122,7 @@ impl Projectile {
 }
 
 #[derive(Bundle)]
-pub struct ThrownWeapon {
+pub struct ThrownItem {
     #[bundle]
     sprite_bundle: SpriteBundle,
     rotate: Rotate,
@@ -137,7 +135,7 @@ pub struct ThrownWeapon {
     attack: Attack,
 }
 
-impl ThrownWeapon {
+impl ThrownItem {
     pub fn new(
         angles: (f32, f32),
         position: Vec2,
@@ -145,7 +143,6 @@ impl ThrownWeapon {
         asset_server: &AssetServer,
     ) -> Self {
         Self {
-            // weapon: Weapon,
             sprite_bundle: SpriteBundle {
                 texture: asset_server.load("bottled_seaweed11x31.png"),
                 transform: Transform::from_xyz(position.x, position.y, ITEM_LAYER),
@@ -171,6 +168,7 @@ impl ThrownWeapon {
             sensor: Sensor(true),
             events: ActiveEvents::COLLISION_EVENTS,
             collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            //TODO: define collision layer based on the fighter throwing the item, load for asset files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::ITEM, BodyLayers::ENEMY),
             attack: Attack {
                 damage: consts::THROW_ITEM_DAMAGE,
@@ -230,9 +228,9 @@ fn player_throw(
                 Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
             };
 
-            let thrown_weapon = ThrownWeapon::new(angles, position, facing, &asset_server);
+            let thrown_item = ThrownItem::new(angles, position, facing, &asset_server);
 
-            commands.spawn_bundle(thrown_weapon);
+            commands.spawn_bundle(thrown_item);
         }
     }
 }
@@ -406,7 +404,6 @@ fn deactivate_hitbox(
     }
 }
 
-//TODO: remove, in favor of cleanup based on frames of animation, or keep but only for projectile attacks
 fn projectile_cleanup(
     query: Query<(Entity, &ProjectileLifetime), With<Attack>>,
     mut commands: Commands,
@@ -418,7 +415,6 @@ fn projectile_cleanup(
     }
 }
 
-//TODO: remove, in favor of cleanup based on frames of animation
 fn projectile_tick(mut query: Query<&mut ProjectileLifetime, With<Attack>>, time: Res<Time>) {
     for mut timer in query.iter_mut() {
         timer.0.tick(time.delta());
