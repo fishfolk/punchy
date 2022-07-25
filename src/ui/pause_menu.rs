@@ -5,6 +5,7 @@ use iyes_loopless::state::NextState;
 
 use crate::{
     metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
+    utils::ResetController,
     GameState,
 };
 
@@ -17,9 +18,8 @@ pub fn pause_menu(
     mut commands: Commands,
     mut egui_context: ResMut<EguiContext>,
     game: Res<GameMeta>,
-    non_camera_entities: Query<Entity, Without<Camera>>,
-    mut camera_transform: Query<&mut Transform, With<Camera>>,
     localization: Res<Localization>,
+    reset_controller: ResetController,
 ) {
     let ui_theme = &game.ui_theme;
 
@@ -77,14 +77,7 @@ pub fn pause_menu(
                         .show(ui)
                         .clicked()
                         {
-                            // Clean up all entities other than the camera
-                            for entity in non_camera_entities.iter() {
-                                commands.entity(entity).despawn();
-                            }
-                            // Reset camera position
-                            let mut camera_transform = camera_transform.single_mut();
-                            camera_transform.translation.x = 0.0;
-                            camera_transform.translation.y = 0.0;
+                            reset_controller.reset_world();
 
                             // Show the main menu
                             commands.insert_resource(NextState(GameState::MainMenu));

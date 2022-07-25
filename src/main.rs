@@ -46,6 +46,7 @@ mod platform;
 mod player;
 mod state;
 mod ui;
+mod utils;
 mod y_sort;
 
 use animation::*;
@@ -58,6 +59,7 @@ use movement::*;
 use serde::Deserialize;
 use state::{State, StatePlugin};
 use ui::UIPlugin;
+use utils::ResetController;
 use y_sort::*;
 
 use crate::{config::EngineConfig, input::PlayerAction, item::ItemSpawnBundle, metadata::Settings};
@@ -211,7 +213,6 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
-        .add_exit_system(GameState::InGame, clean_in_game_data)
         .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
         .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
@@ -535,15 +536,15 @@ fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMar
     }
 }
 
-fn game_over_on_players_death(mut commands: Commands, query: Query<(), With<Player>>) {
+fn game_over_on_players_death(
+    mut commands: Commands,
+    query: Query<(), With<Player>>,
+    reset_controller: ResetController,
+) {
     if query.is_empty() {
         commands.insert_resource(NextState(GameState::MainMenu));
-    }
-}
 
-fn clean_in_game_data(mut commands: Commands, query: Query<Entity, Without<Camera>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
+        reset_controller.reset_world();
     }
 }
 
