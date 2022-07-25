@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{
     core::{Time, Timer},
-    hierarchy::{BuildChildren, DespawnRecursiveExt},
+    hierarchy::{BuildChildren, Children, DespawnRecursiveExt},
     math::Vec2,
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
@@ -24,7 +24,7 @@ use crate::{
         ITEM_WIDTH, THROW_ITEM_ROTATION_SPEED,
     },
     input::PlayerAction,
-    item::{item_carried_by_player, CarriedBy},
+    item::item_carried_by_player,
     metadata::{FighterMeta, ItemMeta},
     movement::{MoveInArc, MoveInDirection, Rotate, Target},
     state::State,
@@ -181,7 +181,7 @@ impl ThrownItem {
 fn player_projectile_attack(
     player_query: Query<
         (
-            Entity,
+            &Children,
             &Transform,
             &Facing,
             &State,
@@ -189,20 +189,20 @@ fn player_projectile_attack(
         ),
         With<Player>,
     >,
-    carried_items_query: Query<((Entity, &Handle<ItemMeta>), &CarriedBy)>,
+    items_meta_query: Query<&Handle<ItemMeta>>,
     items_meta: Res<Assets<ItemMeta>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    for (player_id, transform, facing, state, input) in player_query.iter() {
+    for (player_children, transform, facing, state, input) in player_query.iter() {
         if *state != State::Idle && *state != State::Running {
             continue;
         }
 
         let carried_item = item_carried_by_player(
-            player_id,
+            player_children,
             ITEM_BOTTLE_NAME,
-            &carried_items_query,
+            &items_meta_query,
             &items_meta,
         );
 
@@ -228,22 +228,22 @@ fn player_throw(
     mut commands: Commands,
     player_query: Query<
         (
-            Entity,
+            &Children,
             &Transform,
             Option<&Facing>,
             &ActionState<PlayerAction>,
         ),
         With<Player>,
     >,
-    carried_items_query: Query<((Entity, &Handle<ItemMeta>), &CarriedBy)>,
+    items_meta_query: Query<&Handle<ItemMeta>>,
     items_meta: Res<Assets<ItemMeta>>,
     asset_server: Res<AssetServer>,
 ) {
-    for (player_id, transform, facing_option, input) in player_query.iter() {
+    for (player_children, transform, facing_option, input) in player_query.iter() {
         let carried_item = item_carried_by_player(
-            player_id,
+            player_children,
             ITEM_BOTTLE_NAME,
-            &carried_items_query,
+            &items_meta_query,
             &items_meta,
         );
 

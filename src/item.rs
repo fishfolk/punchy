@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use bevy::{
     ecs::system::EntityCommands,
+    hierarchy::{BuildChildren, Children},
     math::Vec3,
     prelude::{Assets, Bundle, Commands, Component, Entity, Handle, Query, Transform, With},
     transform::TransformBundle,
@@ -19,12 +20,9 @@ use crate::{
 #[derive(Component)]
 pub struct Item;
 
-#[derive(Component)]
-pub struct CarriedBy(pub Entity);
-
 /// Represents an item, that is either on the map (waiting to be picked up), or carried.
-/// If an item is on the map, it has a TransformBundle; if it's carried, it instead has a
-/// CarriedBy.
+/// If an item is on the map, it has a TransformBundle; if it's carried, it doesn't, and it's the
+/// child entity of a Player.
 #[derive(Bundle)]
 pub struct ItemBundle {
     item: Item,
@@ -72,10 +70,8 @@ pub fn pick_items(
                         .distance(item_transform.translation.truncate());
 
                     if player_item_distance <= PICK_ITEM_RADIUS {
-                        commands
-                            .entity(item_id)
-                            .remove_bundle::<TransformBundle>()
-                            .insert(CarriedBy(player_id));
+                        commands.entity(item_id).remove_bundle::<TransformBundle>();
+                        commands.entity(player_id).add_child(item_id);
                         picked_item_ids.insert(item_id);
                         break;
                     }
@@ -87,22 +83,20 @@ pub fn pick_items(
 
 /// Utility method, not system!
 pub fn item_carried_by_player(
-    player_id: Entity,
+    children: &Children,
     item_name: &str,
-    carried_items_query: &Query<((Entity, &Handle<ItemMeta>), &CarriedBy)>,
+    items_meta_query: &Query<&Handle<ItemMeta>>,
     items_meta: &Assets<ItemMeta>,
 ) -> Option<Entity> {
-    carried_items_query
-        .iter()
-        .find_map(|((item_entity, item_meta_handle), carried_by)| {
-            if carried_by.0 == player_id {
-                if let Some(item_meta) = items_meta.get(item_meta_handle) {
-                    if item_meta.name == item_name {
-                        return Some(item_entity);
-                    }
+    for child_id in children.iter() {
+        if let Ok(item_meta_handle) = items_meta_query.get(*child_id) {
+            if let Some(item_meta) = items_meta.get(item_meta_handle) {
+                if item_meta.name == item_name {
+                    return Some(*child_id);
                 }
             }
+        }
+    }
 
-            None
-        })
+    None
 }
