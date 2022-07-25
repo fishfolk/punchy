@@ -221,9 +221,7 @@ fn main() {
                 .with_system(load_items)
                 .with_system(player_controller)
                 .with_system(y_sort)
-                .with_system(player_weapon_with_enemy_collision)
-                .with_system(enemy_attack_player_collision)
-                .with_system(player_enemy_collision)
+                .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
                 .with_system(knockback_system)
                 .with_system(move_direction_system)
@@ -268,8 +266,7 @@ fn main() {
         .register_inspectable::<Rotate>()
         .register_inspectable::<attack::Attack>()
         .register_inspectable::<YSort>()
-        .register_inspectable::<Facing>()
-        .register_inspectable::<Panning>();
+        .register_inspectable::<Facing>();
 
     // Register assets and loaders
     assets::register(&mut app);

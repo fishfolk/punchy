@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set the release version
         shell: bash
@@ -31,8 +31,7 @@ jobs:
         if: matrix.config.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install \
-            --allow-unauthenticated -y -qq \
+          sudo apt-get install -y -q \
               libasound2-dev \
               libudev-dev
 
@@ -100,7 +99,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Download Artifacts
         uses: actions/download-artifact@v2
