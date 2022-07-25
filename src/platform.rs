@@ -350,7 +350,7 @@ mod wasm {
 
     use super::StorageRequest;
 
-    const BROWSER_LOCAL_STORAGE_KEY: &str = "puncy-platform-storage";
+    const BROWSER_LOCAL_STORAGE_KEY: &str = "punchy-platform-storage";
 
     /// System to update the canvas size to match the size of the browser window
     pub fn update_canvas_size(mut windows: ResMut<Windows>) {

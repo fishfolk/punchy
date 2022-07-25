@@ -3,7 +3,7 @@ use structopt::StructOpt;
 const DEFAULT_LOG_LEVEL: &str = "info,wgpu=error,bevy_fluent=warn,symphonia_core=warn,symphonia_format_ogg=warn,symphonia_bundle_mp3=warn";
 
 #[derive(Clone, Debug, StructOpt)]
-#[structopt(name = "Puncy", about = "A 2.5D side-scroller beatemup.")]
+#[structopt(name = "Punchy", about = "A 2.5D side-scroller beatemup.")]
 pub struct EngineConfig {
     /// Hot reload assets
     #[structopt(short = "R", long)]
