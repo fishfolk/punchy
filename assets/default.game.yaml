@@ -4,6 +4,9 @@ camera_height: 448
 # For simplicity, this value can also be used for movement limitation calculations.
 camera_move_right_boundary: 150.
 
+scripts:
+  - scripts/test1.ts
+
 main_menu:
   title_font:
     family: ark

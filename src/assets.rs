@@ -131,6 +131,13 @@ impl AssetLoader for GameMetaLoader {
             meta.main_menu.music_handle = music_handle;
             dependencies.push(music_path);
 
+            // Load the scripts
+            for script in &meta.scripts {
+                let (path, handle) = get_relative_asset(load_context, &self_path, script);
+                dependencies.push(path);
+                meta.script_handles.push(handle);
+            }
+
             // Load UI fonts
             for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =

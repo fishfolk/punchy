@@ -8,7 +8,7 @@ use crate::{
     metadata::{FighterMeta, FighterSpawnMeta, GameMeta, Settings},
 };
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct Player;
 
 #[derive(Component)]

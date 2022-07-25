@@ -16,6 +16,7 @@ use crate::{
     platform::Storage,
     player::{Player, PlayerBundle},
     AnimatedSpriteSheetBundle, CharacterBundle, GameStage, GameState, PhysicsBundle, Stats,
+    scripting::Script,
 };
 
 use bevy::{ecs::system::SystemParam, render::camera::ScalingMode};
@@ -99,6 +100,7 @@ pub struct GameLoader<'w, 's> {
     commands: Commands<'w, 's>,
     game_handle: Res<'w, Handle<GameMeta>>,
     assets: ResMut<'w, Assets<GameMeta>>,
+    scripts: Query<'w, 's, Entity, With<Handle<Script>>>,
     egui_ctx: ResMut<'w, EguiContext>,
     events: EventReader<'w, 's, AssetEvent<GameMeta>>,
 }
@@ -122,6 +124,7 @@ impl<'w, 's> GameLoader<'w, 's> {
             mut commands,
             game_handle,
             mut assets,
+            scripts,
             mut egui_ctx,
             ..
         } = self;
@@ -132,6 +135,13 @@ impl<'w, 's> GameLoader<'w, 's> {
                 // Despawn previous camera
                 if let Ok(camera) = camera.get_single() {
                     commands.entity(camera).despawn();
+                }
+
+                // Remove all script entities because we will be re-creating them all.
+                // TODO: It'd be best if we compared the old and new script lists and only added
+                // new ones and removed old ones.
+                for script in scripts.iter() {
+                    commands.entity(script).despawn();
                 }
 
                 // Since we are modifying the game asset, which will trigger another asset changed
@@ -194,6 +204,11 @@ impl<'w, 's> GameLoader<'w, 's> {
                 if let Some(border) = &mut button.borders.focused {
                     load_border_image(border);
                 }
+            }
+
+            // Spawn the script entities
+            for script in &game.script_handles {
+                commands.spawn().insert(script.clone());
             }
 
             // Insert the game resource

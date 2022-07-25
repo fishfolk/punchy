@@ -11,7 +11,7 @@ use bevy_parallax::{LayerData, ParallaxResource};
 use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
 
-use crate::{animation::Clip, assets::EguiFont, state::State, Stats};
+use crate::{animation::Clip, assets::EguiFont, scripting::Script, state::State, Stats};
 
 pub mod settings;
 pub use settings::*;
@@ -36,6 +36,11 @@ pub struct GameMeta {
 
     pub default_settings: Settings,
     pub translations: TranslationsMeta,
+
+    #[serde(default)]
+    pub scripts: Vec<String>,
+    #[serde(skip)]
+    pub script_handles: Vec<Handle<Script>>,
 }
 
 #[derive(HasLoadProgress, Deserialize, Clone, Debug)]
