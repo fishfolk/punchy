@@ -1,8 +1,4 @@
 status = [
-  "Build (ubuntu-latest, x86_64-unknown-linux-gnu)",
-  "Build (macos-latest, x86_64-apple-darwin)",
-  "Build (macos-latest, aarch64-apple-darwin)",
-  "Build (windows-latest, x86_64-pc-windows-msvc)",
   "Check Rust formatting",
   "Clippy correctness checks"
 ]
