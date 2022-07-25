@@ -23,8 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Clippy correctness checks
     steps:
-      - name: Install Alsa dev library
-        run: sudo apt install libasound2-dev libudev-dev
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -q \
+              libasound2-dev \
+              libudev-dev
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
@@ -53,13 +57,12 @@ jobs:
           - { os: windows-latest, target: 'x86_64-pc-windows-msvc' }
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install dependencies
         if: matrix.config.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install \
-            --allow-unauthenticated -y -qq \
+          sudo apt-get install -y -q \
               libasound2-dev \
               libudev-dev
       - uses: actions/cache@v3

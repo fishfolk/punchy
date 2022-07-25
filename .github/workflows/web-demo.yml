@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - web-demo
-      - v*.*.*
+      - 'v*'
 jobs:
   publish-web-demo:
     runs-on: ubuntu-latest
