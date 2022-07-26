@@ -81,6 +81,9 @@ pub fn play_menu_music(
     music_channel: Res<AudioChannel<MusicChannel>>,
     engine_config: Res<EngineConfig>,
 ) {
+    // This is a workaround for a Bevy Kira bug where stopping a sound immediately after
+    // playing it doesn't work. We run into this issue when the menu starts and immediately
+    // stops because the auto-start flag skips the menu. See issue #121 for context.
     if !engine_config.auto_start {
         music_channel.play(game_meta.main_menu.music_handle.clone());
     }
