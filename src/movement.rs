@@ -313,11 +313,7 @@ pub fn clamp_player_movements(
             let new_movement = movement.map(|mut movement| {
                 let new_x = location.x + movement.x;
 
-                // The dir.x condition allows some flexibility (e.g. in case of knockback), given
-                // the current state of development. To be removed once the movement logic is
-                // stabilized.
-                //
-                if movement.x < 0. && new_x < left_movement_boundary.0 {
+                if new_x < left_movement_boundary.0 {
                     movement.x = 0.;
                 }
 
