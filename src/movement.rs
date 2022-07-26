@@ -38,18 +38,57 @@ pub struct Knockback {
 }
 
 pub fn knockback_system(
-    mut query: Query<(Entity, &mut Transform, &mut Knockback)>,
-    time: Res<Time>,
     mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform, &mut Knockback, Option<&Player>)>,
+    time: Res<Time>,
+    game_meta: Res<GameMeta>,
+    left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
-    for (entity, mut transform, mut knockback) in query.iter_mut() {
-        if knockback.duration.finished() {
-            commands.entity(entity).remove::<Knockback>();
-        } else {
-            transform.translation.x += knockback.direction.x * time.delta_seconds();
-            transform.translation.y += knockback.direction.y * time.delta_seconds();
-            knockback.duration.tick(time.delta());
-        }
+    let mut all_knockbacks = query.iter_mut().collect::<Vec<_>>();
+
+    // Separate the finished knockbacks, and despawn them.
+
+    let (finished_knockbacks, mut current_knockbacks): (Vec<_>, Vec<_>) = all_knockbacks
+        .iter_mut()
+        .partition(|(_, _, knockback, _)| knockback.duration.finished());
+
+    for (entity, _, _, _) in &finished_knockbacks {
+        commands.entity(*entity).remove::<Knockback>();
+    }
+
+    // Tick the timer for the current knockbacks.
+
+    for (_, _, knockback, _) in current_knockbacks.iter_mut() {
+        knockback.duration.tick(time.delta());
+    }
+
+    // Separate the enemy knocbacks, and apply them, unclamped.
+
+    let (mut enemy_knockbacks, mut player_knockbacks): (Vec<_>, Vec<_>) = current_knockbacks
+        .iter_mut()
+        .partition(|(_, _, _, player)| player.is_none());
+
+    for (_, transform, knockback, _) in enemy_knockbacks.iter_mut() {
+        transform.translation.x += knockback.direction.x * time.delta_seconds();
+        transform.translation.y += knockback.direction.y * time.delta_seconds();
+    }
+
+    // Extract the players movement data, and apply the knockbacks, clamped.
+
+    let player_movements = player_knockbacks
+        .iter()
+        .map(|(_, transform, knockback, _)| {
+            (
+                transform.translation,
+                Some(knockback.direction * time.delta_seconds()),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let player_dirs = clamp_player_movements(player_movements, &left_movement_boundary, &game_meta);
+
+    for ((_, transform, _, _), player_dir) in player_knockbacks.iter_mut().zip(player_dirs) {
+        transform.translation += player_dir.unwrap().extend(0.);
     }
 }
 

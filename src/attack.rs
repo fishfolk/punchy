@@ -25,8 +25,10 @@ use crate::{
     },
     input::PlayerAction,
     item::item_carried_by_player,
-    metadata::{FighterMeta, ItemMeta},
-    movement::{MoveInArc, MoveInDirection, Rotate, Target},
+    metadata::{FighterMeta, GameMeta, ItemMeta},
+    movement::{
+        clamp_player_movements, LeftMovementBoundary, MoveInArc, MoveInDirection, Rotate, Target,
+    },
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
 };
@@ -296,75 +298,98 @@ fn player_flop(
     >,
     fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
+    left_movement_boundary: Res<LeftMovementBoundary>,
+    game_meta: Res<GameMeta>,
     mut start_y: Local<Option<f32>>,
 ) {
-    for (entity, mut state, mut transform, animation, facing, input, fighter_meta) in
-        query.iter_mut()
-    {
-        if *state != State::Attacking {
-            if *state != State::Idle && *state != State::Running {
-                return;
-            }
-            if input.just_pressed(PlayerAction::FlopAttack) {
-                state.set(State::Attacking);
+    let players_movement = query
+        .iter_mut()
+        .map(
+            |(entity, mut state, transform, animation, facing, input, fighter_meta)| {
+                if *state != State::Attacking {
+                    if !(*state != State::Idle && *state != State::Running)
+                        && input.just_pressed(PlayerAction::FlopAttack)
+                    {
+                        state.set(State::Attacking);
 
-                let attack_entity = commands
-                    .spawn_bundle(TransformBundle::default())
-                    .insert(Sensor(true))
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                    .insert(CollisionGroups::new(
-                        BodyLayers::PLAYER_ATTACK,
-                        BodyLayers::ENEMY,
-                    ))
-                    .insert(Attack { damage: 10 })
-                    .insert(AttackFrames {
-                        startup: 0,
-                        active: 3,
-                        recovery: 4,
-                    })
-                    .id();
-                commands.entity(entity).push_children(&[attack_entity]);
-                //TODO: define hitbox size and placement through resources
+                        let attack_entity = commands
+                            .spawn_bundle(TransformBundle::default())
+                            .insert(Sensor(true))
+                            .insert(ActiveEvents::COLLISION_EVENTS)
+                            .insert(
+                                ActiveCollisionTypes::default()
+                                    | ActiveCollisionTypes::STATIC_STATIC,
+                            )
+                            .insert(CollisionGroups::new(
+                                BodyLayers::PLAYER_ATTACK,
+                                BodyLayers::ENEMY,
+                            ))
+                            .insert(Attack { damage: 10 })
+                            .insert(AttackFrames {
+                                startup: 0,
+                                active: 3,
+                                recovery: 4,
+                            })
+                            .id();
+                        commands.entity(entity).push_children(&[attack_entity]);
+                        //TODO: define hitbox size and placement through resources
 
-                //maybe move audio effects?
-                if let Some(fighter) = fighter_assets.get(fighter_meta) {
-                    if let Some(effects) = fighter.audio.effect_handles.get(&state) {
-                        let fx_playback = FighterStateEffectsPlayback::new(*state, effects.clone());
-                        commands.entity(entity).insert(fx_playback);
+                        //maybe move audio effects?
+                        if let Some(fighter) = fighter_assets.get(fighter_meta) {
+                            if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+                                let fx_playback =
+                                    FighterStateEffectsPlayback::new(*state, effects.clone());
+                                commands.entity(entity).insert(fx_playback);
+                            }
+                        }
+                        // commands.
+                        // commands.entity(entity)
                     }
-                }
-                // commands.
-                // commands.entity(entity)
-            }
-        } else {
-            //TODO: Replace with movement intent eventwriter in movement rewrite!
-            //TODO: Fix hacky way to get a forward jump
-            if animation.current_frame < 3 {
-                if facing.is_left() {
-                    transform.translation.x -= 200. * time.delta_seconds();
+
+                    (transform.translation, None)
                 } else {
-                    transform.translation.x += 200. * time.delta_seconds();
+                    let mut movement = Vec2::ZERO;
+
+                    //TODO: Replace with movement intent eventwriter in movement rewrite!
+                    //TODO: Fix hacky way to get a forward jump
+                    if animation.current_frame < 3 {
+                        if facing.is_left() {
+                            movement.x -= 200. * time.delta_seconds();
+                        } else {
+                            movement.x += 200. * time.delta_seconds();
+                        }
+                    }
+
+                    // For currently unclear reasons, the first Animation frame may run for less Bevy frames
+                    // than expected. When this is the case, the player jumps less then it should, netting,
+                    // at the end of the animation, a slightly negative Y than the beginning, which causes
+                    // problems. This is a workaround.
+                    //
+                    if start_y.is_none() {
+                        *start_y = Some(transform.translation.y);
+                    }
+
+                    if animation.current_frame < 1 {
+                        movement.y += 180. * time.delta_seconds();
+                    } else if animation.current_frame < 3 {
+                        movement.y -= 90. * time.delta_seconds();
+                    } else if animation.is_finished() {
+                        movement.y = start_y.unwrap();
+                        *start_y = None;
+                    }
+
+                    (transform.translation, Some(movement))
                 }
-            }
+            },
+        )
+        .collect::<Vec<_>>();
 
-            // For currently unclear reasons, the first Animation frame may run for less Bevy frames
-            // than expected. When this is the case, the player jumps less then it should, netting,
-            // at the end of the animation, a slightly negative Y than the beginning, which causes
-            // problems. This is a workaround.
-            //
-            if start_y.is_none() {
-                *start_y = Some(transform.translation.y);
-            }
+    let players_movement =
+        clamp_player_movements(players_movement, &left_movement_boundary, &game_meta);
 
-            if animation.current_frame < 1 {
-                transform.translation.y += 180. * time.delta_seconds();
-            } else if animation.current_frame < 3 {
-                transform.translation.y -= 90. * time.delta_seconds();
-            } else if animation.is_finished() {
-                transform.translation.y = start_y.unwrap();
-                *start_y = None;
-            }
+    for ((_, _, mut transform, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement) {
+        if let Some(player_dir) = player_dir {
+            transform.translation += player_dir.extend(0.);
         }
     }
 }
