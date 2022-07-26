@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{
     core::{Time, Timer},
-    hierarchy::{BuildChildren, DespawnRecursiveExt},
+    hierarchy::{BuildChildren, Children, DespawnRecursiveExt},
     math::Vec2,
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
@@ -20,11 +20,12 @@ use crate::{
     audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
     consts::{
-        self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_HEIGHT, ITEM_LAYER, ITEM_WIDTH,
-        THROW_ITEM_ROTATION_SPEED,
+        self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_BOTTLE_NAME, ITEM_HEIGHT, ITEM_LAYER,
+        ITEM_WIDTH, THROW_ITEM_ROTATION_SPEED,
     },
     input::PlayerAction,
-    metadata::FighterMeta,
+    item::item_carried_by_player,
+    metadata::{FighterMeta, ItemMeta},
     movement::{MoveInArc, MoveInDirection, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player,
@@ -178,59 +179,103 @@ impl ThrownItem {
 }
 
 fn player_projectile_attack(
-    query: Query<(&Transform, &Facing, &State, &ActionState<PlayerAction>), With<Player>>,
+    player_query: Query<
+        (
+            &Children,
+            &Transform,
+            &Facing,
+            &State,
+            &ActionState<PlayerAction>,
+        ),
+        With<Player>,
+    >,
+    items_meta_query: Query<&Handle<ItemMeta>>,
+    items_meta: Res<Assets<ItemMeta>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    for (transform, facing, state, input) in query.iter() {
+    for (player_children, transform, facing, state, input) in player_query.iter() {
         if *state != State::Idle && *state != State::Running {
-            break;
+            continue;
         }
-        if input.just_pressed(PlayerAction::Shoot) {
-            let mut dir = Vec2::X;
 
-            if facing.is_left() {
-                dir = -dir;
+        let carried_item = item_carried_by_player(
+            player_children,
+            ITEM_BOTTLE_NAME,
+            &items_meta_query,
+            &items_meta,
+        );
+
+        if let Some(bottle_id) = carried_item {
+            if input.just_pressed(PlayerAction::Shoot) {
+                let mut dir = Vec2::X;
+
+                if facing.is_left() {
+                    dir = -dir;
+                }
+
+                let projectile = Projectile::new(transform, facing, dir, &asset_server);
+
+                commands.spawn_bundle(projectile);
+
+                commands.entity(bottle_id).despawn();
             }
-
-            let projectile = Projectile::new(transform, facing, dir, &asset_server);
-
-            commands.spawn_bundle(projectile);
         }
     }
 }
 
 fn player_throw(
     mut commands: Commands,
-    query: Query<(&Transform, Option<&Facing>, &ActionState<PlayerAction>), With<Player>>,
+    player_query: Query<
+        (
+            &Children,
+            &Transform,
+            Option<&Facing>,
+            &ActionState<PlayerAction>,
+        ),
+        With<Player>,
+    >,
+    items_meta_query: Query<&Handle<ItemMeta>>,
+    items_meta: Res<Assets<ItemMeta>>,
     asset_server: Res<AssetServer>,
 ) {
-    for (transform, facing_option, input) in query.iter() {
-        if input.just_pressed(PlayerAction::Throw) {
-            let facing = match facing_option {
-                Some(f) => f.clone(),
-                None => Facing::Right,
-            };
+    for (player_children, transform, facing_option, input) in player_query.iter() {
+        let carried_item = item_carried_by_player(
+            player_children,
+            ITEM_BOTTLE_NAME,
+            &items_meta_query,
+            &items_meta,
+        );
 
-            let mut position = transform.translation.truncate();
+        if let Some(bottle_id) = carried_item {
+            if input.just_pressed(PlayerAction::Throw) {
+                let facing = match facing_option {
+                    Some(f) => f.clone(),
+                    None => Facing::Right,
+                };
 
-            //Offset the position depending on the facing
-            if facing.is_left() {
-                position.x -= consts::THROW_ITEM_X_OFFSET;
-            } else {
-                position.x += consts::THROW_ITEM_X_OFFSET;
+                let mut position = transform.translation.truncate();
+
+                //Offset the position depending on the facing
+                if facing.is_left() {
+                    position.x -= consts::THROW_ITEM_X_OFFSET;
+                } else {
+                    position.x += consts::THROW_ITEM_X_OFFSET;
+                }
+
+                position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
+
+                let angles = match facing {
+                    Facing::Left => (90. - consts::THROW_ITEM_ANGLE_OFFSET, 180.),
+                    Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
+                };
+
+                let thrown_item = ThrownItem::new(angles, position, facing, &asset_server);
+
+                commands.spawn_bundle(thrown_item);
+
+                commands.entity(bottle_id).despawn()
             }
-
-            position.y -= consts::PLAYER_HEIGHT / 2.; //Set to the player feet
-
-            let angles = match facing {
-                Facing::Left => (90. - consts::THROW_ITEM_ANGLE_OFFSET, 180.),
-                Facing::Right => (90. + consts::THROW_ITEM_ANGLE_OFFSET, 0.),
-            };
-
-            let thrown_item = ThrownItem::new(angles, position, facing, &asset_server);
-
-            commands.spawn_bundle(thrown_item);
         }
     }
 }

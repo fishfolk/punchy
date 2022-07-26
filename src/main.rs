@@ -2,12 +2,7 @@
 #![allow(clippy::forget_non_drop)]
 #![allow(clippy::too_many_arguments)]
 
-use bevy::{
-    asset::{AssetServerSettings, AssetStage},
-    ecs::bundle::Bundle,
-    log::LogSettings,
-    prelude::*,
-};
+use bevy::{asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, prelude::*};
 use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
@@ -15,7 +10,6 @@ use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
-use platform::Storage;
 use player::*;
 use rand::{seq::SliceRandom, Rng};
 
@@ -36,9 +30,9 @@ mod collisions;
 mod config;
 mod consts;
 mod enemy;
-mod game_init;
 mod input;
 mod item;
+mod loading;
 mod localization;
 mod metadata;
 mod movement;
@@ -54,7 +48,7 @@ use attack::AttackPlugin;
 use audio::*;
 use camera::*;
 use collisions::*;
-use metadata::{FighterMeta, GameMeta, ItemMeta, LevelMeta};
+use metadata::GameMeta;
 use movement::*;
 use serde::Deserialize;
 use state::{State, StatePlugin};
@@ -62,7 +56,7 @@ use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
 
-use crate::{config::EngineConfig, input::PlayerAction, item::ItemSpawnBundle, metadata::Settings};
+use crate::{config::EngineConfig, input::PlayerAction, item::pick_items};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -196,6 +190,7 @@ fn main() {
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
+        .add_plugin(loading::LoadingPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
@@ -213,14 +208,11 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
-        .add_system(game_init::load_game.run_in_state(GameState::LoadingGame))
-        .add_system(load_level.run_in_state(GameState::LoadingLevel))
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(load_fighters)
-                .with_system(load_items)
                 .with_system(player_controller)
+                .with_system(pick_items)
                 .with_system(y_sort)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
@@ -279,24 +271,6 @@ fn main() {
     let game_asset = engine_config.game_asset;
     let game_handle: Handle<GameMeta> = asset_server.load(&game_asset);
 
-    // Configure hot reload
-    if engine_config.hot_reload {
-        app.add_stage_after(
-            AssetStage::LoadAssets,
-            GameStage::HotReload,
-            SystemStage::parallel(),
-        )
-        .add_system_to_stage(GameStage::HotReload, game_init::hot_reload_game)
-        .add_system_set_to_stage(
-            GameStage::HotReload,
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(hot_reload_level)
-                .with_system(hot_reload_fighters)
-                .into(),
-        );
-    }
-
     // Insert game handle resource
     app.world.insert_resource(game_handle);
 
@@ -305,194 +279,6 @@ fn main() {
     bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
-}
-
-/// Loads a level and transitions to [`GameState::InGame`]
-///
-/// A [`Handle<Level>`] resource must be inserted before running this system, to indicate which
-/// level to load.
-fn load_level(
-    level_handle: Res<Handle<LevelMeta>>,
-    mut commands: Commands,
-    assets: Res<Assets<LevelMeta>>,
-    mut parallax: ResMut<ParallaxResource>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    asset_server: Res<AssetServer>,
-    game: Res<GameMeta>,
-    windows: Res<Windows>,
-    mut storage: ResMut<Storage>,
-) {
-    if let Some(level) = assets.get(level_handle.clone_weak()) {
-        debug!("Loaded level");
-        let window = windows.primary();
-
-        // Setup the parallax background
-        *parallax = level.parallax_background.get_resource();
-        parallax.window_size = Vec2::new(window.width(), window.height());
-        parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
-
-        // Set the clear color
-        commands.insert_resource(ClearColor(level.background_color()));
-
-        // Spawn the players
-        for (i, player) in level.players.iter().enumerate() {
-            commands.spawn_bundle(PlayerBundle::new(
-                player,
-                i,
-                &game,
-                storage.get(Settings::STORAGE_KEY).as_ref(),
-            ));
-        }
-
-        // Spawn the enemies
-        for enemy in &level.enemies {
-            commands.spawn_bundle(EnemyBundle::new(enemy));
-        }
-
-        // Spawn the items
-        for item_spawn_meta in &level.items {
-            commands.spawn_bundle(ItemSpawnBundle::new(item_spawn_meta));
-        }
-
-        commands.insert_resource(level.clone());
-        commands.insert_resource(NextState(GameState::InGame));
-    } else {
-        trace!("Awaiting level load");
-    }
-}
-
-/// Hot reloads level asset data
-fn hot_reload_level(
-    mut commands: Commands,
-    mut parallax: ResMut<ParallaxResource>,
-    mut events: EventReader<AssetEvent<LevelMeta>>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    level_handle: Res<Handle<LevelMeta>>,
-    assets: Res<Assets<LevelMeta>>,
-    asset_server: Res<AssetServer>,
-    windows: Res<Windows>,
-) {
-    for event in events.iter() {
-        if let AssetEvent::Modified { handle } = event {
-            let level = assets.get(handle).unwrap();
-            if handle == &*level_handle {
-                // Update the level background
-                let window = windows.primary();
-                parallax.despawn_layers(&mut commands);
-                *parallax = level.parallax_background.get_resource();
-                parallax.window_size = Vec2::new(window.width(), window.height());
-                parallax.create_layers(&mut commands, &asset_server, &mut texture_atlases);
-
-                commands.insert_resource(ClearColor(level.background_color()));
-            }
-        }
-    }
-}
-
-fn load_items(
-    mut commands: Commands,
-    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>), Without<Sprite>>,
-    item_assets: Res<Assets<ItemMeta>>,
-) {
-    for (entity, transform, item_handle) in item_spawns.iter() {
-        if let Some(item_meta) = item_assets.get(item_handle) {
-            commands.entity(entity).insert_bundle(SpriteBundle {
-                texture: item_meta.image.image_handle.clone(),
-                transform: *transform,
-                ..default()
-            });
-        }
-    }
-}
-
-/// Load all fighters that have their handles spawned.
-///
-/// Fighters are spawned as "stubs" that only contain a transform, a marker component, and a
-/// [`Handle<Fighter>`]. This system takes those stubs, populates the rest of their components once
-/// the figher asset has been loaded.
-fn load_fighters(
-    mut commands: Commands,
-    // All fighters that haven't been fully loaded yet
-    fighters: Query<
-        (
-            Entity,
-            &Transform,
-            &Handle<FighterMeta>,
-            Option<&Player>,
-            Option<&Enemy>,
-        ),
-        Without<Stats>,
-    >,
-    fighter_assets: Res<Assets<FighterMeta>>,
-) {
-    for (entity, transform, fighter_handle, player, enemy) in fighters.iter() {
-        if let Some(fighter) = fighter_assets.get(fighter_handle) {
-            let body_layers = if player.is_some() {
-                BodyLayers::PLAYER
-            } else if enemy.is_some() {
-                BodyLayers::ENEMY
-            } else {
-                unreachable!();
-            };
-
-            commands
-                .entity(entity)
-                .insert(Name::new(fighter.name.clone()))
-                .insert_bundle(AnimatedSpriteSheetBundle {
-                    sprite_sheet: SpriteSheetBundle {
-                        sprite: TextureAtlasSprite::new(0),
-                        texture_atlas: fighter.spritesheet.atlas_handle.clone(),
-                        transform: *transform,
-                        ..Default::default()
-                    },
-                    animation: Animation::new(
-                        fighter.spritesheet.animation_fps,
-                        fighter.spritesheet.animations.clone(),
-                    ),
-                })
-                .insert_bundle(CharacterBundle {
-                    stats: fighter.stats.clone(),
-                    ..default()
-                })
-                .insert_bundle(PhysicsBundle {
-                    collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
-                    ..default()
-                });
-        }
-    }
-}
-
-/// Hot reload fighter data when fighter assets are updated.
-fn hot_reload_fighters(
-    mut fighters: Query<(
-        &Handle<FighterMeta>,
-        &mut Name,
-        &mut Handle<TextureAtlas>,
-        &mut Animation,
-        &mut Stats,
-    )>,
-    mut events: EventReader<AssetEvent<FighterMeta>>,
-    assets: Res<Assets<FighterMeta>>,
-) {
-    for event in events.iter() {
-        if let AssetEvent::Modified { handle } = event {
-            for (fighter_handle, mut name, mut atlas_handle, mut animation, mut stats) in
-                fighters.iter_mut()
-            {
-                if fighter_handle == handle {
-                    let fighter = assets.get(fighter_handle).unwrap();
-
-                    *name = Name::new(fighter.name.clone());
-                    *atlas_handle = fighter.spritesheet.atlas_handle.clone();
-                    *animation = Animation::new(
-                        fighter.spritesheet.animation_fps,
-                        fighter.spritesheet.animations.clone(),
-                    );
-                    *stats = fighter.stats.clone();
-                }
-            }
-        }
-    }
 }
 
 /// Transition game to pause state
