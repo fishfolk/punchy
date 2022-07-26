@@ -81,12 +81,9 @@ pub fn play_menu_music(
     music_channel: Res<AudioChannel<MusicChannel>>,
     engine_config: Res<EngineConfig>,
 ) {
-    // When the autostart flag is set, the main menu music playback is not stopped, resulting in both the main menu and the level tracks being played.
-    // I've to introduce a few frames of delay before the stop invocation, but the problem persists.
-    // My educated guess is that the audio plugin has a small delay before it starts playing a given music/sound, and if a stop command is issued in the meanwhile, it's ignored.
-    //
-    // See issue #121.
-    //
+    // This is a workaround for a Bevy Kira bug where stopping a sound immediately after
+    // playing it doesn't work. We run into this issue when the menu starts and immediately
+    // stops because the auto-start flag skips the menu. See issue #121 for context.
     if !engine_config.auto_start {
         music_channel.play(game_meta.main_menu.music_handle.clone());
     }
