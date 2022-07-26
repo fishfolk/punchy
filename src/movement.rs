@@ -1,6 +1,6 @@
 use bevy::{
     core::{Time, Timer},
-    math::{Quat, Vec2},
+    math::{Quat, Vec2, Vec3},
     prelude::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
         With,
@@ -38,18 +38,57 @@ pub struct Knockback {
 }
 
 pub fn knockback_system(
-    mut query: Query<(Entity, &mut Transform, &mut Knockback)>,
-    time: Res<Time>,
     mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform, &mut Knockback, Option<&Player>)>,
+    time: Res<Time>,
+    game_meta: Res<GameMeta>,
+    left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
-    for (entity, mut transform, mut knockback) in query.iter_mut() {
-        if knockback.duration.finished() {
-            commands.entity(entity).remove::<Knockback>();
-        } else {
-            transform.translation.x += knockback.direction.x * time.delta_seconds();
-            transform.translation.y += knockback.direction.y * time.delta_seconds();
-            knockback.duration.tick(time.delta());
-        }
+    let mut all_knockbacks = query.iter_mut().collect::<Vec<_>>();
+
+    // Separate the finished knockbacks, and despawn them.
+
+    let (finished_knockbacks, mut current_knockbacks): (Vec<_>, Vec<_>) = all_knockbacks
+        .iter_mut()
+        .partition(|(_, _, knockback, _)| knockback.duration.finished());
+
+    for (entity, _, _, _) in &finished_knockbacks {
+        commands.entity(*entity).remove::<Knockback>();
+    }
+
+    // Tick the timer for the current knockbacks.
+
+    for (_, _, knockback, _) in current_knockbacks.iter_mut() {
+        knockback.duration.tick(time.delta());
+    }
+
+    // Separate the enemy knocbacks, and apply them, unclamped.
+
+    let (mut enemy_knockbacks, mut player_knockbacks): (Vec<_>, Vec<_>) = current_knockbacks
+        .iter_mut()
+        .partition(|(_, _, _, player)| player.is_none());
+
+    for (_, transform, knockback, _) in enemy_knockbacks.iter_mut() {
+        transform.translation.x += knockback.direction.x * time.delta_seconds();
+        transform.translation.y += knockback.direction.y * time.delta_seconds();
+    }
+
+    // Extract the players movement data, and apply the knockbacks, clamped.
+
+    let player_movements = player_knockbacks
+        .iter()
+        .map(|(_, transform, knockback, _)| {
+            (
+                transform.translation,
+                Some(knockback.direction * time.delta_seconds()),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let player_dirs = clamp_player_movements(player_movements, &left_movement_boundary, &game_meta);
+
+    for ((_, transform, _, _), player_dir) in player_knockbacks.iter_mut().zip(player_dirs) {
+        transform.translation += player_dir.unwrap().extend(0.);
     }
 }
 
@@ -68,74 +107,30 @@ pub fn player_controller(
     game_meta: Res<GameMeta>,
     left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
-    let players_x = query
-        .iter()
-        .map(|(_, _, transform, _, _)| transform.translation.x)
-        .collect::<Vec<_>>();
-
     // Compute the new direction vectors; can be None if the state is not (idle or running).
     //
-    let mut player_dirs = query
+    let player_movements = query
         .iter()
         .map(|(state, stats, transform, _, input)| {
             if *state != State::Idle && *state != State::Running {
-                None
+                (transform.translation, None)
             } else {
-                let mut dir = Vec2::ZERO;
-
-                if input.pressed(PlayerAction::Move) {
-                    dir = input.axis_pair(PlayerAction::Move).unwrap().xy();
-                }
+                let mut dir = if input.pressed(PlayerAction::Move) {
+                    input.axis_pair(PlayerAction::Move).unwrap().xy()
+                } else {
+                    Vec2::ZERO
+                };
 
                 // Apply speed
                 dir = dir * stats.movement_speed * time.delta_seconds();
 
-                let new_x = transform.translation.x + dir.x;
-
-                // The dir.x condition allows some flexibility (e.g. in case of knockback), given
-                // the current state of development. To be removed once the movement logic is
-                // stabilized.
-                //
-                if dir.x < 0. && new_x < left_movement_boundary.0 {
-                    dir.x = 0.;
-                }
-
-                //Restrict player to the ground
-                let new_y = transform.translation.y + dir.y + consts::GROUND_OFFSET;
-
-                if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
-                    dir.y = 0.;
-                }
-
                 //Move the player
-                Some(dir)
+                (transform.translation, Some(dir))
             }
         })
         .collect::<Vec<_>>();
 
-    if player_dirs.len() > 1 {
-        let max_players_x_distance =
-            LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
-
-        let new_players_x = players_x
-            .iter()
-            .zip(player_dirs.iter())
-            .map(|(x, dir)| x + dir.unwrap_or(Vec2::ZERO).x)
-            .collect::<Vec<_>>();
-
-        let min_player_x = new_players_x
-            .iter()
-            .min_by(|ax, bx| ax.total_cmp(bx))
-            .unwrap();
-
-        for (player_dir, player_x) in player_dirs.iter_mut().zip(new_players_x.iter()) {
-            if let Some(player_dir) = player_dir.as_mut() {
-                if *player_x > min_player_x + max_players_x_distance {
-                    *player_dir = Vec2::ZERO;
-                }
-            }
-        }
-    }
+    let player_dirs = clamp_player_movements(player_movements, &left_movement_boundary, &game_meta);
 
     for ((mut state, _, mut transform, mut facing, _), dir) in
         query.iter_mut().zip(player_dirs.iter())
@@ -289,4 +284,73 @@ pub fn update_left_movement_boundary(
             .0
             .max(max_player_x - game_meta.camera_move_right_boundary - LEFT_BOUNDARY_MAX_DISTANCE);
     }
+}
+
+/// Returns the direction vectors, with X/Y clamping.
+///
+/// Not a system, but a utility method!.
+///
+/// player_movements: array of (location, direction vector).
+///
+/// WATCH OUT! All players must be included, even if they don't move, in which case, pass
+/// None as direction. This is because clamping is based on the position of _all_ the
+/// players.
+/// It's possible to pass an empty array; this can happen if the system doesn't guard the case
+/// where all the players are dead; an empty array will be returned.
+pub fn clamp_player_movements(
+    player_movements: Vec<(Vec3, Option<Vec2>)>,
+    left_movement_boundary: &LeftMovementBoundary,
+    game_meta: &GameMeta,
+) -> Vec<Option<Vec2>> {
+    // In the first pass, we perform the absolute clamping (screen limits), and we collect the data
+    // required for the relative clamping.
+
+    let mut min_new_player_x = f32::MAX;
+
+    let player_movements = player_movements
+        .iter()
+        .map(|(location, movement)| {
+            let new_movement = movement.map(|mut movement| {
+                let new_x = location.x + movement.x;
+
+                if new_x < left_movement_boundary.0 {
+                    movement.x = 0.;
+                }
+
+                //Restrict player to the ground
+                let new_y = location.y + movement.y + consts::GROUND_OFFSET;
+
+                if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
+                    movement.y = 0.;
+                }
+
+                (movement, new_x)
+            });
+
+            if let Some((_, new_x)) = new_movement {
+                min_new_player_x = min_new_player_x.min(new_x);
+            } else {
+                min_new_player_x = min_new_player_x.min(location.x);
+            }
+
+            (location, new_movement)
+        })
+        .collect::<Vec<_>>();
+
+    // Then, we perform the clamping of the players relative to each other.
+
+    let max_players_x_distance = LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
+
+    player_movements
+        .iter()
+        .map(|(_, player_movement)| {
+            player_movement.map(|(player_dir, new_player_x)| {
+                if new_player_x > min_new_player_x + max_players_x_distance {
+                    Vec2::ZERO
+                } else {
+                    player_dir
+                }
+            })
+        })
+        .collect::<Vec<_>>()
 }
