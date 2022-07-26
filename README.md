@@ -12,8 +12,16 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a124-b07bce1db0cb.mp4
 
 ## Web Build
+Our web build stays up to date with our [latest relese](https://github.com/fishfight/punchy/releases/latest).
 
 https://fishfight.github.io/punchy/demo/
+
+## Building current development version
+If you wish to check out changes not yet made it into a release, you can build the game for yourself.
+1. If you dont have it installed already, Install rust and the latest stable toolchain with [rustup.rs](https://rustup.rs/).
+2. If you are running Linux, ensure you have [Bevy's dependancies](https://github.com/bevyengine/bevy/blob/main/docs/linux_dependencies.md) installed.
+3. Clone this repository: `git clone git@github.com:fishfight/punchy.git`
+4. In the repository base, `cargo run` to compile and run the project.
 
 ## Contributing
 
@@ -31,10 +39,3 @@ Or if you install [`just`](https://github.com/casey/just) you can simply run `ju
 ## MVP Spec
 
 ![861A6300-5FFD-4DDC-B4BF-0E8514F4B87C](https://user-images.githubusercontent.com/583842/161247148-0bc07089-1409-48ca-9cc8-ee1a1edddb9e.png)
-
-## Mockup
-
-Art prototype based on a modded Little Fighter 2:
-https://youtu.be/mgMFiNpgvzk
-
-![879482D8-9960-46E8-8190-057B340702C1](https://user-images.githubusercontent.com/583842/161245437-7e31568e-3b7f-4b3d-90e8-42747faea5f3.jpeg)
