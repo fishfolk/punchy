@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{
     core::{Time, Timer},
     hierarchy::{BuildChildren, Children, DespawnRecursiveExt},
-    math::Vec2,
+    math::{Vec2, Vec3},
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
         Handle, Local, Parent, Plugin, Query, Res, Transform, With, Without,
@@ -395,21 +395,32 @@ fn player_flop(
 }
 
 fn enemy_attack(
-    mut query: Query<(Entity, &mut State, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
+    mut query: Query<
+        (Entity, &mut State, &Facing, &Handle<FighterMeta>),
+        (With<Enemy>, With<Target>),
+    >,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for event in event_reader.iter() {
-        if let Ok((entity, mut state, fighter_handle)) = query.get_mut(event.0) {
+        if let Ok((entity, mut state, facing, fighter_handle)) = query.get_mut(event.0) {
             if *state != State::Attacking {
                 if rand::random() && *state != State::Waiting {
                     state.set(State::Waiting);
                 } else {
                     state.set(State::Attacking);
 
+                    //TODO: remove this offset in favor of offsets defined in fighter assets
+                    let offset = match facing {
+                        Facing::Left => -24.0,
+                        Facing::Right => 24.0,
+                    };
+
                     let attack_entity = commands
-                        .spawn_bundle(TransformBundle::default())
+                        .spawn_bundle(TransformBundle::from_transform(
+                            Transform::from_translation(Vec3::new(offset, 0.0, 0.0)),
+                        ))
                         .insert(Sensor(true))
                         .insert(ActiveEvents::COLLISION_EVENTS)
                         .insert(
