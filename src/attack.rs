@@ -432,9 +432,9 @@ fn enemy_attack(
                         ))
                         .insert(Attack { damage: 10 })
                         .insert(AttackFrames {
-                            startup: 2,
-                            active: 3,
-                            recovery: 4,
+                            startup: 1,
+                            active: 2,
+                            recovery: 3,
                         })
                         .id();
                     commands.entity(event.0).push_children(&[attack_entity]);
