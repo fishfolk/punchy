@@ -441,7 +441,12 @@ fn load_fighters(
                 .insert_bundle(AnimatedSpriteSheetBundle {
                     sprite_sheet: SpriteSheetBundle {
                         sprite: TextureAtlasSprite::new(0),
-                        texture_atlas: fighter.spritesheet.atlas_handle.clone(),
+                        texture_atlas: fighter
+                            .spritesheet
+                            .atlas_handle
+                            .choose(&mut rand::thread_rng())
+                            .unwrap()
+                            .clone(),
                         transform: *transform,
                         ..Default::default()
                     },
@@ -483,7 +488,12 @@ fn hot_reload_fighters(
                     let fighter = assets.get(fighter_handle).unwrap();
 
                     *name = Name::new(fighter.name.clone());
-                    *atlas_handle = fighter.spritesheet.atlas_handle.clone();
+                    *atlas_handle = fighter
+                        .spritesheet
+                        .atlas_handle
+                        .choose(&mut rand::thread_rng())
+                        .unwrap()
+                        .clone();
                     *animation = Animation::new(
                         fighter.spritesheet.animation_fps,
                         fighter.spritesheet.animations.clone(),

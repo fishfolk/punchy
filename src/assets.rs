@@ -239,19 +239,22 @@ impl AssetLoader for FighterLoader {
                 }
             }
 
-            let (texture_path, texture_handle) =
-                get_relative_asset(load_context, self_path, &meta.spritesheet.image);
-            let atlas_handle = load_context.set_labeled_asset(
-                "atlas",
-                LoadedAsset::new(TextureAtlas::from_grid(
-                    texture_handle,
-                    meta.spritesheet.tile_size.as_vec2(),
-                    meta.spritesheet.columns,
-                    meta.spritesheet.rows,
-                ))
-                .with_dependency(texture_path),
-            );
-            meta.spritesheet.atlas_handle = atlas_handle;
+            for (index, image) in meta.spritesheet.image.iter().enumerate() {
+                let (texture_path, texture_handle) =
+                    get_relative_asset(load_context, load_context.path(), image);
+
+                let atlas_handle = load_context.set_labeled_asset(
+                    format!("atlas_{}", index).as_str(),
+                    LoadedAsset::new(TextureAtlas::from_grid(
+                        texture_handle,
+                        meta.spritesheet.tile_size.as_vec2(),
+                        meta.spritesheet.columns,
+                        meta.spritesheet.rows,
+                    ))
+                    .with_dependency(texture_path),
+                );
+                meta.spritesheet.atlas_handle.push(atlas_handle);
+            }
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
