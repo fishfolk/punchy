@@ -148,7 +148,6 @@ pub struct ItemSpawnMeta {
 
 #[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
-#[has_load_progress(none)]
 pub struct ParallaxMeta {
     pub layers: Vec<ParallaxLayerMeta>,
 }
@@ -159,12 +158,13 @@ impl ParallaxMeta {
     }
 }
 
-// TODO: This struct is a workaround for the fact that `bevy_parallax::LayerData` isn't Clone.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ParallaxLayerMeta {
     pub speed: f32,
     pub path: String,
+    #[serde(skip)]
+    pub image_handle: Handle<Image>,
     pub tile_size: Vec2,
     pub cols: usize,
     pub rows: usize,

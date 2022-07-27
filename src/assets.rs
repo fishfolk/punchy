@@ -168,15 +168,6 @@ impl AssetLoader for LevelMetaLoader {
 
             let self_path = load_context.path();
 
-            // Convert all parallax paths to relative asset paths so that the convention matches the
-            // rest of the paths used by the asset loaders.
-            for layer in &mut meta.parallax_background.layers {
-                layer.path = relative_asset_path(self_path, &layer.path)
-                    .to_str()
-                    .unwrap()
-                    .to_owned();
-            }
-
             let mut dependencies = Vec::new();
 
             // Load the players
@@ -207,8 +198,24 @@ impl AssetLoader for LevelMetaLoader {
                 item.item_handle = item_handle;
             }
 
-            // Load the music
+            // Load parallax background layers
+            for layer in &mut meta.parallax_background.layers {
+                let (path, handle) = get_relative_asset(load_context, self_path, &layer.path);
 
+                // Update the layer path to use an absolute path so that it matches the conventione
+                // used by the bevy_parallax_background plugin.
+                layer.path = path
+                    .path()
+                    .as_os_str()
+                    .to_str()
+                    .expect("utf8-filename")
+                    .to_string();
+
+                layer.image_handle = handle;
+                dependencies.push(path);
+            }
+
+            // Load the music
             let (music_path, music_handle) =
                 get_relative_asset(load_context, self_path, &meta.music);
             meta.music_handle = music_handle;

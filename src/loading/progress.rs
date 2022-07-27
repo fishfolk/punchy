@@ -85,7 +85,7 @@ macro_rules! impl_default_load_progress {
         )*
     };
 }
-impl_default_load_progress!(String, f32, u32, Vec2, Vec3, UVec2, egui::TextureId);
+impl_default_load_progress!(String, f32, usize, u32, Vec2, Vec3, UVec2, egui::TextureId);
 
 // Implement `HasLoadProgress` for container types
 impl<T: HasLoadProgress> HasLoadProgress for Option<T> {
