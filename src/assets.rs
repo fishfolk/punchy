@@ -105,15 +105,33 @@ impl AssetLoader for GameMetaLoader {
             meta.main_menu.background_image.image_handle = main_menu_background;
             dependencies.push(main_menu_background_path);
 
-            // Load the music
+            // Load UI border images
+            let mut load_border_image = |border: &mut BorderImageMeta| {
+                let (path, handle) = get_relative_asset(load_context, &self_path, &border.image);
+                dependencies.push(path);
+                border.handle = handle;
+            };
+            load_border_image(&mut meta.ui_theme.hud.portrait_frame);
+            load_border_image(&mut meta.ui_theme.panel.border);
+            load_border_image(&mut meta.ui_theme.hud.lifebar.background_image);
+            load_border_image(&mut meta.ui_theme.hud.lifebar.progress_image);
+            for button in meta.ui_theme.button_styles.values_mut() {
+                load_border_image(&mut button.borders.default);
+                if let Some(border) = &mut button.borders.clicked {
+                    load_border_image(border);
+                }
+                if let Some(border) = &mut button.borders.focused {
+                    load_border_image(border);
+                }
+            }
 
+            // Load the music
             let (music_path, music_handle) =
                 get_relative_asset(load_context, &self_path, &meta.main_menu.music);
             meta.main_menu.music_handle = music_handle;
             dependencies.push(music_path);
 
             // Load UI fonts
-
             for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =
                     get_relative_asset(load_context, &self_path, font_relative_path);
