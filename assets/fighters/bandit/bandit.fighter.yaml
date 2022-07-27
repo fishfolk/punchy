@@ -1,8 +1,8 @@
 name: Bandit
 
 stats:
-  health: 100
-  damage: 35
+  health: 150
+  damage: 20
   movement_speed: 150
 
 hud:
@@ -11,30 +11,30 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: FishFight_BanditAnimation_skin2.png
+  image: [Bandit_Skin1.png, Bandit_Skin2.png, Bandit_Skin3.png]
   tile_size: [64, 64]
-  columns: 8
+  columns: 7
   rows: 6
 
   animation_fps: 0.12
   animations:
     idle:
-      frames: [0, 7]
+      frames: [0, 3]
       repeat: true
     running:
-      frames: [8, 15]
+      frames: [7, 10]
       repeat: true
     knocked_right:
-      frames: [40, 46]
+      frames: [35, 41]
     knocked_left:
-      frames: [40, 46]
+      frames: [35, 41]
     dying:
-      frames: [40, 46]
+      frames: [35, 41]
     waiting:
-      frames: [0, 7]
+      frames: [0, 3]
       repeat: false
     attacking:
-      frames: [16, 23]
+      frames: [14, 16]
 
 audio:
   effects:

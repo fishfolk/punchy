@@ -11,7 +11,7 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: PlayerSharky(96x80).png
+  image: [PlayerSharky(96x80).png]
   tile_size: [96, 80]
   columns: 14
   rows: 7

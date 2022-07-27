@@ -107,9 +107,9 @@ pub struct FighterHudMeta {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct FighterSpritesheetMeta {
-    pub image: String,
+    pub image: Vec<String>,
     #[serde(skip)]
-    pub atlas_handle: Handle<TextureAtlas>,
+    pub atlas_handle: Vec<Handle<TextureAtlas>>,
     pub tile_size: UVec2,
     pub columns: usize,
     pub rows: usize,
