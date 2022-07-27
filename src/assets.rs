@@ -70,9 +70,14 @@ impl AssetLoader for GameMetaLoader {
             let self_path = load_context.path().to_owned();
 
             // Detect the system locale
-            let locale = sys_locale::get_locale()
-                .unwrap_or_else(|| "en-US".to_string())
-                .parse()?;
+            let locale = sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string());
+            let locale = locale.parse().unwrap_or_else(|e| {
+                warn!(
+                    "Could not parse system locale string ( \"{}\" ), defaulting to \"en-US\": {}",
+                    locale, e
+                );
+                "en-US".parse().unwrap()
+            });
             debug!("Detected system locale: {}", locale);
             meta.translations.detected_locale = locale;
 
