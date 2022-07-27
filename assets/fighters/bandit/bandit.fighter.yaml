@@ -34,7 +34,7 @@ spritesheet:
       frames: [0, 3]
       repeat: false
     attacking:
-      frames: [14, 16]
+      frames: [14, 17]
 
 audio:
   effects:
