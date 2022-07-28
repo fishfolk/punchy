@@ -19,6 +19,7 @@ pub struct ActiveFighterBundle {
     physics_bundle: PhysicsBundle,
 }
 
+/// Turns a fighter stub data (loaded from the metadata) into a fully active fighter.
 impl ActiveFighterBundle {
     pub fn activate_fighter_stub(
         commands: &mut Commands,
