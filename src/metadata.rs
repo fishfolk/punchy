@@ -72,6 +72,7 @@ pub struct LevelMeta {
     pub music: String,
     #[serde(skip)]
     pub music_handle: Handle<AudioSource>,
+    pub stop_points: Vec<f32>,
 }
 
 impl LevelMeta {
