@@ -12,9 +12,11 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 https://user-images.githubusercontent.com/1379590/181386240-a1cac84f-fb12-4195-9664-7e673414abf0.mp4
 
 ## Web Build
-Our web build stays up to date with our [latest relese](https://github.com/fishfight/punchy/releases/latest).
+We keep our web build current with our [latest relese](https://github.com/fishfight/punchy/releases/latest).
 
 https://fishfight.github.io/punchy/player/latest/
+
+Previous versions of the web build can also be found linked on their [respective release pages](https://github.com/fishfight/punchy/releases/).
 
 ## Building current development version
 If you wish to check out changes not yet made it into a release, you can build the game for yourself.
