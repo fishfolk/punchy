@@ -1,0 +1,42 @@
+name: Bandit
+
+stats:
+  health: 150
+  damage: 20
+  movement_speed: 150
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
+spritesheet:
+  image: [Bandit_Skin1.png, Bandit_Skin2.png, Bandit_Skin3.png]
+  tile_size: [64, 64]
+  columns: 7
+  rows: 6
+
+  animation_fps: 0.12
+  animations:
+    idle:
+      frames: [0, 3]
+      repeat: true
+    running:
+      frames: [7, 10]
+      repeat: true
+    knocked_right:
+      frames: [35, 41]
+    knocked_left:
+      frames: [35, 41]
+    dying:
+      frames: [35, 41]
+    waiting:
+      frames: [0, 3]
+      repeat: false
+    attacking:
+      frames: [14, 17]
+
+audio:
+  effects:
+    attacking:
+      16: hit.ogg

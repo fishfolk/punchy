@@ -1,0 +1,243 @@
+start_level: beach/beach.level.yaml
+camera_height: 448
+# Distance of the rightmost player from the center of the camera, after which the camera moves.
+# For simplicity, this value can also be used for movement limitation calculations.
+camera_move_right_boundary: 150.
+
+main_menu:
+  title_font:
+    family: ark
+    color: [0, 0, 0]
+    size: 40
+
+  background_image:
+    image: ui/main-menu-background.png
+    image_size: [1919, 1027]
+
+  music: ui/Fishycuffs [title screen].ogg
+
+default_settings:
+  player_controls:
+    # Gamepad controls
+    gamepad:
+      movement:
+        up:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickY
+            positive_low: 0.1
+            negative_low: -1.0
+        left:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickX
+            positive_low: 1.0
+            negative_low: -0.1
+        down:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickY
+            positive_low: 1.0
+            negative_low: -0.1
+        right:
+          SingleAxis:
+            axis_type:
+              Gamepad: LeftStickX
+            positive_low: 0.1
+            negative_low: -1.0
+      flop_attack:
+        GamepadButton: South
+      shoot:
+        GamepadButton: East
+      throw:
+        GamepadButton: West
+
+    # Controls for the first keyboard player ( left side )
+    keyboard1:
+      movement:
+        up:
+          Keyboard: W
+        down:
+          Keyboard: S
+        left:
+          Keyboard: A
+        right:
+          Keyboard: D
+      flop_attack:
+        Keyboard: Space
+      shoot:
+        Keyboard: V
+      throw:
+        Keyboard: C
+
+    # Controls for the second keyboard player ( right side )
+    keyboard2:
+      movement:
+        up:
+          Keyboard: Up
+        down:
+          Keyboard: Down
+        left:
+          Keyboard: Left
+        right:
+          Keyboard: Right
+      flop_attack:
+        Keyboard: Comma
+      shoot:
+        Keyboard: RShift
+      throw:
+        Keyboard: Period
+
+ui_theme:
+  font_families:
+    ark: ui/ark-pixel-16px-latin.ttf
+
+  font_styles:
+    heading:
+      family: ark
+      size: 30
+      color: [0, 0, 0]
+    bigger:
+      family: ark
+      size: 20
+      color: [0, 0, 0]
+    normal:
+      family: ark
+      size: 15
+      color: [0, 0, 0]
+
+  hud:
+    font:
+      family: ark
+      size: 15
+      color: [255, 255, 255]
+
+    player_hud_width: 165
+
+    portrait_frame:
+      image: ui/green-board.png
+      image_size: [32, 32]
+      border_size:
+        top: 8
+        left: 8
+        right: 8
+        bottom: 8
+
+    lifebar:
+      height: 16
+      background_image:
+        image: ui/lifebar.png
+        image_size: [19, 7]
+        border_size:
+          left: 3
+          right: 3
+          top: 3
+          bottom: 3
+        scale: 2
+      progress_image:
+        image: ui/lifebar-progress.png
+        image_size: [1, 1]
+
+  panel:
+    font_color: [51, 40, 40]
+    padding:
+      top: 30
+      bottom: 30
+      left: 30
+      right: 30
+    border:
+      image: ui/paper.png
+      image_size: [38, 34]
+      border_size:
+        top: 11
+        bottom: 11
+        left: 11
+        right: 11
+      scale: 3.0
+
+  button_styles:
+    normal:
+      font:
+        family: ark
+        color: [255, 255, 255]
+        size: 17
+      padding:
+        top: 8
+        left: 8
+        right: 8
+        bottom: 10
+      borders:
+        default:
+          image: ui/green-button.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 2
+        focused:
+          image: ui/green-button-focused.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 2
+        clicked:
+          image: ui/green-button-down.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 2
+
+    small:
+      font:
+        family: ark
+        color: [255, 255, 255]
+        size: 15
+      padding:
+        top: 4
+        left: 4
+        right: 4
+        bottom: 6
+      borders:
+        default:
+          image: ui/green-button.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+        focused:
+          image: ui/green-button-focused.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+        clicked:
+          image: ui/green-button-down.png
+          image_size: [14, 14]
+          border_size:
+            top: 5
+            bottom: 5
+            right: 5
+            left: 5
+          scale: 1
+
+translations:
+  # This is the locale that we will fallback to if the selected locale doesn't have
+  # translation for a certain message.
+  default_locale: en-US
+  locales:
+    - locales/en-US/en-US.ftl.yml
+    - locales/fr-FR/fr-FR.ftl.yml

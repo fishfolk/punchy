@@ -1,0 +1,39 @@
+name: Fishy The Fearsome
+
+stats:
+  health: 100
+  damage: 35
+  movement_speed: 150
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
+spritesheet:
+  image: [PlayerFishy(96x80).png]
+  tile_size: [96, 80]
+  columns: 14
+  rows: 7
+
+  animation_fps: 0.12
+  animations:
+    idle:
+      frames: [0, 13]
+      repeat: true
+    running:
+      frames: [14, 19]
+      repeat: true
+    knocked_right:
+      frames: [85, 90]
+    knocked_left:
+      frames: [71, 76]
+    dying:
+      frames: [71, 76]
+    attacking:
+      frames: [85, 90]
+
+audio:
+  effects:
+    attacking:
+      87: flop.ogg

@@ -1,0 +1,40 @@
+name: Brute
+
+stats:
+  health: 200
+  damage: 50
+  movement_speed: 50
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
+spritesheet:
+  image: [Brute_Skin1.png, Brute_Skin2.png, Brute_Skin3.png]
+  tile_size: [64, 64]
+  columns: 8
+  rows: 6
+
+  animation_fps: 0.12
+  animations:
+    idle:
+      frames: [0, 3]
+      repeat: true
+    running:
+      frames: [8, 11]
+      repeat: true
+    knocked_right:
+      frames: [40, 46]
+    knocked_left:
+      frames: [40, 46]
+    dying:
+      frames: [40, 46]
+    waiting:
+      frames: [0, 3]
+      repeat: false
+    attacking:
+      frames: [16, 23]
+
+audio:
+  effects: {}
