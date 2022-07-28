@@ -14,7 +14,7 @@ https://user-images.githubusercontent.com/1379590/181386240-a1cac84f-fb12-4195-9
 ## Web Build
 Our web build stays up to date with our [latest relese](https://github.com/fishfight/punchy/releases/latest).
 
-https://fishfight.github.io/punchy/demo/
+https://fishfight.github.io/punchy/player/latest/
 
 ## Building current development version
 If you wish to check out changes not yet made it into a release, you can build the game for yourself.
