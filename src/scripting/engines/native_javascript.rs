@@ -168,7 +168,7 @@ impl Default for JavaScriptEngineInner {
             // Include our JavaScript initialization code
             .js(deno_core::include_js_files!(
                 prefix "punchy:ext",
-                "punchy.js",
+                "./native_javascript/punchy.js",
             ))
             // Add our rust operation implementations
             .ops(vec![op_log::decl()])
