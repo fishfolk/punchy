@@ -6,7 +6,15 @@ authors = ["The Fish Fight Game & Spicy Lobster Developers"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 
+[workspace]
+members = [
+    ".",
+    "macros"
+]
+
 [dependencies]
+punchy_macros = { path = "./macros" }
+
 anyhow = "1.0.58"
 bevy = "0.7.0"
 bevy-parallax = "0.1.2"

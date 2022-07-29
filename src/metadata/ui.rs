@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::*;
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct UIThemeMeta {
     pub font_families: HashMap<String, String>,
@@ -51,8 +51,9 @@ impl From<String> for FontFamily {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
+#[has_load_progress(none)]
 pub struct FontMeta {
     pub family: FontFamily,
     pub size: f32,
@@ -98,7 +99,7 @@ impl TryFrom<String> for ButtonStyle {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct HudThemeMeta {
     pub player_hud_width: f32,
@@ -107,7 +108,7 @@ pub struct HudThemeMeta {
     pub lifebar: ProgressBarMeta,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct PanelThemeMeta {
     #[serde(default)]
@@ -117,7 +118,7 @@ pub struct PanelThemeMeta {
     pub border: BorderImageMeta,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ButtonThemeMeta {
     pub font: FontMeta,
@@ -126,7 +127,7 @@ pub struct ButtonThemeMeta {
     pub borders: ButtonBordersMeta,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct BorderImageMeta {
     pub image: String,
@@ -146,7 +147,7 @@ fn f32_one() -> f32 {
     1.0
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ProgressBarMeta {
     pub height: f32,
@@ -154,7 +155,7 @@ pub struct ProgressBarMeta {
     pub progress_image: BorderImageMeta,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ButtonBordersMeta {
     pub default: BorderImageMeta,
@@ -164,8 +165,9 @@ pub struct ButtonBordersMeta {
     pub clicked: Option<BorderImageMeta>,
 }
 
-#[derive(Default, Deserialize, Clone, Copy, Debug)]
+#[derive(HasLoadProgress, Default, Deserialize, Clone, Copy, Debug)]
 #[serde(deny_unknown_fields)]
+#[has_load_progress(none)]
 pub struct ColorMeta([u8; 3]);
 
 impl From<ColorMeta> for egui::Color32 {
@@ -175,7 +177,7 @@ impl From<ColorMeta> for egui::Color32 {
     }
 }
 
-#[derive(Default, Deserialize, Clone, Copy, Debug)]
+#[derive(HasLoadProgress, Default, Deserialize, Clone, Copy, Debug)]
 #[serde(deny_unknown_fields, default)]
 pub struct MarginMeta {
     #[serde(default)]

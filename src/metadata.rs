@@ -8,6 +8,7 @@ use bevy::{
 use bevy_egui::egui;
 use bevy_kira_audio::AudioSource;
 use bevy_parallax::{LayerData, ParallaxResource};
+use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
 
 use crate::{animation::Clip, assets::EguiFont, state::State, Stats};
@@ -21,7 +22,7 @@ pub mod ui;
 pub mod localization;
 pub use localization::TranslationsMeta;
 
-#[derive(TypeUuid, Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "eb28180f-ef68-44a0-8479-a299a3cef66e"]
 pub struct GameMeta {
@@ -37,7 +38,7 @@ pub struct GameMeta {
     pub translations: TranslationsMeta,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct MainMenuMeta {
     pub title_font: FontMeta,
@@ -47,7 +48,7 @@ pub struct MainMenuMeta {
     pub music_handle: Handle<AudioSource>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ImageMeta {
     pub image: String,
@@ -56,10 +57,11 @@ pub struct ImageMeta {
     pub image_handle: Handle<Image>,
 }
 
-#[derive(TypeUuid, Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "32111f6e-bb9a-4ea7-8988-1220b923a059"]
 pub struct LevelMeta {
+    #[has_load_progress(none)]
     pub background_color: [u8; 3],
     pub parallax_background: ParallaxMeta,
     pub players: Vec<FighterSpawnMeta>,
@@ -125,7 +127,7 @@ pub struct AudioMeta {
     pub effect_handles: HashMap<State, HashMap<usize, Handle<AudioSource>>>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct FighterSpawnMeta {
     pub fighter: String,
@@ -134,7 +136,7 @@ pub struct FighterSpawnMeta {
     pub location: Vec3,
 }
 
-#[derive(TypeUuid, Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "f5092550-ec30-013a-92a9-2cf05d71216b"]
 pub struct ItemSpawnMeta {
@@ -144,7 +146,7 @@ pub struct ItemSpawnMeta {
     pub location: Vec3,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ParallaxMeta {
     pub layers: Vec<ParallaxLayerMeta>,
@@ -156,12 +158,13 @@ impl ParallaxMeta {
     }
 }
 
-// TODO: This struct is a workaround for the fact that `bevy_parallax::LayerData` isn't Clone.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ParallaxLayerMeta {
     pub speed: f32,
     pub path: String,
+    #[serde(skip)]
+    pub image_handle: Handle<Image>,
     pub tile_size: Vec2,
     pub cols: usize,
     pub rows: usize,

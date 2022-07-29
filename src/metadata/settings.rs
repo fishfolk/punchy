@@ -1,11 +1,13 @@
 use bevy::prelude::Gamepad;
 use leafwing_input_manager::{axislike::VirtualDPad, prelude::InputMap, user_input::InputKind};
+use punchy_macros::HasLoadProgress;
 use serde::{Deserialize, Serialize};
 
 use crate::input::PlayerAction;
 
 /// Global settings, stored and accessed through [`crate::platform::Storage`]
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(HasLoadProgress, Deserialize, Serialize, Debug, Clone)]
+#[has_load_progress(none)]
 pub struct Settings {
     // The player controller bindings
     pub player_controls: PlayerControlMethods,
