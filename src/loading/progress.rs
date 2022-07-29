@@ -6,10 +6,12 @@ use bevy::{
     asset::{Asset, LoadState},
     ecs::system::SystemParam,
     math::{UVec2, Vec2, Vec3},
-    prelude::{AssetServer, Handle, Res},
+    prelude::{AssetServer, Handle, NonSend, Res},
     utils::HashMap,
 };
 use bevy_egui::egui;
+
+use crate::scripting::{Script, ScriptingEngine, ScriptingEngineApi};
 
 /// A progress indicator holding how many items must be loaded and how many items have been loaded
 #[derive(Clone, Copy, Default, Debug)]
@@ -47,12 +49,10 @@ impl LoadProgress {
 }
 
 /// System param containing Bevy resources that may be used to determine load progress
-///
-/// Currently this only contains the bevy asset server, but this may additionally contain the
-/// scripting engine once script loading is implemented.
 #[derive(SystemParam)]
 pub struct LoadingResources<'w, 's> {
     asset_server: Res<'w, AssetServer>,
+    scripting_engine: NonSend<'w, ScriptingEngine>,
     #[system_param(ignore)]
     _phantom: PhantomData<&'s ()>,
 }
@@ -68,7 +68,11 @@ pub trait HasLoadProgress {
 // Implement `HasLoadProgress` for asset handles
 impl<T: Asset> HasLoadProgress for Handle<T> {
     fn load_progress(&self, loading_resources: &LoadingResources) -> LoadProgress {
-        let loaded = loading_resources.asset_server.get_load_state(self) == LoadState::Loaded;
+        let loaded = if let Ok(handle) = cismute::reference::<Self, Handle<Script>>(self) {
+            loading_resources.scripting_engine.has_loaded(handle)
+        } else {
+            loading_resources.asset_server.get_load_state(self) == LoadState::Loaded
+        };
 
         LoadProgress {
             loaded: if loaded { 1 } else { 0 },

@@ -6,15 +6,17 @@ use bevy::{
     reflect::TypeUuid,
     utils::HashMap,
 };
-use deno_core::{v8, JsRuntime, RuntimeOptions};
 
-mod engine;
-pub use engine::*;
+mod engines;
+pub use engines::*;
 
-use crate::{config::EngineConfig, player::Player, GameStage};
+use crate::player::Player;
 
 /// Plugin implementing the scripting API
 pub struct ScriptingPlugin;
+
+/// Type alias for our selected scripting engine. Currently we just use JavaScript/TypeScript.
+pub type ScriptingEngine = engines::javascript::JavaScriptEngine;
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
@@ -23,13 +25,24 @@ impl Plugin for ScriptingPlugin {
             .add_asset::<Script>()
             .add_system_to_stage(CoreStage::First, load_scripts)
             .add_system_to_stage(CoreStage::Update, update_scripts);
-
-        // Configure hot reload if enabled
-        let engine_config = app.world.get_resource::<EngineConfig>().unwrap();
-        if engine_config.hot_reload {
-            app.add_system_to_stage(GameStage::HotReload, hot_reload_scripts);
-        }
     }
+}
+
+/// The API implemented by scripting engine implementations
+pub trait ScriptingEngineApi: FromWorld {
+    /// Start loading a script and return `true` if it has finished loading
+    fn load_script(&self, handle: &Handle<Script>, script: &Script, reload: bool);
+
+    /// Returns whether or not a script has been loaded yet
+    fn has_loaded(&self, handle: &Handle<Script>) -> bool;
+
+    /// Run a script
+    fn run_script(&self, handle: &Handle<Script>, stage: ScriptStage);
+}
+
+#[derive(Clone, Debug, Copy, Eq, PartialEq)]
+pub enum ScriptStage {
+    Update,
 }
 
 /// Marker component indicating that a script has been loaded
@@ -37,36 +50,50 @@ impl Plugin for ScriptingPlugin {
 #[component(storage = "SparseSet")]
 pub struct LoadedScript;
 
-/// System to load scripts that have not been evaluated yet
-fn load_scripts(
-    mut commands: Commands,
-    mut engine: NonSendMut<ScriptingEngine>,
-    unloaded_scripts: Query<(Entity, &Handle<Script>), Without<LoadedScript>>,
-    script_assets: Res<Assets<Script>>,
-) {
-    // For each script
-    for (entity, handle) in unloaded_scripts.iter() {
-        // See if the asset has loaded
-        if let Some(script) = script_assets.get(handle) {
-            engine.load_script(handle, script);
-
-            // Add marker indicating the script has been loaded
-            commands.entity(entity).insert(LoadedScript);
-        }
-    }
+struct ScriptToLoad {
+    handle: Handle<Script>,
+    reload: bool,
 }
 
 // System to hot reload scripts
-fn hot_reload_scripts(
+fn load_scripts(
+    mut scripts_to_load: Local<Vec<ScriptToLoad>>,
     mut events: EventReader<AssetEvent<Script>>,
-    mut engine: NonSendMut<ScriptingEngine>,
+    engine: NonSendMut<ScriptingEngine>,
     assets: Res<Assets<Script>>,
 ) {
     for event in events.iter() {
-        if let AssetEvent::Modified { handle } = event {
-            let script = assets.get(handle).unwrap();
+        match event {
+            AssetEvent::Created { handle } => {
+                scripts_to_load.push(ScriptToLoad {
+                    handle: handle.clone_weak(),
+                    reload: false,
+                });
+            }
+            AssetEvent::Modified { handle } => {
+                scripts_to_load.push(ScriptToLoad {
+                    handle: handle.clone_weak(),
+                    reload: true,
+                });
+            }
+            _ => (),
+        }
+    }
 
-            engine.load_script(handle, script);
+    // Get the list of scripts we need to try to load
+    let mut scripts = Vec::new();
+    std::mem::swap(&mut *scripts_to_load, &mut scripts);
+
+    for to_load in scripts {
+        // If the script asset has loaded
+        if let Some(script) = assets.get(&to_load.handle) {
+            // Have the engine load the script
+            engine.load_script(&to_load.handle, script, to_load.reload);
+
+        // If the asset hasn't loaded yet
+        } else {
+            // Add it to the list of scripts to try to load later
+            scripts_to_load.push(to_load);
         }
     }
 }
@@ -129,15 +156,10 @@ pub struct EntityDynComponents<'a> {
 
 /// System to run scripts for [`CoreStage::Update`]
 pub fn update_scripts(
-    mut engine: NonSendMut<ScriptingEngine>,
-    scripts: Query<&Handle<Script>, With<LoadedScript>>,
+    engine: NonSendMut<ScriptingEngine>,
+    scripts: Query<&Handle<Script>>,
     mut components: Query<ScriptableComponentsQuery>,
 ) {
-    let ScriptingEngine {
-        runtime,
-        loaded_scripts,
-    } = &mut *engine;
-
     // Collect component query into dynamic entity datas
     let _entity_datas = components
         .iter_mut()
@@ -146,43 +168,34 @@ pub fn update_scripts(
 
     // TODO: Convert entity datas to JS args that we can pass to scripts
 
-    // Process each loaded script
+    // Process each script
     for script in scripts.iter() {
-        // Get the return value of the script and establish a local scope
-        let isolate = runtime.v8_isolate();
-        let EvaluatedScriptData { realm, value } = loaded_scripts.get(script).unwrap();
-        let value = value.open(isolate);
-        let mut scope = realm.handle_scope(isolate);
-
-        // If the return value was an object
-        if let Some(object) = value.to_object(&mut scope) {
-            // Get the name of the update function
-            let update_fn_name =
-                v8::String::new_from_utf8(&mut scope, b"update", v8::NewStringType::Internalized)
-                    .unwrap();
-
-            // If the update property exists on the object
-            if let Some(update_fn) = object.get(&mut scope, update_fn_name.into()) {
-                // If the property is a function
-                if update_fn.is_function() {
-                    // SAFE: We check that this is a function before casting it
-                    let update_fn = unsafe { v8::Local::<v8::Function>::cast(update_fn) };
-
-                    update_fn.call(&mut scope, object.into(), &[]);
-                }
-            }
-        }
+        engine.run_script(script, ScriptStage::Update);
     }
 }
 
 /// Script asset type
-#[derive(TypeUuid)]
+#[derive(TypeUuid, Clone, Debug)]
 #[uuid = "d400c50b-d109-496c-8334-75bb740f5495"]
 pub struct Script {
     /// The asset path the script was loaded from
     path: String,
     /// The script source code
-    code: String,
+    code: ScriptCode,
+}
+
+/// The kind of source code of a script
+#[derive(Clone, Debug)]
+pub enum ScriptCode {
+    JavaScript(String),
+}
+
+impl ScriptCode {
+    fn as_javascript(&self) -> Option<&str> {
+        match self {
+            ScriptCode::JavaScript(code) => Some(code),
+        }
+    }
 }
 
 /// Asset loader for [`Script`]
@@ -225,14 +238,10 @@ impl AssetLoader for ScriptAssetLoader {
             // Get the script path
             let path = load_context.path().to_string_lossy().into();
 
-            // Prepend the SCRIPT_PATH global to the script source
-            let code = format!(
-                "Punchy.SCRIPT_PATH = '{path}'\n{code}",
-                path = path,
-                code = code
-            );
-
-            load_context.set_default_asset(LoadedAsset::new(Script { path, code }));
+            load_context.set_default_asset(LoadedAsset::new(Script {
+                path,
+                code: ScriptCode::JavaScript(code),
+            }));
 
             Ok(())
         })

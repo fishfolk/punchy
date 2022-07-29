@@ -15,8 +15,8 @@ use crate::{
     metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
     platform::Storage,
     player::{Player, PlayerBundle},
-    AnimatedSpriteSheetBundle, CharacterBundle, GameStage, GameState, PhysicsBundle, Stats,
     scripting::Script,
+    AnimatedSpriteSheetBundle, CharacterBundle, GameStage, GameState, PhysicsBundle, Stats,
 };
 
 use bevy::{ecs::system::SystemParam, render::camera::ScalingMode};

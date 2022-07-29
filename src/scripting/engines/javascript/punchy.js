@@ -1,4 +1,4 @@
-/// <reference path="../../lib.punchy.d.ts" />
+/// <reference path="../../../../assets/lib.punchy.d.ts" />
 
 ((global) => {
   // Initialize the global Punchy namespace

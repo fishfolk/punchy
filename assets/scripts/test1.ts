@@ -1,4 +1,4 @@
-class TestSystems implements ScriptSystems {
+class Test1 implements ScriptSystems {
   counter: number = 0;
 
   update() {
@@ -11,4 +11,4 @@ class TestSystems implements ScriptSystems {
   }
 }
 
-new TestSystems();
+export default new Test1();
