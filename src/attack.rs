@@ -30,7 +30,7 @@ use crate::{
         clamp_player_movements, LeftMovementBoundary, MoveInArc, MoveInDirection, Rotate, Target,
     },
     state::State,
-    ArrivedEvent, Enemy, GameState, Player,
+    ArrivedEvent, Enemy, GameState, Player, Stats,
 };
 
 pub struct AttackPlugin;
@@ -289,6 +289,7 @@ fn player_flop(
             Entity,
             &mut State,
             &mut Transform,
+            &Stats,
             &Animation,
             &Facing,
             &ActionState<PlayerAction>,
@@ -305,7 +306,7 @@ fn player_flop(
     let players_movement = query
         .iter_mut()
         .map(
-            |(entity, mut state, transform, animation, facing, input, fighter_meta)| {
+            |(entity, mut state, transform, stats, animation, facing, input, fighter_meta)| {
                 if *state != State::Attacking {
                     if !(*state != State::Idle && *state != State::Running)
                         && input.just_pressed(PlayerAction::FlopAttack)
@@ -324,7 +325,9 @@ fn player_flop(
                                 BodyLayers::PLAYER_ATTACK,
                                 BodyLayers::ENEMY,
                             ))
-                            .insert(Attack { damage: 10 })
+                            .insert(Attack {
+                                damage: stats.damage,
+                            })
                             .insert(AttackFrames {
                                 startup: 0,
                                 active: 3,
@@ -387,7 +390,8 @@ fn player_flop(
     let players_movement =
         clamp_player_movements(players_movement, &left_movement_boundary, &game_meta);
 
-    for ((_, _, mut transform, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement) {
+    for ((_, _, mut transform, _, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement)
+    {
         if let Some(player_dir) = player_dir {
             transform.translation += player_dir.extend(0.);
         }
