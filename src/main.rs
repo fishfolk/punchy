@@ -6,6 +6,7 @@ use bevy::{asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, pr
 use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
+use consts::ENEMY_FOV_X;
 use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
@@ -334,15 +335,25 @@ fn game_over_on_players_death(
 //for enemys without current target, pick a new spot near the player as target
 fn set_target_near_player(
     mut commands: Commands,
-    query: Query<(Entity, &State), (With<Enemy>, Without<Target>)>,
+    query: Query<(Entity, &State, &Transform), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
     let mut rng = rand::thread_rng();
-    let transforms = player_query.iter().collect::<Vec<_>>();
+    let player_transforms = player_query.iter().collect::<Vec<_>>();
 
-    for (entity, state) in query.iter() {
+    for (entity, state, enemy_transform) in query.iter() {
         if *state == State::Idle {
-            if let Some(player_transform) = transforms.choose(&mut rng) {
+            let in_view_player_transforms = player_transforms
+                .iter()
+                .filter(|transform| {
+                    (transform.translation - enemy_transform.translation)
+                        .x
+                        .abs()
+                        <= ENEMY_FOV_X
+                })
+                .collect::<Vec<_>>();
+
+            if let Some(player_transform) = in_view_player_transforms.choose(&mut rng) {
                 let x_offset = rng.gen_range(-100.0..100.);
                 let y_offset = rng.gen_range(-100.0..100.);
                 commands.entity(entity).insert(Target {
