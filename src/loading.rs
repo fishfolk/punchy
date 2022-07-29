@@ -1,10 +1,7 @@
 use bevy::{asset::AssetStage, prelude::*};
 use bevy_parallax::ParallaxResource;
 use bevy_rapier2d::prelude::CollisionGroups;
-use iyes_loopless::{
-    prelude::{ConditionSet, IntoConditionalSystem},
-    state::NextState,
-};
+use iyes_loopless::{prelude::*, state::NextState};
 
 use rand::seq::SliceRandom;
 
@@ -48,7 +45,11 @@ impl Plugin for LoadingPlugin {
         let engine_config = EngineConfig::from_web_params();
 
         app.add_system(load_level.run_in_state(GameState::LoadingLevel))
-            .add_system(load_game.run_in_state(GameState::LoadingGame))
+            .add_system(
+                load_game
+                    .run_in_state(GameState::LoadingGame)
+                    .run_if(game_assets_loaded),
+            )
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
@@ -77,6 +78,28 @@ impl Plugin for LoadingPlugin {
     }
 }
 
+// Condition system used to make sure game assets have loaded
+fn game_assets_loaded(
+    game_handle: Res<Handle<GameMeta>>,
+    loading_resources: LoadingResources,
+    game_assets: Res<Assets<GameMeta>>,
+) -> bool {
+    if let Some(game) = game_assets.get(game_handle.id) {
+        // Track load progress
+        let load_progress = game.load_progress(&loading_resources);
+        debug!(
+            %load_progress,
+            "Loading game assets: {:.2}% ",
+            load_progress.as_percent()
+        );
+
+        // Wait until assets are loaded to start game
+        load_progress.as_percent() >= 1.0
+    } else {
+        false
+    }
+}
+
 /// System param used to load and hot reload the game
 #[derive(SystemParam)]
 pub struct GameLoader<'w, 's> {
@@ -87,7 +110,6 @@ pub struct GameLoader<'w, 's> {
     assets: ResMut<'w, Assets<GameMeta>>,
     egui_ctx: ResMut<'w, EguiContext>,
     events: EventReader<'w, 's, AssetEvent<GameMeta>>,
-    loading_resources: LoadingResources<'w, 's>,
 }
 
 impl<'w, 's> GameLoader<'w, 's> {
@@ -113,20 +135,7 @@ impl<'w, 's> GameLoader<'w, 's> {
             ..
         } = self;
 
-        if let Some(game) = assets.get_mut(game_handle.clone_weak()) {
-            // Track load progress
-            let load_progress = game.load_progress(&self.loading_resources);
-            debug!(
-                %load_progress,
-                "Loading game assets: {:.2}% ",
-                load_progress.as_percent()
-            );
-
-            // Wait until assets are loaded to start game
-            if load_progress.as_percent() < 1.0 {
-                return;
-            }
-
+        if let Some(game) = assets.get_mut(game_handle.id) {
             // Hot reload preparation
             if is_hot_reload {
                 // Despawn previous camera
