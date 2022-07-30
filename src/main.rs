@@ -93,6 +93,7 @@ enum GameStage {
     Load,
     Decisions,
     Actions,
+    Movement,
     Rendering,
     // Last: built-in stage; used only for the despawning system
 }
@@ -218,6 +219,22 @@ fn main() {
                 .into(),
         )
         .add_stage_after(
+            GameStage::Actions,
+            GameStage::Movement,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::Movement,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(move_to_target)
+                .with_system(move_direction_system)
+                .with_system(knockback_system) // performs the translation only
+                .with_system(move_in_arc_system)
+                .with_system(rotate_system)
+                .into(),
+        )
+        .add_stage_after(
             CoreStage::Update, // PLACEHOLDER
             GameStage::Rendering,
             SystemStage::parallel(),
@@ -259,18 +276,13 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
-                .with_system(knockback_system)
-                .with_system(move_direction_system)
                 .into(),
         )
-        .add_system(move_to_target.run_in_state(GameState::InGame))
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(move_in_arc_system)
-                .with_system(rotate_system)
                 .with_system(update_left_movement_boundary)
                 .with_system(game_over_on_players_death)
                 .into(),
