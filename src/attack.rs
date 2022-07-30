@@ -6,7 +6,7 @@ use bevy::{
     math::{Vec2, Vec3},
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
-        Handle, Local, Parent, Plugin, Query, Res, Transform, With, Without,
+        Handle, Parent, Plugin, Query, Res, Transform, With, Without,
     },
     sprite::SpriteBundle,
     transform::TransformBundle,
@@ -303,7 +303,6 @@ fn player_flop(
     time: Res<Time>,
     left_movement_boundary: Res<LeftMovementBoundary>,
     game_meta: Res<GameMeta>,
-    mut start_y: Local<Option<f32>>,
 ) {
     let players_movement = query
         .iter_mut()
@@ -365,22 +364,10 @@ fn player_flop(
                         }
                     }
 
-                    // For currently unclear reasons, the first Animation frame may run for less Bevy frames
-                    // than expected. When this is the case, the player jumps less then it should, netting,
-                    // at the end of the animation, a slightly negative Y than the beginning, which causes
-                    // problems. This is a workaround.
-                    //
-                    if start_y.is_none() {
-                        *start_y = Some(transform.translation.y);
-                    }
-
                     if animation.current_frame < 1 {
                         movement.y += 180. * time.delta_seconds();
                     } else if animation.current_frame < 3 {
                         movement.y -= 90. * time.delta_seconds();
-                    } else if animation.is_finished() {
-                        movement.y = start_y.unwrap();
-                        *start_y = None;
                     }
 
                     (transform.translation, Some(movement))
