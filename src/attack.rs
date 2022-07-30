@@ -30,29 +30,31 @@ use crate::{
         clamp_player_movements, LeftMovementBoundary, MoveInArc, MoveInDirection, Rotate, Target,
     },
     state::State,
-    ArrivedEvent, Enemy, GameState, Player, Stats,
+    ArrivedEvent, Enemy, GameStage, GameState, Player, Stats,
 };
 
 pub struct AttackPlugin;
 
 impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
+        app.add_system_set_to_stage(
+            GameStage::Actions,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(player_projectile_attack)
                 .with_system(player_throw)
                 .with_system(player_flop)
+                .with_system(enemy_attack)
+                .into(),
+        )
+        .add_system_set(
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
                 .with_system(activate_hitbox)
                 .with_system(deactivate_hitbox)
                 .with_system(projectile_cleanup)
                 .with_system(projectile_tick)
                 .into(),
-        )
-        .add_system(
-            enemy_attack
-                .run_in_state(GameState::InGame)
-                .after("move_to_target"),
         );
     }
 }

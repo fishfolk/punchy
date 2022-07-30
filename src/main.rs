@@ -92,6 +92,7 @@ enum GameStage {
     HotReload, // Optional
     Load,
     Decisions,
+    Actions,
     Rendering,
     // Last: built-in stage; used only for the despawning system
 }
@@ -203,6 +204,20 @@ fn main() {
                 .into(),
         )
         .add_stage_after(
+            GameStage::Decisions,
+            GameStage::Actions,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::Actions,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(pick_items)
+                .with_system(pause) // not strictly an action, but requires input update
+                // other systems are added by AttackPlugin
+                .into(),
+        )
+        .add_stage_after(
             CoreStage::Update, // PLACEHOLDER
             GameStage::Rendering,
             SystemStage::parallel(),
@@ -242,19 +257,13 @@ fn main() {
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(pick_items)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
                 .with_system(knockback_system)
                 .with_system(move_direction_system)
-                .with_system(pause)
                 .into(),
         )
-        .add_system(
-            move_to_target
-                .run_in_state(GameState::InGame)
-                .label("move_to_target"),
-        )
+        .add_system(move_to_target.run_in_state(GameState::InGame))
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
