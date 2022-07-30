@@ -4,9 +4,9 @@ use async_channel::{Receiver, Sender};
 use async_lock::RwLock;
 use bevy::{prelude::*, tasks::IoTaskPool, utils::HashMap};
 use dashmap::DashSet;
-use deno_core::{url::Url, v8, JsRuntime};
+use deno_core::{v8, JsRuntime};
 
-use crate::scripting::{Script, ScriptStage, ScriptingEngineApi};
+use crate::scripting::{EntityDynComponents, Script, ScriptStage, ScriptingEngineApi};
 
 /// Non-`Send` resource containing the scripting runtime loaded script data.
 ///
@@ -48,14 +48,22 @@ impl ScriptingEngineApi for JavaScriptEngine {
         self.loaded_scripts.contains(handle)
     }
 
-    fn run_script(&self, handle: &Handle<Script>, stage: ScriptStage) {
+    fn run_script(
+        &self,
+        handle: &Handle<Script>,
+        stage: ScriptStage,
+        entity_components: &mut [EntityDynComponents],
+    ) {
         // Try to lock the engine, just skip if it can't be locked ( for instance, modules are loading )
         let mut engine = if let Some(engine) = self.runtime_data.try_write() {
             engine
         } else {
             return;
         };
-        let JavaScriptEngineInner { modules, runtime } = &mut *engine;
+        let JavaScriptEngineInner {
+            scripts: modules,
+            runtime,
+        } = &mut *engine;
 
         // Try to get the loaded data for the script, skip if the script hasn't been loaded yet
         let script = if let Some(script) = modules.get(handle) {
@@ -65,23 +73,12 @@ impl ScriptingEngineApi for JavaScriptEngine {
         };
 
         // Get the script exports and create a new scope
-        let exports = script.exports.open(runtime.v8_isolate());
+        let output = &script.output;
         let scope = &mut runtime.handle_scope();
+        let output = v8::Local::new(scope, output);
 
-        // Get a javascript value for the string "default"
-        let name_default =
-            v8::String::new_from_utf8(scope, b"default", v8::NewStringType::Internalized).unwrap();
-
-        // Get the "default" export from the module
-        let default_export = if let Some(export) = exports.get(scope, name_default.into()) {
-            export
-        } else {
-            warn!(%script.path, "Script doesn't have a default export. Skipping.");
-            return;
-        };
-
-        // Make sure that default export was an object
-        let default_export = if let Ok(value) = v8::Local::<v8::Object>::try_from(default_export) {
+        // Make sure that script output was an object
+        let output = if let Ok(value) = v8::Local::<v8::Object>::try_from(output) {
             value
         } else {
             warn!(%script.path, "Script default export was not an object. Skipping.");
@@ -101,7 +98,7 @@ impl ScriptingEngineApi for JavaScriptEngine {
         .unwrap();
 
         // Get the value from the object
-        let script_fn = if let Some(script_fn) = default_export.get(scope, fn_name.into()) {
+        let script_fn = if let Some(script_fn) = output.get(scope, fn_name.into()) {
             script_fn
         } else {
             warn!(%script.path, "Script doesn't have a default export. Skipping.");
@@ -121,7 +118,7 @@ impl ScriptingEngineApi for JavaScriptEngine {
         };
 
         // Call the function
-        script_fn.call(scope, default_export.into(), &[]);
+        script_fn.call(scope, output.into(), &[]);
     }
 }
 
@@ -152,12 +149,12 @@ pub struct JavaScriptEngineInner {
     /// The JavaScript runtime
     pub runtime: JsRuntime,
     /// Mapping of script handles to their evaluated data
-    pub modules: HashMap<Handle<Script>, ModuleData>,
+    pub scripts: HashMap<Handle<Script>, EvaluatedScriptData>,
 }
 
 /// Evaluated module definition
-pub struct ModuleData {
-    exports: v8::Global<v8::Object>,
+pub struct EvaluatedScriptData {
+    output: v8::Global<v8::Value>,
     path: String,
 }
 
@@ -180,7 +177,7 @@ impl Default for JavaScriptEngineInner {
                 module_loader: Some(Rc::new(JsModuleLoader)),
                 ..default()
             }),
-            modules: Default::default(),
+            scripts: Default::default(),
         }
     }
 }
@@ -211,6 +208,8 @@ impl FromWorld for JavaScriptEngine {
 }
 
 /// Task spawned by the engine that handles async tasks such as script loading
+///
+/// Note: This async task loop was used to load scripts because initially we were using asynchronous modules
 async fn engine_async_task_loop(
     data: JavaScriptEngineData,
     loaded_scripts: Arc<DashSet<Handle<Script>>>,
@@ -230,7 +229,7 @@ async fn engine_async_task_loop(
                 let mut engine = data.write().await;
 
                 // Helper to load script
-                let load_script = async {
+                let load_script = || {
                     // Get the script source code
                     let code = script
                         .code
@@ -242,34 +241,22 @@ async fn engine_async_task_loop(
 
                     // Append our SCRIPT_PATH variable to the module namespace
                     let code = format!(
-                        "Punchy.SCRIPT_PATH = '{path}'; {code}",
+                        r#"Punchy.SCRIPT_PATH = '{path}'; {code}"#,
                         path = script.path,
                         code = code
                     );
 
-                    // Load the module dependencies
-                    let module_id = engine
-                        .runtime
-                        .load_side_module(
-                            &Url::parse(&format!("asset://{}", script.path)).unwrap(),
-                            Some(code),
-                        )
-                        .await?;
-
-                    // Evaluate the module and get the modules exported namespace
-                    let eval_future = engine.runtime.mod_evaluate(module_id);
-                    engine.runtime.run_event_loop(false).await?;
-                    eval_future.await??;
-                    let exports = engine.runtime.get_module_namespace(module_id)?;
+                    // Run the script and get it's output
+                    let output = engine.runtime.execute_script(&script.path, &code)?;
 
                     debug!(%script.path, "Loaded script");
 
                     // Store the module's exported namespace in the script map
-                    engine.modules.insert(
+                    engine.scripts.insert(
                         handle.clone_weak(),
-                        ModuleData {
+                        EvaluatedScriptData {
                             path: script.path,
-                            exports,
+                            output,
                         },
                     );
 
@@ -279,7 +266,7 @@ async fn engine_async_task_loop(
                     Ok::<_, anyhow::Error>(())
                 };
 
-                if let Err(e) = load_script.await {
+                if let Err(e) = load_script() {
                     error!("Error running script: {}", e);
                 }
             }

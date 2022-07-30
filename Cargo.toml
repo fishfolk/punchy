@@ -48,9 +48,12 @@ async-channel = "1.6.1"
 once_cell = "1.13.0"
 deno_core = "0.144.0"
 deno_ast = { version = "0.17.0", features = ["transpiling"] }
+cismute = "0.1.2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+deno_core = "0.145.0"
 async-lock = "2.5.0"
 dashmap = "5.3.4"
-cismute = "0.1.2"
 
 # Waiting for updates to Bevy 0.8
 # bevy_mod_debugdump = { version = "0.4", optional = true }

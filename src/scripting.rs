@@ -37,7 +37,12 @@ pub trait ScriptingEngineApi: FromWorld {
     fn has_loaded(&self, handle: &Handle<Script>) -> bool;
 
     /// Run a script
-    fn run_script(&self, handle: &Handle<Script>, stage: ScriptStage);
+    fn run_script(
+        &self,
+        handle: &Handle<Script>,
+        stage: ScriptStage,
+        entity_components: &mut [EntityDynComponents],
+    );
 }
 
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
@@ -161,16 +166,14 @@ pub fn update_scripts(
     mut components: Query<ScriptableComponentsQuery>,
 ) {
     // Collect component query into dynamic entity datas
-    let _entity_datas = components
+    let mut entity_datas = components
         .iter_mut()
         .map(|x| x.get_dyn_components())
         .collect::<Vec<_>>();
 
-    // TODO: Convert entity datas to JS args that we can pass to scripts
-
     // Process each script
     for script in scripts.iter() {
-        engine.run_script(script, ScriptStage::Update);
+        engine.run_script(script, ScriptStage::Update, &mut entity_datas);
     }
 }
 
@@ -216,7 +219,7 @@ impl AssetLoader for ScriptAssetLoader {
 
             // Transpile the source code to plain JavaScript if it's a typescript file
             let code = if is_typescript {
-                let parsed = deno_ast::parse_module(deno_ast::ParseParams {
+                let parsed = deno_ast::parse_program(deno_ast::ParseParams {
                     specifier: "source".into(),
                     text_info: deno_ast::SourceTextInfo::from_string(source),
                     media_type: deno_ast::MediaType::TypeScript,
