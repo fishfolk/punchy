@@ -94,6 +94,7 @@ enum GameStage {
     Decisions,
     Actions,
     Movement,
+    Collisions,
     Rendering,
     // Last: built-in stage; used only for the despawning system
 }
@@ -235,6 +236,18 @@ fn main() {
                 .into(),
         )
         .add_stage_after(
+            GameStage::Movement,
+            GameStage::Collisions,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::Collisions,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(attack_fighter_collision)
+                .into(),
+        )
+        .add_stage_after(
             CoreStage::Update, // PLACEHOLDER
             GameStage::Rendering,
             SystemStage::parallel(),
@@ -274,7 +287,6 @@ fn main() {
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
                 .into(),
         )
