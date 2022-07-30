@@ -95,6 +95,7 @@ enum GameStage {
     Actions,
     Movement,
     Collisions,
+    PreRendering,
     Rendering,
     // Last: built-in stage; used only for the despawning system
 }
@@ -248,7 +249,22 @@ fn main() {
                 .into(),
         )
         .add_stage_after(
-            CoreStage::Update, // PLACEHOLDER
+            GameStage::Collisions,
+            GameStage::PreRendering,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::PreRendering,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(kill_entities)
+                .with_system(update_left_movement_boundary)
+                .with_system(game_over_on_players_death)
+                // other systems are added by StatePlugin
+                .into(),
+        )
+        .add_stage_after(
+            GameStage::PreRendering,
             GameStage::Rendering,
             SystemStage::parallel(),
         )
@@ -284,21 +300,7 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(kill_entities)
-                .into(),
-        )
-        .add_system(unpause.run_in_state(GameState::Paused))
-        .add_system_set_to_stage(
-            CoreStage::PostUpdate,
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(update_left_movement_boundary)
-                .with_system(game_over_on_players_death)
-                .into(),
-        );
+        .add_system(unpause.run_in_state(GameState::Paused));
 
     // Add debug plugins
     #[cfg(feature = "debug")]
