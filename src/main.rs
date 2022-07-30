@@ -78,6 +78,11 @@ impl Default for Stats {
     }
 }
 
+/// Stages are used as command transactions - each stage will read the commands flushed by the
+/// previous one, and will apply the writes that will be read by the next.
+/// Writes within a stage are not read by systems in the same stage, with the exception of ResMut
+/// updates.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
 enum GameStage {
     Animation,
