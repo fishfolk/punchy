@@ -83,10 +83,15 @@ impl Default for Stats {
 /// Writes within a stage are not read by systems in the same stage, with the exception of ResMut
 /// updates.
 ///
+/// The variants are ordered in the order they're scheduled.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
 enum GameStage {
-    Animation,
+    // Update: built-in stage; not used by this crate's systems
+    // AssetStage stages (Bevy built-in)
     HotReload,
+    Animation,
+    // Last: built-in stage; used only for the despawning system
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
