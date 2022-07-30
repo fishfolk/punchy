@@ -201,6 +201,7 @@ fn main() {
                 // other systems are added by AnimationPlugin
                 .into(),
         )
+        .add_system_to_stage(CoreStage::Last, despawn_entities)
         .add_event::<ArrivedEvent>()
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
@@ -256,8 +257,7 @@ fn main() {
                 .with_system(update_left_movement_boundary)
                 .with_system(game_over_on_players_death)
                 .into(),
-        )
-        .add_system_to_stage(CoreStage::Last, despawn_entities);
+        );
 
     // Add debug plugins
     #[cfg(feature = "debug")]
