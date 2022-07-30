@@ -57,7 +57,7 @@ use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
 
-use crate::{config::EngineConfig, input::PlayerAction, item::pick_items};
+use crate::{input::PlayerAction, item::pick_items};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -139,14 +139,9 @@ impl Default for PhysicsBundle {
 pub struct ArrivedEvent(Entity);
 
 fn main() {
-    #[cfg(not(target_arch = "wasm32"))]
-    let engine_config = {
-        use structopt::StructOpt;
-        EngineConfig::from_args()
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let engine_config = EngineConfig::from_web_params();
+    // Load engine config. This will parse CLI arguments or web query string so we want to do it
+    // before we create the app to make sure everything is in order.
+    let engine_config = &*config::ENGINE_CONFIG;
 
     let mut app = App::new();
     app.insert_resource(WindowDescriptor {
@@ -180,8 +175,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
 
     // Add other systems and resources
-    app.insert_resource(engine_config.clone())
-        .insert_resource(ClearColor(Color::BLACK))
+    app.insert_resource(ClearColor(Color::BLACK))
         .add_stage_after(
             CoreStage::Update,
             GameStage::Animation,
@@ -269,8 +263,8 @@ fn main() {
 
     // Get the game handle
     let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-    let game_asset = engine_config.game_asset;
-    let game_handle: Handle<GameMeta> = asset_server.load(&game_asset);
+    let game_asset = &engine_config.game_asset;
+    let game_handle: Handle<GameMeta> = asset_server.load(game_asset);
 
     // Insert game handle resource
     app.world.insert_resource(game_handle);

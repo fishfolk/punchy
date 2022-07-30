@@ -1,6 +1,15 @@
+use once_cell::sync::Lazy;
 use structopt::StructOpt;
 
 const DEFAULT_LOG_LEVEL: &str = "info,wgpu=error,bevy_fluent=warn,symphonia_core=warn,symphonia_format_ogg=warn,symphonia_bundle_mp3=warn";
+
+pub static ENGINE_CONFIG: Lazy<EngineConfig> = Lazy::new(|| {
+    #[cfg(not(target_arch = "wasm32"))]
+    return EngineConfig::from_args();
+
+    #[cfg(target_arch = "wasm32")]
+    return EngineConfig::from_web_params();
+});
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(name = "Punchy", about = "A 2.5D side-scroller beatemup.")]

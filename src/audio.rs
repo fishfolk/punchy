@@ -6,7 +6,7 @@ use bevy_kira_audio::{AudioChannel, AudioSource};
 
 use crate::{
     animation::Animation,
-    config::EngineConfig,
+    config::ENGINE_CONFIG,
     metadata::{GameMeta, LevelMeta},
     state::State,
 };
@@ -76,15 +76,11 @@ pub fn fighter_sound_effect(
     }
 }
 
-pub fn play_menu_music(
-    game_meta: Res<GameMeta>,
-    music_channel: Res<AudioChannel<MusicChannel>>,
-    engine_config: Res<EngineConfig>,
-) {
+pub fn play_menu_music(game_meta: Res<GameMeta>, music_channel: Res<AudioChannel<MusicChannel>>) {
     // This is a workaround for a Bevy Kira bug where stopping a sound immediately after
     // playing it doesn't work. We run into this issue when the menu starts and immediately
     // stops because the auto-start flag skips the menu. See issue #121 for context.
-    if !engine_config.auto_start {
+    if !ENGINE_CONFIG.auto_start {
         music_channel.play(game_meta.main_menu.music_handle.clone());
     }
 }

@@ -7,7 +7,7 @@ use leafwing_input_manager::{
 };
 
 use crate::{
-    config::EngineConfig,
+    config::ENGINE_CONFIG,
     input::MenuAction,
     metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta, Settings},
     platform::Storage,
@@ -99,7 +99,6 @@ pub struct MenuSystemParams<'w, 's> {
     commands: Commands<'w, 's>,
     game: Res<'w, GameMeta>,
     localization: Res<'w, Localization>,
-    engine_config: Res<'w, EngineConfig>,
     menu_input: Query<'w, 's, &'static mut ActionState<MenuAction>>,
     app_exit: EventWriter<'w, 's, AppExit>,
     storage: ResMut<'w, Storage>,
@@ -161,7 +160,6 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
         commands,
         game,
         localization,
-        engine_config,
         app_exit,
         storage,
         ..
@@ -186,7 +184,7 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
         .show(ui)
         .focus_by_default(ui);
 
-        if start_button.clicked() || engine_config.auto_start {
+        if start_button.clicked() || ENGINE_CONFIG.auto_start {
             commands.insert_resource(game.start_level_handle.clone());
             commands.insert_resource(NextState(GameState::LoadingLevel));
         }

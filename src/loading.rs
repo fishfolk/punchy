@@ -8,7 +8,7 @@ use rand::seq::SliceRandom;
 use crate::{
     animation::Animation,
     collisions::BodyLayers,
-    config::EngineConfig,
+    config::ENGINE_CONFIG,
     enemy::{Enemy, EnemyBundle},
     input::MenuAction,
     item::ItemBundle,
@@ -35,15 +35,6 @@ pub struct LoadingPlugin;
 
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let engine_config = {
-            use structopt::StructOpt;
-            EngineConfig::from_args()
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        let engine_config = EngineConfig::from_web_params();
-
         app.add_system(load_level.run_in_state(GameState::LoadingLevel))
             .add_system(
                 load_game
@@ -59,7 +50,7 @@ impl Plugin for LoadingPlugin {
             );
 
         // Configure hot reload
-        if engine_config.hot_reload {
+        if ENGINE_CONFIG.hot_reload {
             app.add_stage_after(
                 AssetStage::LoadAssets,
                 GameStage::HotReload,
