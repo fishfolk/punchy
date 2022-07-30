@@ -187,9 +187,19 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
         .add_stage_after(
-            CoreStage::Update,
+            CoreStage::Update, // PLACEHOLDER
             GameStage::Rendering,
             SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::Rendering,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(y_sort)
+                .with_system(camera_follow_player)
+                .with_system(fighter_sound_effect)
+                // other systems are added by AnimationPlugin
+                .into(),
         )
         .add_event::<ArrivedEvent>()
         .add_loopless_state(GameState::LoadingStorage)
@@ -218,7 +228,6 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(player_controller)
                 .with_system(pick_items)
-                .with_system(y_sort)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
                 .with_system(knockback_system)
@@ -244,9 +253,7 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(move_in_arc_system)
                 .with_system(rotate_system)
-                .with_system(camera_follow_player)
                 .with_system(update_left_movement_boundary)
-                .with_system(fighter_sound_effect)
                 .with_system(game_over_on_players_death)
                 .into(),
         )
