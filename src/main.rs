@@ -89,7 +89,8 @@ impl Default for Stats {
 enum GameStage {
     // Update: built-in stage; not used by this crate's systems
     // AssetStage stages (Bevy built-in)
-    HotReload,
+    HotReload, // Optional
+    Load,
     Rendering,
     // Last: built-in stage; used only for the despawning system
 }

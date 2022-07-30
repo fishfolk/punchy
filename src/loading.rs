@@ -40,13 +40,6 @@ impl Plugin for LoadingPlugin {
                 load_game
                     .run_in_state(GameState::LoadingGame)
                     .run_if(game_assets_loaded),
-            )
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::InGame)
-                    .with_system(load_fighters)
-                    .with_system(load_items)
-                    .into(),
             );
 
         // Configure hot reload
@@ -64,8 +57,24 @@ impl Plugin for LoadingPlugin {
                     .with_system(hot_reload_level)
                     .with_system(hot_reload_fighters)
                     .into(),
+            )
+            .add_stage_after(
+                GameStage::HotReload,
+                GameStage::Load,
+                SystemStage::parallel(),
             );
+        } else {
+            app.add_stage_after(CoreStage::Update, GameStage::Load, SystemStage::parallel());
         }
+
+        app.add_system_set_to_stage(
+            GameStage::Load,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(load_fighters)
+                .with_system(load_items)
+                .into(),
+        );
     }
 }
 
