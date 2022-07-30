@@ -91,6 +91,7 @@ enum GameStage {
     // AssetStage stages (Bevy built-in)
     HotReload, // Optional
     Load,
+    Decisions,
     Rendering,
     // Last: built-in stage; used only for the despawning system
 }
@@ -187,6 +188,20 @@ fn main() {
 
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
+        .add_plugin(loading::LoadingPlugin)
+        .add_stage_after(
+            GameStage::Load,
+            GameStage::Decisions,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::Decisions,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(player_controller)
+                .with_system(set_target_near_player)
+                .into(),
+        )
         .add_stage_after(
             CoreStage::Update, // PLACEHOLDER
             GameStage::Rendering,
@@ -207,7 +222,6 @@ fn main() {
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
-        .add_plugin(loading::LoadingPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
@@ -228,7 +242,6 @@ fn main() {
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(player_controller)
                 .with_system(pick_items)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
@@ -238,14 +251,8 @@ fn main() {
                 .into(),
         )
         .add_system(
-            set_target_near_player
-                .run_in_state(GameState::InGame)
-                .label("set_target_near_player"),
-        )
-        .add_system(
             move_to_target
                 .run_in_state(GameState::InGame)
-                .after("set_target_near_player")
                 .label("move_to_target"),
         )
         .add_system(unpause.run_in_state(GameState::Paused))
