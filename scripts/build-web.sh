@@ -20,7 +20,7 @@ fi
 
 export CARGO_TARGET_DIR=$target_dir
 
-set -x
+set -ex
 
 cargo build --target $target $release_arg
 rm -rf $dist_dir
