@@ -3170,6 +3170,7 @@ dependencies = [
  "getrandom",
  "iyes_loopless",
  "leafwing_input_manager",
+ "once_cell",
  "punchy_macros",
  "rand",
  "serde",
