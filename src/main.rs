@@ -90,7 +90,7 @@ enum GameStage {
     // Update: built-in stage; not used by this crate's systems
     // AssetStage stages (Bevy built-in)
     HotReload,
-    Animation,
+    Rendering,
     // Last: built-in stage; used only for the despawning system
 }
 
@@ -188,7 +188,7 @@ fn main() {
     app.insert_resource(ClearColor(Color::BLACK))
         .add_stage_after(
             CoreStage::Update,
-            GameStage::Animation,
+            GameStage::Rendering,
             SystemStage::parallel(),
         )
         .add_event::<ArrivedEvent>()

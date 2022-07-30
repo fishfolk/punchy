@@ -14,7 +14,7 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
-            GameStage::Animation,
+            GameStage::Rendering,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(animate_on_state_changed)
