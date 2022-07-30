@@ -47,7 +47,8 @@ impl Plugin for AttackPlugin {
                 .with_system(enemy_attack)
                 .into(),
         )
-        .add_system_set(
+        .add_system_set_to_stage(
+            GameStage::Processing,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(activate_hitbox)

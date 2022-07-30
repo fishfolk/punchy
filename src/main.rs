@@ -93,6 +93,7 @@ enum GameStage {
     Load,
     Decisions,
     Actions,
+    Processing,
     Movement,
     Collisions,
     PreRendering,
@@ -222,6 +223,19 @@ fn main() {
         )
         .add_stage_after(
             GameStage::Actions,
+            GameStage::Processing,
+            SystemStage::parallel(),
+        )
+        .add_system_set_to_stage(
+            GameStage::Processing,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .with_system(kill_entities)
+                // other systems are added by AttackPlugin and StatePlugin
+                .into(),
+        )
+        .add_stage_after(
+            GameStage::Processing,
             GameStage::Movement,
             SystemStage::parallel(),
         )
@@ -229,6 +243,7 @@ fn main() {
             GameStage::Movement,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
+                .with_system(kill_entities)
                 .with_system(move_to_target)
                 .with_system(move_direction_system)
                 .with_system(knockback_system) // performs the translation only
@@ -257,7 +272,6 @@ fn main() {
             GameStage::PreRendering,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(kill_entities)
                 .with_system(update_left_movement_boundary)
                 .with_system(game_over_on_players_death)
                 // other systems are added by StatePlugin

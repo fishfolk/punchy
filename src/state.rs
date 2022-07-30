@@ -9,10 +9,10 @@ pub struct StatePlugin;
 impl Plugin for StatePlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
-            GameStage::PreRendering,
+            GameStage::Processing,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(return_to_idle) // maybe state changes should run in the Decisions stage 🤔
+                .with_system(return_to_idle)
                 .into(),
         );
     }
