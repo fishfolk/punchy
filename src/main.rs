@@ -328,22 +328,21 @@ fn game_over_on_players_death(
 //for enemys without current target, pick a new spot near the player as target
 fn set_target_near_player(
     mut commands: Commands,
-    query: Query<(Entity, &State), (With<Enemy>, Without<Target>)>,
+    enemies_query: Query<(Entity, &State), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
     let mut rng = rand::thread_rng();
-    let transforms = player_query.iter().collect::<Vec<_>>();
+    let p_transforms = player_query.iter().collect::<Vec<_>>();
 
-    for (entity, state) in query.iter() {
-        if *state == State::Idle {
-            if let Some(player_transform) = transforms.choose(&mut rng) {
+    for (e_entity, e_state) in enemies_query.iter() {
+        if *e_state == State::Idle {
+            if let Some(p_transform) = p_transforms.choose(&mut rng) {
                 let x_offset = rng.gen_range(-100.0..100.);
                 let y_offset = rng.gen_range(-100.0..100.);
-                commands.entity(entity).insert(Target {
+                commands.entity(e_entity).insert(Target {
                     position: Vec2::new(
-                        player_transform.translation.x + x_offset,
-                        (player_transform.translation.y + y_offset)
-                            .clamp(consts::MIN_Y, consts::MAX_Y),
+                        p_transform.translation.x + x_offset,
+                        (p_transform.translation.y + y_offset).clamp(consts::MIN_Y, consts::MAX_Y),
                     ),
                 });
             }
