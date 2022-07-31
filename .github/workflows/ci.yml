@@ -22,6 +22,12 @@ jobs:
   clippy_correctness_checks:
     runs-on: ubuntu-latest
     name: Clippy correctness checks
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { target: 'x86_64-unknown-linux-gnu', target_dir: 'target' }
+          - { target: 'wasm32-unknown-unknown', target_dir: 'web-target' }
     steps:
       - name: Install dependencies
         run: |
@@ -30,6 +36,13 @@ jobs:
               libasound2-dev \
               libudev-dev
       - uses: actions/checkout@v3
+      - name: Install WASM Target
+        if: matrix.config.target == 'wasm32-unknown-unknown'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.config.target }}
+          components: clippy
       - uses: actions/cache@v3
         with:
           path: |
@@ -38,8 +51,11 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
+            web-target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions-rs/cargo@v1
+        env:
+          CARGO_TARGET_DIR: ${{ matrix.config.target_dir }}
         with:
           command: clippy
-          args: -- -W clippy::correctness -D warnings
+          args: --target ${{ matrix.config.target }} -- -W clippy::correctness -D warnings
