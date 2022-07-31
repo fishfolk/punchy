@@ -7,9 +7,6 @@ pub const PLAYER_HEIGHT: f32 = PLAYER_SPRITE_HEIGHT - 50.;
 //
 pub const LEFT_BOUNDARY_MAX_DISTANCE: f32 = 380.;
 
-// In this style of game, considering Y is not significant.
-pub const ENEMY_FOV_X: f32 = 800.;
-
 pub const GROUND_Y: f32 = -120.;
 pub const GROUND_HEIGHT: f32 = 150.;
 pub const GROUND_OFFSET: f32 = 0.;
