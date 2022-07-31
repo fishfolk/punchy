@@ -134,6 +134,8 @@ pub struct FighterSpawnMeta {
     #[serde(skip)]
     pub fighter_handle: Handle<FighterMeta>,
     pub location: Vec3,
+    // Set only for enemies.
+    pub trip_point_x: Option<f32>,
 }
 
 #[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]

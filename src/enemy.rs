@@ -9,6 +9,11 @@ use crate::{
 #[derive(Component)]
 pub struct Enemy;
 
+/// X coordinate of the level that requires to be trespassed in order for the enemies to move.
+/// For simplicy, once a given trip point is trespassed for the first time, it's set to f32::MIN.
+#[derive(Component)]
+pub struct TripPointX(pub f32);
+
 #[derive(Bundle)]
 pub struct EnemyBundle {
     enemy: Enemy,
@@ -16,6 +21,7 @@ pub struct EnemyBundle {
     #[bundle]
     transform_bundle: TransformBundle,
     fighter_handle: Handle<FighterMeta>,
+    trip_point_x: TripPointX,
 }
 
 impl EnemyBundle {
@@ -33,6 +39,7 @@ impl EnemyBundle {
             facing: Facing::Left,
             transform_bundle,
             fighter_handle,
+            trip_point_x: TripPointX(enemy_meta.trip_point_x.unwrap()),
         }
     }
 }
