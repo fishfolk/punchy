@@ -169,7 +169,16 @@ impl Storage {
     where
         T: Serialize + DeserializeOwned,
     {
-        self.try_get(key).expect("Get value from storage")
+        match self.try_get(key) {
+            Ok(data) => data,
+            Err(e) => {
+                error!(
+                    "Error deserializing storage key, returning empty value: {}",
+                    e
+                );
+                None
+            }
+        }
     }
 
     /// Set a value in the in-memory storage cache.
@@ -275,7 +284,11 @@ mod native {
     };
 
     use async_channel::Sender;
-    use bevy::{prelude::trace, tasks::IoTaskPool, utils::HashMap};
+    use bevy::{
+        prelude::{error, trace},
+        tasks::IoTaskPool,
+        utils::HashMap,
+    };
 
     use super::StorageRequest;
 
@@ -307,7 +320,17 @@ mod native {
                                 let mut contents = Vec::new();
                                 file.read_to_end(&mut contents).expect("Read storage file");
 
-                                serde_yaml::from_slice(&contents).expect("Deserialize storage")
+                                match serde_yaml::from_slice(&contents) {
+                                    Ok(data) => data,
+                                    Err(e) => {
+                                        error!(
+                                            "Error deserializing storage file. Ignoring existing \
+                                            data and overwriting on next attempt to save: {}",
+                                            e
+                                        );
+                                        Default::default()
+                                    }
+                                }
                             } else {
                                 HashMap::new()
                             };
@@ -383,8 +406,17 @@ mod wasm {
                         let data = local_storage
                             .get_item(BROWSER_LOCAL_STORAGE_KEY)
                             .unwrap()
-                            .and_then(|data| {
-                                serde_yaml::from_str(&data).expect("Deserialize platform storage")
+                            .and_then(|data| match serde_yaml::from_str(&data) {
+                                Ok(data) => data,
+                                Err(e) => {
+                                    error!(
+                                        "Error deserializing storage, ignoring existing data \
+                                        and overwriting on next attempt to set data in storage: {}",
+                                        e
+                                    );
+
+                                    None
+                                }
                             })
                             .unwrap_or_default();
 
