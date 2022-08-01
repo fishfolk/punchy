@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::forget_non_drop)]
+#![allow(clippy::drop_non_drop)]
 #![allow(clippy::too_many_arguments)]
 
 use bevy::{

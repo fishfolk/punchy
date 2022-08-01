@@ -3471,6 +3471,7 @@ dependencies = [
  "fluent",
  "getrandom",
  "iyes_loopless",
+ "js-sys",
  "leafwing_input_manager",
  "once_cell",
  "punchy_macros",
@@ -3481,6 +3482,8 @@ dependencies = [
  "sys-locale",
  "thiserror",
  "unic-langid",
+ "wasm-bindgen",
+ "wasm_mutex",
  "web-sys",
 ]
 
@@ -4919,6 +4922,15 @@ name = "wasm-bindgen-shared"
 version = "0.2.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6598dd0bd3c7d51095ff6531a5b23e02acdc81804e30d8f07afb77b7215a140a"
+
+[[package]]
+name = "wasm_mutex"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efbdddc3b163fc2d639800b3411a5428d1e151ba2a400a560b1545e39f1e68cd"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "web-sys"

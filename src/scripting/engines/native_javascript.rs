@@ -52,7 +52,7 @@ impl ScriptingEngineApi for JavaScriptEngine {
         &self,
         handle: &Handle<Script>,
         stage: ScriptStage,
-        entity_components: &mut [EntityDynComponents],
+        _entity_components: &mut [EntityDynComponents],
     ) {
         // Try to lock the engine, just skip if it can't be locked ( for instance, modules are loading )
         let mut engine = if let Some(engine) = self.runtime_data.try_write() {
@@ -239,9 +239,15 @@ async fn engine_async_task_loop(
                         })?
                         .to_string();
 
-                    // Append our SCRIPT_PATH variable to the module namespace
                     let code = format!(
-                        r#"Punchy.SCRIPT_PATH = '{path}'; {code}"#,
+                        r#"((Punchy) => {{
+                            // Append our SCRIPT_PATH variable to the Punchy global.
+                            Punchy.SCRIPT_PATH = "{path}";
+
+                            {code}
+
+                            return init();
+                        }})(globalThis.Punchy)"#,
                         path = script.path,
                         code = code
                     );

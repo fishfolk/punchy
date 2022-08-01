@@ -62,6 +62,9 @@ dashmap = "5.3.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = ["Window","Location","Storage"] }
+wasm_mutex = "0.1.4"
+js-sys = "0.3.59"
+wasm-bindgen = { version = "0.2.82", features = ["enable-interning"] }
 
 [features]
 default = []

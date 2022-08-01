@@ -121,6 +121,7 @@ macro_rules! scriptable_components {
             #[derive(::bevy::ecs::query::WorldQuery)]
             #[world_query(mutable)]
             pub struct ScriptableComponentsQuery<'w> {
+                #[allow(unused)] // Temporary until we use this.
                 entity: Entity,
                 $(
                     $component: Option<&'w mut $component>,
