@@ -1497,35 +1497,12 @@ dependencies = [
 
 [[package]]
 name = "deno_core"
-version = "0.144.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07952bcb705366ce6cf1590cb408157761ae492d135625beab23572bd2a51938"
-dependencies = [
- "anyhow",
- "deno_ops 0.22.0",
- "futures",
- "indexmap",
- "libc",
- "log",
- "once_cell",
- "parking_lot 0.12.1",
- "pin-project",
- "serde",
- "serde_json",
- "serde_v8 0.55.0",
- "sourcemap",
- "url",
- "v8",
-]
-
-[[package]]
-name = "deno_core"
 version = "0.145.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c56dbbb729d840e253fc92663e76e72971469110cded91a97e046eee5b9ffef6"
 dependencies = [
  "anyhow",
- "deno_ops 0.23.0",
+ "deno_ops",
  "futures",
  "indexmap",
  "libc",
@@ -1535,24 +1512,10 @@ dependencies = [
  "pin-project",
  "serde",
  "serde_json",
- "serde_v8 0.56.0",
+ "serde_v8",
  "sourcemap",
  "url",
  "v8",
-]
-
-[[package]]
-name = "deno_ops"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "871f1028045a23864859a71cf901867f839dabc26ba20db7cf6cc7e854015a80"
-dependencies = [
- "once_cell",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "regex",
- "syn",
 ]
 
 [[package]]
@@ -3464,8 +3427,7 @@ dependencies = [
  "cismute",
  "dashmap",
  "deno_ast",
- "deno_core 0.144.0",
- "deno_core 0.145.0",
+ "deno_core",
  "directories",
  "egui_extras",
  "fluent",
@@ -3792,19 +3754,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_v8"
-version = "0.55.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69110d2be1d34271c4a7ceb4171c6c12f2aafe6b8d4eb46c8d0a7e8d039154e4"
-dependencies = [
- "bytes",
- "derive_more",
- "serde",
- "smallvec",
- "v8",
 ]
 
 [[package]]
