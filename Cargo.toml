@@ -14,7 +14,7 @@ members = [
 
 [dependencies.bevy]
 version = "0.8.0"
-default-features = true
+default-features = false
 features = [
     "x11",
     "png",
@@ -38,7 +38,7 @@ structopt = "0.3.26"
 rand = "0.8.5"
 getrandom = { version = "0.2", features = ["js"] }
 
-leafwing_input_manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager.git", branch = "dev" }
+leafwing_input_manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager.git", default-features = false, branch = "dev" }
 unic-langid = "0.9.0"
 bevy_fluent = { git = "https://github.com/kgv/bevy_fluent.git" }
 sys-locale = "0.2.1"
