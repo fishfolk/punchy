@@ -234,7 +234,7 @@ fn update_egui_fonts(
             // If we were able to find the font handle in our game fonts
             if let Some(font_name) = name {
                 // Get the font asset
-                if let Some(font) = assets.get(handle) {
+                if let Some(font) = assets.get(&handle) {
                     // And insert it into the Egui font definitions
                     let ctx = egui_ctx.ctx_mut();
                     egui_font_definitions
@@ -264,16 +264,17 @@ fn update_ui_scale(
     if let Some(window) = windows.get_primary() {
         if let Ok(projection) = projection.get_single() {
             match projection.scaling_mode {
-                bevy::render::camera::ScalingMode::FixedVertical => {
+                bevy::render::camera::ScalingMode::FixedVertical(height) => {
                     let window_height = window.height();
-                    let scale = window_height / (projection.scale * 2.0);
+                    let scale = window_height / height;
                     egui_settings.scale_factor = scale as f64;
                 }
-                bevy::render::camera::ScalingMode::FixedHorizontal => {
+                bevy::render::camera::ScalingMode::FixedHorizontal(width) => {
                     let window_width = window.width();
-                    let scale = window_width / (projection.scale * 2.0);
+                    let scale = window_width / width;
                     egui_settings.scale_factor = scale as f64;
                 }
+                bevy::render::camera::ScalingMode::Auto { .. } => (),
                 bevy::render::camera::ScalingMode::None => (),
                 bevy::render::camera::ScalingMode::WindowSize => (),
             }

@@ -725,13 +725,14 @@ impl<'w, 's> ControlInputBindingEvents<'w, 's> {
             BindingKind::Gamepad => {
                 // Return the first pressed button we find, if any
                 if let Some(&button) = self.gamepad_buttons.get_just_pressed().next() {
-                    Some(button.1.into())
+                    Some(button.button_type.into())
 
                 // If we can't find a button pressed
                 } else {
                     // Look for axes tilted more than 0.5 in either direction.
                     for gamepad_event in self.gamepad_events.iter() {
-                        if let GamepadEventType::AxisChanged(axis, value) = gamepad_event.1 {
+                        if let GamepadEventType::AxisChanged(axis, value) = gamepad_event.event_type
+                        {
                             // Create an axis positive movement binding
                             if value > 0.5 {
                                 return Ok(Some(

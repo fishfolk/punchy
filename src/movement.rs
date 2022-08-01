@@ -1,10 +1,10 @@
 use bevy::{
-    core::{Time, Timer},
     math::{Quat, Vec2, Vec3},
     prelude::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
         With,
     },
+    time::{Time, Timer},
 };
 use leafwing_input_manager::prelude::ActionState;
 

@@ -12,43 +12,53 @@ members = [
     "macros"
 ]
 
+[dependencies.bevy]
+version = "0.8.0"
+default-features = true
+features = [
+    "x11",
+    "png",
+    "filesystem_watcher"
+]
+
 [dependencies]
 punchy_macros = { path = "./macros" }
 
 anyhow = "1.0.58"
-bevy = "0.7.0"
-bevy-parallax = "0.1.2"
-bevy_egui = "0.14"
+bevy-parallax = { git = "https://github.com/zicklag/bevy-parallax", branch = "bevy-0.8"}
+bevy_egui = "0.15.0"
 egui_extras = "0.18.0"
-bevy_kira_audio = { version = "0.10.0", features = ["mp3"] }
-bevy_rapier2d = { version = "0.14.1", features = ["debug-render"] }
-iyes_loopless = "0.6.1"
+bevy_kira_audio = { version = "0.11.0", features = ["mp3"] }
+bevy_rapier2d = { version = "0.16.0", features = ["debug-render"] }
+iyes_loopless = "0.7.0"
 serde = { version = "1.0.137", features = ["derive"] }
-serde_yaml = "0.8.24"
+serde_yaml = "0.8.26"
 thiserror = "1.0.31"
 structopt = "0.3.26"
 rand = "0.8.5"
 getrandom = { version = "0.2", features = ["js"] }
 
-bevy_mod_debugdump = { version = "0.4", optional = true }
-bevy-inspector-egui = { version = "0.11", optional = true }
-bevy-inspector-egui-rapier = { version = "0.4", optional = true, features = ["rapier2d"] }
-leafwing_input_manager = { git = "https://github.com/zicklag/leafwing-input-manager.git", branch = "backport-leafwing-dev-to-bevy-0.7" }
+leafwing_input_manager = { git = "https://github.com/Leafwing-Studios/leafwing-input-manager.git", branch = "dev" }
 unic-langid = "0.9.0"
-bevy_fluent = { git = "https://github.com/kgv/bevy_fluent", rev = "d41f514" }
+bevy_fluent = { git = "https://github.com/kgv/bevy_fluent.git" }
 sys-locale = "0.2.1"
 fluent = "0.16.0"
 directories = "4.0.1"
 async-channel = "1.6.1"
 once_cell = "1.13.0"
 
+# Waiting for updates to Bevy 0.8
+# bevy_mod_debugdump = { version = "0.4", optional = true }
+# bevy-inspector-egui = { version = "0.11", optional = true }
+# bevy-inspector-egui-rapier = { version = "0.4", optional = true, features = ["rapier2d"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3", features = ["Window","Location","Storage"] }
 
 [features]
 default = []
-debug = ["bevy-inspector-egui", "bevy-inspector-egui-rapier"]
-schedule_graph = ["bevy_mod_debugdump"]
+# Waiting for update to Bevy 0.8
+# schedule_graph = ["bevy_mod_debugdump"]
 
 # Enable optimizations for dependencies but not for our code
 [profile.dev.package."*"]
@@ -67,8 +77,3 @@ debug = false
 [profile.release]
 lto = true
 codegen-units = 1 # Improves physics performance for release builds
-
-[patch.crates-io]
-# Patch to enable improved DPad support. It's a merge of the following PR to Bevy 0.7.0 so we can
-# use it before 0.8 is release: https://github.com/bevyengine/bevy/pull/5220.
-bevy_gilrs = { git = "https://github.com/zicklag/bevy.git", branch = "v0.7.0-dpad-patch" }

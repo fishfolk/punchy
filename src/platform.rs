@@ -64,8 +64,8 @@ pub struct Storage {
 }
 
 impl FromWorld for Storage {
-    fn from_world(world: &mut World) -> Self {
-        let io_task_pool = world.get_resource::<IoTaskPool>().unwrap();
+    fn from_world(_: &mut World) -> Self {
+        let io_task_pool = IoTaskPool::get();
         let backend_sender = backend::init_storage(io_task_pool);
 
         Self {

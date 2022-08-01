@@ -94,7 +94,7 @@ pub fn play_level_music(
     assets: Res<Assets<LevelMeta>>,
     music_channel: Res<AudioChannel<MusicChannel>>,
 ) {
-    if let Some(level) = assets.get(level_handle.clone_weak()) {
+    if let Some(level) = assets.get(&level_handle) {
         music_channel.play(level.music_handle.clone());
     }
 }

@@ -2,9 +2,9 @@ use std::ops::Range;
 
 use crate::{state::State, GameStage, GameState};
 use bevy::{
-    core::{Time, Timer},
     prelude::{App, Changed, Component, Plugin, Query, Res},
     sprite::TextureAtlasSprite,
+    time::{Time, Timer},
     utils::HashMap,
 };
 use iyes_loopless::condition::ConditionSet;
