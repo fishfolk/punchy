@@ -21,72 +21,50 @@ default_settings:
     # Gamepad controls
     gamepad:
       movement:
-        up:
-          SingleAxis:
-            axis_type:
-              Gamepad: LeftStickY
-            positive_low: 0.1
-            negative_low: -1.0
-        left:
-          SingleAxis:
-            axis_type:
-              Gamepad: LeftStickX
-            positive_low: 1.0
-            negative_low: -0.1
-        down:
-          SingleAxis:
-            axis_type:
-              Gamepad: LeftStickY
-            positive_low: 1.0
-            negative_low: -0.1
-        right:
-          SingleAxis:
-            axis_type:
-              Gamepad: LeftStickX
-            positive_low: 0.1
-            negative_low: -1.0
-      flop_attack:
-        GamepadButton: South
-      shoot:
-        GamepadButton: East
-      throw:
-        GamepadButton: West
+        up: !SingleAxis
+          axis_type: !Gamepad LeftStickY
+          positive_low: 0.1
+          negative_low: -1.0
+
+        left: !SingleAxis
+          axis_type: !Gamepad LeftStickX
+          positive_low: 1.0
+          negative_low: -0.1
+
+        down: !SingleAxis
+          axis_type: !Gamepad LeftStickY
+          positive_low: 1.0
+          negative_low: -0.1
+
+        right: !SingleAxis
+          axis_type: !Gamepad LeftStickX
+          positive_low: 0.1
+          negative_low: -1.0
+      flop_attack: !GamepadButton South
+      shoot: !GamepadButton East
+      throw: !GamepadButton West
 
     # Controls for the first keyboard player ( left side )
     keyboard1:
       movement:
-        up:
-          Keyboard: W
-        down:
-          Keyboard: S
-        left:
-          Keyboard: A
-        right:
-          Keyboard: D
-      flop_attack:
-        Keyboard: Space
-      shoot:
-        Keyboard: V
-      throw:
-        Keyboard: C
+        up: !Keyboard W
+        down: !Keyboard S
+        left: !Keyboard A
+        right: !Keyboard D
+      flop_attack: !Keyboard Space
+      shoot: !Keyboard V
+      throw: !Keyboard C
 
     # Controls for the second keyboard player ( right side )
     keyboard2:
       movement:
-        up:
-          Keyboard: Up
-        down:
-          Keyboard: Down
-        left:
-          Keyboard: Left
-        right:
-          Keyboard: Right
-      flop_attack:
-        Keyboard: Comma
-      shoot:
-        Keyboard: RShift
-      throw:
-        Keyboard: Period
+        up: !Keyboard Up
+        down: !Keyboard Down
+        left: !Keyboard Left
+        right: !Keyboard Right
+      flop_attack: !Keyboard Comma
+      shoot: !Keyboard RShift
+      throw: !Keyboard Period
 
 ui_theme:
   font_families:
