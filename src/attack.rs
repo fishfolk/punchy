@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::{
-    core::{Time, Timer},
     hierarchy::{BuildChildren, Children, DespawnRecursiveExt},
     math::{Vec2, Vec3},
     prelude::{
@@ -9,6 +8,7 @@ use bevy::{
         Handle, Local, Parent, Plugin, Query, Res, Transform, With, Without,
     },
     sprite::SpriteBundle,
+    time::{Time, Timer},
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::*;
@@ -111,7 +111,7 @@ impl Projectile {
                 to_right: !facing.is_left(),
             },
             collider: Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.),
-            sensor: Sensor(true),
+            sensor: Sensor,
             events: ActiveEvents::COLLISION_EVENTS,
             collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
             //TODO: define collision layer based on the fighter shooting projectile, load for asset files of fighter which "team" they are on
@@ -168,7 +168,7 @@ impl ThrownItem {
                 origin: position,
             },
             collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
-            sensor: Sensor(true),
+            sensor: Sensor,
             events: ActiveEvents::COLLISION_EVENTS,
             collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
             //TODO: define collision layer based on the fighter throwing the item, load for asset files of fighter which "team" they are on
@@ -315,7 +315,7 @@ fn player_flop(
 
                         let attack_entity = commands
                             .spawn_bundle(TransformBundle::default())
-                            .insert(Sensor(true))
+                            .insert(Sensor)
                             .insert(ActiveEvents::COLLISION_EVENTS)
                             .insert(
                                 ActiveCollisionTypes::default()
@@ -425,7 +425,7 @@ fn enemy_attack(
                         .spawn_bundle(TransformBundle::from_transform(
                             Transform::from_translation(Vec3::new(offset, 0.0, 0.0)),
                         ))
-                        .insert(Sensor(true))
+                        .insert(Sensor)
                         .insert(ActiveEvents::COLLISION_EVENTS)
                         .insert(
                             ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
@@ -462,7 +462,7 @@ fn activate_hitbox(
     mut commands: Commands,
 ) {
     for (entity, attack_frames, parent) in attack_query.iter() {
-        if let Ok(animation) = fighter_query.get(parent.0) {
+        if let Ok(animation) = fighter_query.get(**parent) {
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
@@ -481,7 +481,7 @@ fn deactivate_hitbox(
     mut commands: Commands,
 ) {
     for (entity, attack_frames, parent) in query.iter() {
-        if let Ok(animation) = fighter_query.get(parent.0) {
+        if let Ok(animation) = fighter_query.get(**parent) {
             if animation.current_frame >= attack_frames.recovery {
                 commands.entity(entity).despawn_recursive();
             }

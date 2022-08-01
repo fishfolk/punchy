@@ -75,7 +75,7 @@ fn game_assets_loaded(
     loading_resources: LoadingResources,
     game_assets: Res<Assets<GameMeta>>,
 ) -> bool {
-    if let Some(game) = game_assets.get(game_handle.id) {
+    if let Some(game) = game_assets.get(&game_handle) {
         // Track load progress
         let load_progress = game.load_progress(&loading_resources);
         debug!(
@@ -126,7 +126,7 @@ impl<'w, 's> GameLoader<'w, 's> {
             ..
         } = self;
 
-        if let Some(game) = assets.get_mut(game_handle.id) {
+        if let Some(game) = assets.get_mut(&game_handle) {
             // Hot reload preparation
             if is_hot_reload {
                 // Despawn previous camera
@@ -163,10 +163,10 @@ impl<'w, 's> GameLoader<'w, 's> {
             );
 
             // Spawn the camera
-            let mut camera_bundle = OrthographicCameraBundle::new_2d();
+            let mut camera_bundle = Camera2dBundle::default();
             // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
-            camera_bundle.orthographic_projection.scaling_mode = ScalingMode::FixedVertical;
-            camera_bundle.orthographic_projection.scale = game.camera_height as f32 / 2.0;
+            camera_bundle.projection.scaling_mode =
+                ScalingMode::FixedVertical(game.camera_height as f32);
             commands
                 .spawn_bundle(camera_bundle)
                 .insert(ParallaxCameraComponent)
@@ -325,7 +325,7 @@ fn load_level(
     mut storage: ResMut<Storage>,
     loading_resources: LoadingResources,
 ) {
-    if let Some(level) = assets.get(level_handle.clone_weak()) {
+    if let Some(level) = assets.get(&level_handle) {
         // Track load progress
         let load_progress = level.load_progress(&loading_resources);
         debug!(

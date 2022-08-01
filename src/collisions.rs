@@ -1,8 +1,8 @@
 use bevy::{
-    core::Timer,
     hierarchy::DespawnRecursiveExt,
     math::Vec2,
     prelude::{Commands, EventReader, Query, Transform},
+    time::Timer,
 };
 use bevy_rapier2d::prelude::*;
 

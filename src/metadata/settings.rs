@@ -33,7 +33,7 @@ impl PlayerControlMethods {
     pub fn get_input_map(&self, player_idx: usize) -> InputMap<PlayerAction> {
         let mut input_map = InputMap::default();
 
-        input_map.set_gamepad(Gamepad(player_idx));
+        input_map.set_gamepad(Gamepad { id: player_idx });
 
         let mut add_controls = |ctrls: &PlayerControls| {
             input_map.insert(ctrls.movement.clone(), PlayerAction::Move);

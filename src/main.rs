@@ -2,7 +2,10 @@
 #![allow(clippy::forget_non_drop)]
 #![allow(clippy::too_many_arguments)]
 
-use bevy::{asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, prelude::*};
+use bevy::{
+    asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, prelude::*,
+    render::texture::ImageSettings,
+};
 use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
@@ -126,7 +129,7 @@ impl Default for PhysicsBundle {
                 consts::PLAYER_SPRITE_WIDTH / 8.,
                 consts::PLAYER_HITBOX_HEIGHT / 8.,
             )),
-            sensor: Sensor(true),
+            sensor: Sensor,
             active_events: ActiveEvents::COLLISION_EVENTS,
             active_collision_types: ActiveCollisionTypes::default()
                 | ActiveCollisionTypes::STATIC_STATIC,
@@ -147,7 +150,8 @@ fn main() {
         title: "Fish Fight Punchy".to_string(),
         scale_factor_override: Some(1.0),
         ..default()
-    });
+    })
+    .insert_resource(ImageSettings::default_nearest());
 
     // Configure log level
     app.insert_resource(LogSettings {

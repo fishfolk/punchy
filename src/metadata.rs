@@ -178,6 +178,8 @@ pub struct ParallaxLayerMeta {
     pub scale: f32,
     pub z: f32,
     pub transition_factor: f32,
+    #[serde(default)]
+    pub position: Vec2,
 }
 
 impl From<ParallaxLayerMeta> for LayerData {
@@ -191,6 +193,7 @@ impl From<ParallaxLayerMeta> for LayerData {
             scale: meta.scale,
             z: meta.z,
             transition_factor: meta.transition_factor,
+            position: meta.position,
         }
     }
 }
