@@ -78,13 +78,8 @@ impl<'a> BorderedButton<'a> {
 
     /// Set the margin. This will be applied on the outside of the border.
     #[must_use = "You must call .show() to render the button"]
-    pub fn margin(mut self, margin: bevy::ui::UiRect<f32>) -> Self {
-        self.margin = egui::style::Margin {
-            left: margin.left,
-            right: margin.right,
-            top: margin.top,
-            bottom: margin.bottom,
-        };
+    pub fn margin(mut self, margin: egui::style::Margin) -> Self {
+        self.margin = margin;
 
         self
     }
