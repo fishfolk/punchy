@@ -135,7 +135,12 @@ pub struct FighterSpawnMeta {
     pub fighter_handle: Handle<FighterMeta>,
     pub location: Vec3,
     // Set only for enemies.
-    pub trip_point_x: Option<f32>,
+    #[serde(default = "default_f32_min")]
+    pub trip_point_x: f32,
+}
+
+fn default_f32_min() -> f32 {
+    f32::MIN
 }
 
 #[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]

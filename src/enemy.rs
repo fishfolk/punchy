@@ -39,7 +39,7 @@ impl EnemyBundle {
             facing: Facing::Left,
             transform_bundle,
             fighter_handle,
-            trip_point_x: TripPointX(enemy_meta.trip_point_x.unwrap()),
+            trip_point_x: TripPointX(enemy_meta.trip_point_x),
         }
     }
 }
