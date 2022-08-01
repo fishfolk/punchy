@@ -311,6 +311,8 @@ fn player_flop(
             if !(*state != State::Idle && *state != State::Running)
                 && input.just_pressed(PlayerAction::FlopAttack)
             {
+                println!("player_flop({:?}): setting attack state", entity);
+
                 state.set(State::Attacking);
 
                 let attack_entity = commands
@@ -376,10 +378,13 @@ fn player_flop(
             }
 
             let event = PlayerMovement {
+                action: String::from("flop"),
                 player_id: entity,
                 movement,
                 set_facing_state: false,
             };
+
+            println!("player_flop({:?}): sending:{:?}", entity, event);
 
             move_commands.send(event);
         }

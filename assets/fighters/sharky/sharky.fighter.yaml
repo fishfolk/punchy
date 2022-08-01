@@ -1,7 +1,7 @@
 name: Scrumptious Sharky
 
 stats:
-  health: 100
+  health: 0
   damage: 35
   movement_speed: 150
 

@@ -29,6 +29,7 @@ pub struct MoveInDirection(pub Vec2);
 /// The Vec2 must be the total displacement value, that is, calculated in the given time.
 #[derive(Debug)]
 pub struct PlayerMovement {
+    pub action: String,
     pub player_id: Entity,
     pub movement: Vec2,
     pub set_facing_state: bool,
@@ -91,6 +92,7 @@ pub fn knockback_system(
         let movement = knockback.direction * time.delta_seconds();
 
         move_commands.send(PlayerMovement {
+            action: String::from("knockback"),
             player_id: *player_id,
             movement,
             set_facing_state: false,
@@ -116,10 +118,13 @@ pub fn player_controller(
 
             //Move the player
             let event = PlayerMovement {
+                action: String::from("controller"),
                 player_id,
                 movement,
                 set_facing_state: true,
             };
+
+            println!("player_controller({:?}): sending {:?}", player_id, event);
 
             move_commands.send(event);
         }
@@ -268,11 +273,11 @@ pub fn process_and_apply_player_movements(
 ) {
     // First, we collection the locations
 
-    // Hash: {player_id => (Option<movement>, set_facing_state)}
+    // Hash: {player_id => (Option<movement>, set_facing_state, action)}
     //
     let mut player_movements = players_query
         .iter()
-        .map(|(player_id, _, _, _)| (player_id, (None, false)))
+        .map(|(player_id, _, _, _)| (player_id, (None, false, String::from(""))))
         .collect::<HashMap<_, _>>();
 
     // Then, we perform the absolute clamping (screen limits), and we collect the data required for
@@ -281,11 +286,14 @@ pub fn process_and_apply_player_movements(
     let mut min_new_player_x = f32::MAX;
 
     for PlayerMovement {
+        action,
         player_id,
         movement,
         set_facing_state,
     } in move_commands.iter()
     {
+        println!("process: reading event from action {}", action);
+
         let mut movement = *movement;
         let player_movement = player_movements.get_mut(player_id).unwrap();
 
@@ -306,7 +314,7 @@ pub fn process_and_apply_player_movements(
 
         min_new_player_x = min_new_player_x.min(new_x);
 
-        *player_movement = (Some(movement), *set_facing_state);
+        *player_movement = (Some(movement), *set_facing_state, action.clone());
     }
 
     // Then, we perform the clamping of the players relative to each other.
@@ -328,19 +336,24 @@ pub fn process_and_apply_player_movements(
     // This could be merged into the previous step, but it's cleaner this way.
 
     for (player_id, mut transform, mut facing, mut state) in players_query.iter_mut() {
-        let (movement, set_facing_state) = player_movements[&player_id];
+        let (movement, set_facing_state, action) = &player_movements[&player_id];
 
         if let Some(movement) = movement {
             transform.translation += movement.extend(0.);
 
-            if set_facing_state {
+            //             println!(
+            //                 "process({:?}): T:{:?}, SFT:{}, OS:{:?}, A:{}",
+            //                 player_id, transform.translation, set_facing_state, state, action
+            //             );
+            //
+            if *set_facing_state {
                 if movement.x < 0. {
                     facing.set(Facing::Left);
                 } else if movement.x > 0. {
                     facing.set(Facing::Right);
                 }
 
-                if movement == Vec2::ZERO {
+                if *movement == Vec2::ZERO {
                     state.set(State::Idle);
                 } else {
                     state.set(State::Running);
