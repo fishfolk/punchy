@@ -5,7 +5,7 @@ use bevy::{
     math::{Vec2, Vec3},
     prelude::{
         default, App, AssetServer, Assets, Bundle, Commands, Component, Entity, EventReader,
-        Handle, Local, Parent, Plugin, Query, Res, Transform, With, Without,
+        EventWriter, Handle, Local, Parent, Plugin, Query, Res, Transform, With, Without,
     },
     sprite::SpriteBundle,
     time::{Time, Timer},
@@ -25,10 +25,8 @@ use crate::{
     },
     input::PlayerAction,
     item::item_carried_by_player,
-    metadata::{FighterMeta, GameMeta, ItemMeta},
-    movement::{
-        clamp_player_movements, LeftMovementBoundary, MoveInArc, MoveInDirection, Rotate, Target,
-    },
+    metadata::{FighterMeta, ItemMeta},
+    movement::{MoveInArc, MoveInDirection, PlayerMovement, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player, Stats,
 };
@@ -42,12 +40,16 @@ impl Plugin for AttackPlugin {
                 .run_in_state(GameState::InGame)
                 .with_system(player_projectile_attack)
                 .with_system(player_throw)
-                .with_system(player_flop)
                 .with_system(activate_hitbox)
                 .with_system(deactivate_hitbox)
                 .with_system(projectile_cleanup)
                 .with_system(projectile_tick)
                 .into(),
+        )
+        .add_system(
+            player_flop
+                .run_in_state(GameState::InGame)
+                .before("process_and_apply_player_movements"),
         )
         .add_system(
             enemy_attack
@@ -299,101 +301,87 @@ fn player_flop(
     >,
     fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
-    left_movement_boundary: Res<LeftMovementBoundary>,
-    game_meta: Res<GameMeta>,
     mut start_y: Local<Option<f32>>,
+    mut move_commands: EventWriter<PlayerMovement>,
 ) {
-    let players_movement = query
-        .iter_mut()
-        .map(
-            |(entity, mut state, transform, stats, animation, facing, input, fighter_meta)| {
-                if *state != State::Attacking {
-                    if !(*state != State::Idle && *state != State::Running)
-                        && input.just_pressed(PlayerAction::FlopAttack)
-                    {
-                        state.set(State::Attacking);
-
-                        let attack_entity = commands
-                            .spawn_bundle(TransformBundle::default())
-                            .insert(Sensor)
-                            .insert(ActiveEvents::COLLISION_EVENTS)
-                            .insert(
-                                ActiveCollisionTypes::default()
-                                    | ActiveCollisionTypes::STATIC_STATIC,
-                            )
-                            .insert(CollisionGroups::new(
-                                BodyLayers::PLAYER_ATTACK,
-                                BodyLayers::ENEMY,
-                            ))
-                            .insert(Attack {
-                                damage: stats.damage,
-                            })
-                            .insert(AttackFrames {
-                                startup: 0,
-                                active: 3,
-                                recovery: 4,
-                            })
-                            .id();
-                        commands.entity(entity).push_children(&[attack_entity]);
-                        //TODO: define hitbox size and placement through resources
-
-                        //maybe move audio effects?
-                        if let Some(fighter) = fighter_assets.get(fighter_meta) {
-                            if let Some(effects) = fighter.audio.effect_handles.get(&state) {
-                                let fx_playback =
-                                    FighterStateEffectsPlayback::new(*state, effects.clone());
-                                commands.entity(entity).insert(fx_playback);
-                            }
-                        }
-                        // commands.
-                        // commands.entity(entity)
-                    }
-
-                    (transform.translation, None)
-                } else {
-                    let mut movement = Vec2::ZERO;
-
-                    //TODO: Replace with movement intent eventwriter in movement rewrite!
-                    //TODO: Fix hacky way to get a forward jump
-                    if animation.current_frame < 3 {
-                        if facing.is_left() {
-                            movement.x -= 200. * time.delta_seconds();
-                        } else {
-                            movement.x += 200. * time.delta_seconds();
-                        }
-                    }
-
-                    // For currently unclear reasons, the first Animation frame may run for less Bevy frames
-                    // than expected. When this is the case, the player jumps less then it should, netting,
-                    // at the end of the animation, a slightly negative Y than the beginning, which causes
-                    // problems. This is a workaround.
-                    //
-                    if start_y.is_none() {
-                        *start_y = Some(transform.translation.y);
-                    }
-
-                    if animation.current_frame < 1 {
-                        movement.y += 180. * time.delta_seconds();
-                    } else if animation.current_frame < 3 {
-                        movement.y -= 90. * time.delta_seconds();
-                    } else if animation.is_finished() {
-                        movement.y = start_y.unwrap();
-                        *start_y = None;
-                    }
-
-                    (transform.translation, Some(movement))
-                }
-            },
-        )
-        .collect::<Vec<_>>();
-
-    let players_movement =
-        clamp_player_movements(players_movement, &left_movement_boundary, &game_meta);
-
-    for ((_, _, mut transform, _, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement)
+    for (entity, mut state, transform, stats, animation, facing, input, fighter_meta) in
+        query.iter_mut()
     {
-        if let Some(player_dir) = player_dir {
-            transform.translation += player_dir.extend(0.);
+        if *state != State::Attacking {
+            if !(*state != State::Idle && *state != State::Running)
+                && input.just_pressed(PlayerAction::FlopAttack)
+            {
+                state.set(State::Attacking);
+
+                let attack_entity = commands
+                    .spawn_bundle(TransformBundle::default())
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                    .insert(CollisionGroups::new(
+                        BodyLayers::PLAYER_ATTACK,
+                        BodyLayers::ENEMY,
+                    ))
+                    .insert(Attack {
+                        damage: stats.damage,
+                    })
+                    .insert(AttackFrames {
+                        startup: 0,
+                        active: 3,
+                        recovery: 4,
+                    })
+                    .id();
+                commands.entity(entity).push_children(&[attack_entity]);
+                //TODO: define hitbox size and placement through resources
+
+                //maybe move audio effects?
+                if let Some(fighter) = fighter_assets.get(fighter_meta) {
+                    if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+                        let fx_playback = FighterStateEffectsPlayback::new(*state, effects.clone());
+                        commands.entity(entity).insert(fx_playback);
+                    }
+                }
+                // commands.
+                // commands.entity(entity)
+            }
+        } else {
+            let mut movement = Vec2::ZERO;
+
+            //TODO: Replace with movement intent eventwriter in movement rewrite!
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame < 3 {
+                if facing.is_left() {
+                    movement.x -= 200. * time.delta_seconds();
+                } else {
+                    movement.x += 200. * time.delta_seconds();
+                }
+            }
+
+            // For currently unclear reasons, the first Animation frame may run for less Bevy frames
+            // than expected. When this is the case, the player jumps less then it should, netting,
+            // at the end of the animation, a slightly negative Y than the beginning, which causes
+            // problems. This is a workaround.
+            //
+            if start_y.is_none() {
+                *start_y = Some(transform.translation.y);
+            }
+
+            if animation.current_frame < 1 {
+                movement.y += 180. * time.delta_seconds();
+            } else if animation.current_frame < 3 {
+                movement.y -= 90. * time.delta_seconds();
+            } else if animation.is_finished() {
+                movement.y = start_y.unwrap();
+                *start_y = None;
+            }
+
+            let event = PlayerMovement {
+                player_id: entity,
+                movement,
+                set_facing_state: false,
+            };
+
+            move_commands.send(event);
         }
     }
 }

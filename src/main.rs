@@ -185,6 +185,7 @@ fn main() {
             SystemStage::parallel(),
         )
         .add_event::<ArrivedEvent>()
+        .add_event::<PlayerMovement>()
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
@@ -209,15 +210,28 @@ fn main() {
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(player_controller)
                 .with_system(pick_items)
                 .with_system(y_sort)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
-                .with_system(knockback_system)
                 .with_system(move_direction_system)
                 .with_system(pause)
                 .into(),
+        )
+        .add_system(
+            process_and_apply_player_movements
+                .run_in_state(GameState::InGame)
+                .label("process_and_apply_player_movements"),
+        )
+        .add_system(
+            player_controller
+                .run_in_state(GameState::InGame)
+                .before("process_and_apply_player_movements"),
+        )
+        .add_system(
+            knockback_system
+                .run_in_state(GameState::InGame)
+                .before("process_and_apply_player_movements"),
         )
         .add_system(
             set_target_near_player
