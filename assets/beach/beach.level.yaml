@@ -52,16 +52,22 @@ players:
 enemies:
   - fighter: &slinger /fighters/slinger/slinger.fighter.yaml
     location: [325, 0, 0]
+    trip_point_x: -1
   - fighter: *slinger
     location: [225, 50, 0]
+    trip_point_x: -1
   - fighter: &bandit /fighters/bandit/bandit.fighter.yaml
     location: [225, -10, 0]
+    trip_point_x: -1
   - fighter: *bandit
     location: [275, -50, 0]
+    trip_point_x: -1
   - fighter: &brute /fighters/brute/brute.fighter.yaml
     location: [400, -30, 0]
+    trip_point_x: -1
   - fighter: *brute
     location: [450, 20, 0]
+    trip_point_x: 300
 
 items:
   - item: &bottle /items/bottle/bottle.item.yaml

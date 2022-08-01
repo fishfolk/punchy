@@ -9,12 +9,14 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 
 ![EA469655-50B7-487F-84EA-A4A06938356A](https://user-images.githubusercontent.com/583842/161245719-7b587a2a-dd02-4edc-8640-b26ae6f7eafb.gif)
 
-https://user-images.githubusercontent.com/1379590/175423671-0dc7bea3-6c63-42ed-a124-b07bce1db0cb.mp4
+https://user-images.githubusercontent.com/1379590/181386240-a1cac84f-fb12-4195-9664-7e673414abf0.mp4
 
 ## Web Build
-Our web build stays up to date with our [latest relese](https://github.com/fishfight/punchy/releases/latest).
+We keep our web build current with our [latest relese](https://github.com/fishfight/punchy/releases/latest).
 
-https://fishfight.github.io/punchy/demo/
+https://fishfight.github.io/punchy/player/latest/
+
+Previous versions of the web build can also be found linked on their [respective release pages](https://github.com/fishfight/punchy/releases/).
 
 ## Building current development version
 If you wish to check out changes not yet made it into a release, you can build the game for yourself.
@@ -39,3 +41,7 @@ Or if you install [`just`](https://github.com/casey/just) you can simply run `ju
 ## MVP Spec
 
 ![861A6300-5FFD-4DDC-B4BF-0E8514F4B87C](https://user-images.githubusercontent.com/583842/161247148-0bc07089-1409-48ca-9cc8-ee1a1edddb9e.png)
+
+
+
+

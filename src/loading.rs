@@ -1,17 +1,14 @@
 use bevy::{asset::AssetStage, prelude::*};
 use bevy_parallax::ParallaxResource;
 use bevy_rapier2d::prelude::CollisionGroups;
-use iyes_loopless::{
-    prelude::{ConditionSet, IntoConditionalSystem},
-    state::NextState,
-};
+use iyes_loopless::{prelude::*, state::NextState};
 
 use rand::seq::SliceRandom;
 
 use crate::{
     animation::Animation,
     collisions::BodyLayers,
-    config::EngineConfig,
+    config::ENGINE_CONFIG,
     enemy::{Enemy, EnemyBundle},
     input::MenuAction,
     item::ItemBundle,
@@ -31,21 +28,19 @@ use leafwing_input_manager::{
     InputManagerBundle,
 };
 
+use progress::{HasLoadProgress, LoadingResources};
+pub mod progress;
+
 pub struct LoadingPlugin;
 
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let engine_config = {
-            use structopt::StructOpt;
-            EngineConfig::from_args()
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        let engine_config = EngineConfig::from_web_params();
-
         app.add_system(load_level.run_in_state(GameState::LoadingLevel))
-            .add_system(load_game.run_in_state(GameState::LoadingGame))
+            .add_system(
+                load_game
+                    .run_in_state(GameState::LoadingGame)
+                    .run_if(game_assets_loaded),
+            )
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
@@ -55,7 +50,7 @@ impl Plugin for LoadingPlugin {
             );
 
         // Configure hot reload
-        if engine_config.hot_reload {
+        if ENGINE_CONFIG.hot_reload {
             app.add_stage_after(
                 AssetStage::LoadAssets,
                 GameStage::HotReload,
@@ -74,6 +69,29 @@ impl Plugin for LoadingPlugin {
     }
 }
 
+// Condition system used to make sure game assets have loaded
+fn game_assets_loaded(
+    game_handle: Res<Handle<GameMeta>>,
+    loading_resources: LoadingResources,
+    game_assets: Res<Assets<GameMeta>>,
+) -> bool {
+    if let Some(game) = game_assets.get(game_handle.id) {
+        // Track load progress
+        let load_progress = game.load_progress(&loading_resources);
+        debug!(
+            %load_progress,
+            "Loading game assets: {:.2}% ",
+            load_progress.as_percent()
+        );
+
+        // Wait until assets are loaded to start game
+        load_progress.as_percent() >= 1.0
+    } else {
+        false
+    }
+}
+
+/// System param used to load and hot reload the game
 #[derive(SystemParam)]
 pub struct GameLoader<'w, 's> {
     skip_next_asset_update_event: Local<'s, bool>,
@@ -82,7 +100,6 @@ pub struct GameLoader<'w, 's> {
     game_handle: Res<'w, Handle<GameMeta>>,
     assets: ResMut<'w, Assets<GameMeta>>,
     egui_ctx: ResMut<'w, EguiContext>,
-    asset_server: Res<'w, AssetServer>,
     events: EventReader<'w, 's, AssetEvent<GameMeta>>,
 }
 
@@ -106,13 +123,10 @@ impl<'w, 's> GameLoader<'w, 's> {
             game_handle,
             mut assets,
             mut egui_ctx,
-            asset_server,
             ..
         } = self;
 
-        if let Some(game) = assets.get_mut(game_handle.clone_weak()) {
-            debug!("Loaded game");
-
+        if let Some(game) = assets.get_mut(game_handle.id) {
             // Hot reload preparation
             if is_hot_reload {
                 // Despawn previous camera
@@ -164,11 +178,10 @@ impl<'w, 's> GameLoader<'w, 's> {
 
             // Helper to load border images
             let mut load_border_image = |border: &mut BorderImageMeta| {
-                border.handle = asset_server.load(&border.image);
                 border.egui_texture = egui_ctx.add_image(border.handle.clone_weak());
             };
 
-            // Load border images
+            // Add Border images to egui context
             load_border_image(&mut game.ui_theme.hud.portrait_frame);
             load_border_image(&mut game.ui_theme.panel.border);
             load_border_image(&mut game.ui_theme.hud.lifebar.background_image);
@@ -310,9 +323,22 @@ fn load_level(
     game: Res<GameMeta>,
     windows: Res<Windows>,
     mut storage: ResMut<Storage>,
+    loading_resources: LoadingResources,
 ) {
     if let Some(level) = assets.get(level_handle.clone_weak()) {
-        debug!("Loaded level");
+        // Track load progress
+        let load_progress = level.load_progress(&loading_resources);
+        debug!(
+            %load_progress,
+            "Loading level assets: {:.2}% ",
+            load_progress.as_percent()
+        );
+
+        // Wait until assets are loaded to start game
+        if load_progress.as_percent() < 1.0 {
+            return;
+        }
+
         let window = windows.primary();
 
         // Setup the parallax background

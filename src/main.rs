@@ -56,7 +56,7 @@ use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
 
-use crate::{config::EngineConfig, input::PlayerAction, item::pick_items};
+use crate::{input::PlayerAction, item::pick_items};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -138,14 +138,9 @@ impl Default for PhysicsBundle {
 pub struct ArrivedEvent(Entity);
 
 fn main() {
-    #[cfg(not(target_arch = "wasm32"))]
-    let engine_config = {
-        use structopt::StructOpt;
-        EngineConfig::from_args()
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let engine_config = EngineConfig::from_web_params();
+    // Load engine config. This will parse CLI arguments or web query string so we want to do it
+    // before we create the app to make sure everything is in order.
+    let engine_config = &*config::ENGINE_CONFIG;
 
     let mut app = App::new();
     app.insert_resource(WindowDescriptor {
@@ -179,8 +174,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
 
     // Add other systems and resources
-    app.insert_resource(engine_config.clone())
-        .insert_resource(ClearColor(Color::BLACK))
+    app.insert_resource(ClearColor(Color::BLACK))
         .add_stage_after(
             CoreStage::Update,
             GameStage::Animation,
@@ -268,8 +262,8 @@ fn main() {
 
     // Get the game handle
     let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-    let game_asset = engine_config.game_asset;
-    let game_handle: Handle<GameMeta> = asset_server.load(&game_asset);
+    let game_asset = &engine_config.game_asset;
+    let game_handle: Handle<GameMeta> = asset_server.load(game_asset);
 
     // Insert game handle resource
     app.world.insert_resource(game_handle);
@@ -334,24 +328,34 @@ fn game_over_on_players_death(
 //for enemys without current target, pick a new spot near the player as target
 fn set_target_near_player(
     mut commands: Commands,
-    query: Query<(Entity, &State), (With<Enemy>, Without<Target>)>,
+    mut enemies_query: Query<(Entity, &State, &mut TripPointX), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
     let mut rng = rand::thread_rng();
-    let transforms = player_query.iter().collect::<Vec<_>>();
+    let p_transforms = player_query.iter().collect::<Vec<_>>();
+    let max_player_x = p_transforms
+        .iter()
+        .map(|transform| transform.translation.x)
+        .max_by(f32::total_cmp);
 
-    for (entity, state) in query.iter() {
-        if *state == State::Idle {
-            if let Some(player_transform) = transforms.choose(&mut rng) {
-                let x_offset = rng.gen_range(-100.0..100.);
-                let y_offset = rng.gen_range(-100.0..100.);
-                commands.entity(entity).insert(Target {
-                    position: Vec2::new(
-                        player_transform.translation.x + x_offset,
-                        (player_transform.translation.y + y_offset)
-                            .clamp(consts::MIN_Y, consts::MAX_Y),
-                    ),
-                });
+    if let Some(max_player_x) = max_player_x {
+        for (e_entity, e_state, mut e_trip_point_x) in enemies_query.iter_mut() {
+            if *e_state == State::Idle {
+                if let Some(p_transform) = p_transforms.choose(&mut rng) {
+                    if max_player_x > e_trip_point_x.0 {
+                        e_trip_point_x.0 = f32::MIN;
+
+                        let x_offset = rng.gen_range(-100.0..100.);
+                        let y_offset = rng.gen_range(-100.0..100.);
+                        commands.entity(e_entity).insert(Target {
+                            position: Vec2::new(
+                                p_transform.translation.x + x_offset,
+                                (p_transform.translation.y + y_offset)
+                                    .clamp(consts::MIN_Y, consts::MAX_Y),
+                            ),
+                        });
+                    }
+                }
             }
         }
     }

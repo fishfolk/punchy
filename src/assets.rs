@@ -70,9 +70,14 @@ impl AssetLoader for GameMetaLoader {
             let self_path = load_context.path().to_owned();
 
             // Detect the system locale
-            let locale = sys_locale::get_locale()
-                .unwrap_or_else(|| "en-US".to_string())
-                .parse()?;
+            let locale = sys_locale::get_locale().unwrap_or_else(|| "en-US".to_string());
+            let locale = locale.parse().unwrap_or_else(|e| {
+                warn!(
+                    "Could not parse system locale string ( \"{}\" ), defaulting to \"en-US\": {}",
+                    locale, e
+                );
+                "en-US".parse().unwrap()
+            });
             debug!("Detected system locale: {}", locale);
             meta.translations.detected_locale = locale;
 
@@ -100,15 +105,33 @@ impl AssetLoader for GameMetaLoader {
             meta.main_menu.background_image.image_handle = main_menu_background;
             dependencies.push(main_menu_background_path);
 
-            // Load the music
+            // Load UI border images
+            let mut load_border_image = |border: &mut BorderImageMeta| {
+                let (path, handle) = get_relative_asset(load_context, &self_path, &border.image);
+                dependencies.push(path);
+                border.handle = handle;
+            };
+            load_border_image(&mut meta.ui_theme.hud.portrait_frame);
+            load_border_image(&mut meta.ui_theme.panel.border);
+            load_border_image(&mut meta.ui_theme.hud.lifebar.background_image);
+            load_border_image(&mut meta.ui_theme.hud.lifebar.progress_image);
+            for button in meta.ui_theme.button_styles.values_mut() {
+                load_border_image(&mut button.borders.default);
+                if let Some(border) = &mut button.borders.clicked {
+                    load_border_image(border);
+                }
+                if let Some(border) = &mut button.borders.focused {
+                    load_border_image(border);
+                }
+            }
 
+            // Load the music
             let (music_path, music_handle) =
                 get_relative_asset(load_context, &self_path, &meta.main_menu.music);
             meta.main_menu.music_handle = music_handle;
             dependencies.push(music_path);
 
             // Load UI fonts
-
             for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =
                     get_relative_asset(load_context, &self_path, font_relative_path);
@@ -145,15 +168,6 @@ impl AssetLoader for LevelMetaLoader {
 
             let self_path = load_context.path();
 
-            // Convert all parallax paths to relative asset paths so that the convention matches the
-            // rest of the paths used by the asset loaders.
-            for layer in &mut meta.parallax_background.layers {
-                layer.path = relative_asset_path(self_path, &layer.path)
-                    .to_str()
-                    .unwrap()
-                    .to_owned();
-            }
-
             let mut dependencies = Vec::new();
 
             // Load the players
@@ -184,8 +198,24 @@ impl AssetLoader for LevelMetaLoader {
                 item.item_handle = item_handle;
             }
 
-            // Load the music
+            // Load parallax background layers
+            for layer in &mut meta.parallax_background.layers {
+                let (path, handle) = get_relative_asset(load_context, self_path, &layer.path);
 
+                // Update the layer path to use an absolute path so that it matches the conventione
+                // used by the bevy_parallax_background plugin.
+                layer.path = path
+                    .path()
+                    .as_os_str()
+                    .to_str()
+                    .expect("utf8-filename")
+                    .to_string();
+
+                layer.image_handle = handle;
+                dependencies.push(path);
+            }
+
+            // Load the music
             let (music_path, music_handle) =
                 get_relative_asset(load_context, self_path, &meta.music);
             meta.music_handle = music_handle;
