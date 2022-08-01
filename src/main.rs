@@ -6,7 +6,6 @@ use bevy::{asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, pr
 use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
-use consts::ENEMY_FOV_X;
 use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
@@ -329,34 +328,34 @@ fn game_over_on_players_death(
 //for enemys without current target, pick a new spot near the player as target
 fn set_target_near_player(
     mut commands: Commands,
-    query: Query<(Entity, &State, &Transform), (With<Enemy>, Without<Target>)>,
+    mut enemies_query: Query<(Entity, &State, &mut TripPointX), (With<Enemy>, Without<Target>)>,
     player_query: Query<&Transform, With<Player>>,
 ) {
     let mut rng = rand::thread_rng();
-    let player_transforms = player_query.iter().collect::<Vec<_>>();
+    let p_transforms = player_query.iter().collect::<Vec<_>>();
+    let max_player_x = p_transforms
+        .iter()
+        .map(|transform| transform.translation.x)
+        .max_by(f32::total_cmp);
 
-    for (entity, state, enemy_transform) in query.iter() {
-        if *state == State::Idle {
-            let in_view_player_transforms = player_transforms
-                .iter()
-                .filter(|transform| {
-                    (transform.translation - enemy_transform.translation)
-                        .x
-                        .abs()
-                        <= ENEMY_FOV_X
-                })
-                .collect::<Vec<_>>();
+    if let Some(max_player_x) = max_player_x {
+        for (e_entity, e_state, mut e_trip_point_x) in enemies_query.iter_mut() {
+            if *e_state == State::Idle {
+                if let Some(p_transform) = p_transforms.choose(&mut rng) {
+                    if max_player_x > e_trip_point_x.0 {
+                        e_trip_point_x.0 = f32::MIN;
 
-            if let Some(player_transform) = in_view_player_transforms.choose(&mut rng) {
-                let x_offset = rng.gen_range(-100.0..100.);
-                let y_offset = rng.gen_range(-100.0..100.);
-                commands.entity(entity).insert(Target {
-                    position: Vec2::new(
-                        player_transform.translation.x + x_offset,
-                        (player_transform.translation.y + y_offset)
-                            .clamp(consts::MIN_Y, consts::MAX_Y),
-                    ),
-                });
+                        let x_offset = rng.gen_range(-100.0..100.);
+                        let y_offset = rng.gen_range(-100.0..100.);
+                        commands.entity(e_entity).insert(Target {
+                            position: Vec2::new(
+                                p_transform.translation.x + x_offset,
+                                (p_transform.translation.y + y_offset)
+                                    .clamp(consts::MIN_Y, consts::MAX_Y),
+                            ),
+                        });
+                    }
+                }
             }
         }
     }
