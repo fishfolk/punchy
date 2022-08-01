@@ -9,7 +9,7 @@ use crate::{
     animation::Animation,
     collisions::BodyLayers,
     config::ENGINE_CONFIG,
-    enemy::{Enemy, EnemyBundle},
+    enemy::{Boss, Enemy, EnemyBundle},
     input::MenuAction,
     item::ItemBundle,
     metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
@@ -361,7 +361,14 @@ fn load_level(
 
         // Spawn the enemies
         for enemy in &level.enemies {
-            commands.spawn_bundle(EnemyBundle::new(enemy));
+            let mut ec = commands.spawn_bundle(EnemyBundle::new(enemy));
+
+            match enemy.boss {
+                Some(true) => {
+                    ec.insert(Boss);
+                }
+                _ => {}
+            }
         }
 
         // Spawn the items

@@ -23,6 +23,7 @@ use crate::{
         self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_BOTTLE_NAME, ITEM_HEIGHT, ITEM_LAYER,
         ITEM_WIDTH, THROW_ITEM_ROTATION_SPEED,
     },
+    enemy::Boss,
     input::PlayerAction,
     item::item_carried_by_player,
     metadata::{FighterMeta, GameMeta, ItemMeta},
@@ -43,6 +44,7 @@ impl Plugin for AttackPlugin {
                 .with_system(player_projectile_attack)
                 .with_system(player_throw)
                 .with_system(player_flop)
+                .with_system(boss_jump_attack)
                 .with_system(activate_hitbox)
                 .with_system(deactivate_hitbox)
                 .with_system(projectile_cleanup)
@@ -51,6 +53,11 @@ impl Plugin for AttackPlugin {
         )
         .add_system(
             enemy_attack
+                .run_in_state(GameState::InGame)
+                .after("move_to_target"),
+        )
+        .add_system(
+            boss_attack
                 .run_in_state(GameState::InGame)
                 .after("move_to_target"),
         );
@@ -401,7 +408,7 @@ fn player_flop(
 fn enemy_attack(
     mut query: Query<
         (Entity, &mut State, &Facing, &Handle<FighterMeta>),
-        (With<Enemy>, With<Target>),
+        (With<Enemy>, With<Target>, Without<Boss>),
     >,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
@@ -452,6 +459,92 @@ fn enemy_attack(
                     }
                 }
             }
+        }
+    }
+}
+
+fn boss_attack(
+    mut query: Query<
+        (Entity, &mut State, &Handle<FighterMeta>),
+        (With<Enemy>, With<Target>, With<Boss>),
+    >,
+    mut event_reader: EventReader<ArrivedEvent>,
+
+    mut commands: Commands,
+) {
+    for event in event_reader.iter() {
+        if let Ok((entity, mut state, fighter_handle)) = query.get_mut(event.0) {
+            if *state != State::Attacking {
+                if rand::random() && *state != State::Waiting {
+                    state.set(State::Waiting);
+                } else {
+                    state.set(State::Attacking);
+
+                    let attack_entity = commands
+                        .spawn_bundle(TransformBundle::from_transform(Transform::default()))
+                        .insert(Sensor(true))
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(CollisionGroups::new(
+                            BodyLayers::ENEMY_ATTACK,
+                            BodyLayers::PLAYER,
+                        ))
+                        .insert(Attack { damage: 30 })
+                        .insert(AttackFrames {
+                            //TODO: Check if this is correct
+                            startup: 1,
+                            active: 2,
+                            recovery: 3,
+                        })
+                        .id();
+
+                    commands.entity(entity).push_children(&[attack_entity]);
+                }
+            }
+        }
+    }
+}
+
+fn boss_jump_attack(
+    mut query: Query<(&mut State, &Facing, &Animation, &mut Transform)>,
+    time: Res<Time>,
+    mut start_y: Local<Option<f32>>,
+) {
+    for (mut state, facing, animation, mut transform) in query.iter_mut() {
+        if *state == State::Attacking {
+            let mut movement = Vec2::ZERO;
+
+            //TODO: Replace with movement intent eventwriter in movement rewrite!
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame < 3 {
+                if facing.is_left() {
+                    movement.x -= 150. * time.delta_seconds();
+                } else {
+                    movement.x += 150. * time.delta_seconds();
+                }
+            }
+
+            // For currently unclear reasons, the first Animation frame may run for less Bevy frames
+            // than expected. When this is the case, the player jumps less then it should, netting,
+            // at the end of the animation, a slightly negative Y than the beginning, which causes
+            // problems. This is a workaround.
+            //
+            if start_y.is_none() {
+                *start_y = Some(transform.translation.y);
+            }
+
+            if animation.current_frame < 1 {
+                movement.y += 270. * time.delta_seconds();
+            } else if animation.current_frame < 3 {
+                movement.y -= 180. * time.delta_seconds();
+            } else if animation.is_finished() {
+                movement.y = start_y.unwrap();
+                *start_y = None;
+            }
+
+            transform.translation += movement.extend(0.);
         }
     }
 }

@@ -9,6 +9,9 @@ use crate::{
 #[derive(Component)]
 pub struct Enemy;
 
+#[derive(Component)]
+pub struct Boss;
+
 /// X coordinate of the level that requires to be trespassed in order for the enemies to move.
 /// For simplicy, once a given trip point is trespassed for the first time, it's set to f32::MIN.
 #[derive(Component)]
