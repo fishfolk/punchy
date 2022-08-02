@@ -23,13 +23,10 @@ use crate::{
         self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_BOTTLE_NAME, ITEM_HEIGHT, ITEM_LAYER,
         ITEM_WIDTH, THROW_ITEM_ROTATION_SPEED,
     },
-    enemy::SpawnLocationX,
     input::PlayerAction,
     item::item_carried_by_player,
-    metadata::{FighterMeta, GameMeta, ItemMeta, LevelMeta},
-    movement::{
-        clamp_player_movements, LeftMovementBoundary, MoveInArc, MoveInDirection, Rotate, Target,
-    },
+    metadata::{FighterMeta, ItemMeta},
+    movement::{MoveInArc, MoveInDirection, PlayerMovementClamper, Rotate, Target},
     state::State,
     ArrivedEvent, Enemy, GameState, Player, Stats,
 };
@@ -298,12 +295,9 @@ fn player_flop(
         ),
         With<Player>,
     >,
-    enemy_spawn_locations_query: Query<&SpawnLocationX>,
-    level_meta: Res<LevelMeta>,
+    player_movement_clamper: PlayerMovementClamper,
     fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
-    left_movement_boundary: Res<LeftMovementBoundary>,
-    game_meta: Res<GameMeta>,
     mut start_y: Local<Option<f32>>,
 ) {
     let players_movement = query
@@ -390,13 +384,7 @@ fn player_flop(
         )
         .collect::<Vec<_>>();
 
-    let players_movement = clamp_player_movements(
-        players_movement,
-        &enemy_spawn_locations_query,
-        &level_meta,
-        &left_movement_boundary,
-        &game_meta,
-    );
+    let players_movement = player_movement_clamper.clamp(players_movement);
 
     for ((_, _, mut transform, _, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement)
     {
