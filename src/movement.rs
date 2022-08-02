@@ -230,10 +230,16 @@ pub fn rotate_system(mut query: Query<(&mut Transform, &Rotate)>, time: Res<Time
     }
 }
 
+/// Target belonging to an enemy (therefore, the player).
+/// The attack distance is for randomization purposes, and it's the distance that triggers the
+/// attack. More precisely, it's the max distance - if the enemy finds itself at a smaller
+/// distance, it will attack.
 #[derive(Component)]
 pub struct Target {
     pub position: Vec2,
+    pub attack_distance: f32,
 }
+
 pub fn move_to_target(
     mut query: Query<(
         Entity,
@@ -258,7 +264,10 @@ pub fn move_to_target(
             } else {
                 *facing = Facing::Left;
             }
-            if transform.translation.truncate().distance(target.position) <= 100. {
+
+            let target_distance = transform.translation.truncate().distance(target.position);
+
+            if target_distance <= target.attack_distance {
                 commands.entity(entity).remove::<Target>();
                 *state = State::Idle;
                 event_writer.send(ArrivedEvent(entity))
