@@ -1,6 +1,6 @@
 # Main Menu
 title = 
-    Fish Fight
+    Fish Folk
     Punchy
 start-game = Start Game
 settings = Settings

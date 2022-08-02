@@ -299,7 +299,7 @@ mod native {
         let (sender, receiver) = async_channel::unbounded();
 
         // Identify project storage file path
-        let project_dirs = directories::ProjectDirs::from("org", "FishFight", "Punchy")
+        let project_dirs = directories::ProjectDirs::from("org", "FishFolk", "Punchy")
             .expect("Identify system data dir path");
         let file_path = project_dirs.data_dir().join("storage.yml");
 
