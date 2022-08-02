@@ -9,6 +9,7 @@ use bevy::{
 use bevy_kira_audio::{AudioApp, AudioPlugin};
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
+use consts::ENEMY_TARGET_MAX_OFFSET;
 use enemy::*;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
@@ -350,8 +351,10 @@ fn set_target_near_player(
                     if max_player_x > e_trip_point_x.0 {
                         e_trip_point_x.0 = f32::MIN;
 
-                        let x_offset = rng.gen_range(-100.0..100.);
-                        let y_offset = rng.gen_range(-100.0..100.);
+                        let x_offset =
+                            rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
+                        let y_offset =
+                            rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
                         commands.entity(e_entity).insert(Target {
                             position: Vec2::new(
                                 p_transform.translation.x + x_offset,
