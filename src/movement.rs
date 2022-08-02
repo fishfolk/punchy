@@ -259,19 +259,29 @@ pub fn move_to_target(
             transform.translation += (target.position.extend(0.) - translation_old).normalize()
                 * stats.movement_speed
                 * time.delta_seconds();
-            if transform.translation.x > translation_old.x {
-                *facing = Facing::Right;
-            } else {
-                *facing = Facing::Left;
-            }
 
             let target_distance = transform.translation.truncate().distance(target.position);
 
             if target_distance <= target.attack_distance {
+                // Note that the target includes an offset, so this can still not point to the
+                // player.
+
+                *facing = if target.position.x > transform.translation.x {
+                    Facing::Right
+                } else {
+                    Facing::Left
+                };
+
                 commands.entity(entity).remove::<Target>();
                 *state = State::Idle;
                 event_writer.send(ArrivedEvent(entity))
             } else {
+                *facing = if transform.translation.x > translation_old.x {
+                    Facing::Right
+                } else {
+                    Facing::Left
+                };
+
                 *state = State::Running;
             }
         }
