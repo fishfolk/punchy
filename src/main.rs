@@ -148,7 +148,7 @@ fn main() {
 
     let mut app = App::new();
     app.insert_resource(WindowDescriptor {
-        title: "Fish Fight Punchy".to_string(),
+        title: "Fish Folk Punchy".to_string(),
         scale_factor_override: Some(1.0),
         ..default()
     })

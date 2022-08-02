@@ -2,7 +2,7 @@
 name = "punchy"
 version = "0.1.0"
 description = "A 2.5D side-scroller beatemup"
-authors = ["The Fish Fight Game & Spicy Lobster Developers"]
+authors = ["The Fish Folk Game & Spicy Lobster Developers"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 
