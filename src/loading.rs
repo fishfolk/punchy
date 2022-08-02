@@ -1,21 +1,20 @@
 use bevy::{asset::AssetStage, prelude::*};
 use bevy_parallax::ParallaxResource;
-use bevy_rapier2d::prelude::CollisionGroups;
 use iyes_loopless::{prelude::*, state::NextState};
 
 use rand::seq::SliceRandom;
 
 use crate::{
     animation::Animation,
-    collisions::BodyLayers,
     config::ENGINE_CONFIG,
     enemy::{Enemy, EnemyBundle},
+    fighter::ActiveFighterBundle,
     input::MenuAction,
     item::ItemBundle,
     metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
     platform::Storage,
     player::{Player, PlayerBundle},
-    AnimatedSpriteSheetBundle, CharacterBundle, GameStage, GameState, PhysicsBundle, Stats,
+    GameStage, GameState, Stats,
 };
 
 use bevy::{ecs::system::SystemParam, render::camera::ScalingMode};
@@ -443,42 +442,14 @@ fn load_fighters(
 ) {
     for (entity, transform, fighter_handle, player, enemy) in fighters.iter() {
         if let Some(fighter) = fighter_assets.get(fighter_handle) {
-            let body_layers = if player.is_some() {
-                BodyLayers::PLAYER
-            } else if enemy.is_some() {
-                BodyLayers::ENEMY
-            } else {
-                unreachable!();
-            };
-
-            commands
-                .entity(entity)
-                .insert(Name::new(fighter.name.clone()))
-                .insert_bundle(AnimatedSpriteSheetBundle {
-                    sprite_sheet: SpriteSheetBundle {
-                        sprite: TextureAtlasSprite::new(0),
-                        texture_atlas: fighter
-                            .spritesheet
-                            .atlas_handle
-                            .choose(&mut rand::thread_rng())
-                            .unwrap()
-                            .clone(),
-                        transform: *transform,
-                        ..Default::default()
-                    },
-                    animation: Animation::new(
-                        fighter.spritesheet.animation_fps,
-                        fighter.spritesheet.animations.clone(),
-                    ),
-                })
-                .insert_bundle(CharacterBundle {
-                    stats: fighter.stats.clone(),
-                    ..default()
-                })
-                .insert_bundle(PhysicsBundle {
-                    collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
-                    ..default()
-                });
+            ActiveFighterBundle::activate_fighter_stub(
+                &mut commands,
+                fighter,
+                entity,
+                transform,
+                player,
+                enemy,
+            );
         }
     }
 }

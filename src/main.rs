@@ -33,6 +33,7 @@ mod collisions;
 mod config;
 mod consts;
 mod enemy;
+mod fighter;
 mod input;
 mod item;
 mod loading;

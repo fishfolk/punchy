@@ -1,4 +1,5 @@
 use bevy::{
+    ecs::system::SystemParam,
     math::{Quat, Vec2, Vec3},
     prelude::{
         Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
@@ -11,8 +12,9 @@ use leafwing_input_manager::prelude::ActionState;
 use crate::{
     animation::Facing,
     consts::{self, LEFT_BOUNDARY_MAX_DISTANCE},
+    enemy::SpawnLocationX,
     input::PlayerAction,
-    metadata::GameMeta,
+    metadata::{GameMeta, LevelMeta},
     state::State,
     ArrivedEvent, DespawnMarker, Player, Stats,
 };
@@ -40,9 +42,8 @@ pub struct Knockback {
 pub fn knockback_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Transform, &mut Knockback, Option<&Player>)>,
+    player_movement_clamper: PlayerMovementClamper,
     time: Res<Time>,
-    game_meta: Res<GameMeta>,
-    left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
     let mut all_knockbacks = query.iter_mut().collect::<Vec<_>>();
 
@@ -85,7 +86,7 @@ pub fn knockback_system(
         })
         .collect::<Vec<_>>();
 
-    let player_dirs = clamp_player_movements(player_movements, &left_movement_boundary, &game_meta);
+    let player_dirs = player_movement_clamper.clamp(player_movements);
 
     for ((_, transform, _, _), player_dir) in player_knockbacks.iter_mut().zip(player_dirs) {
         transform.translation += player_dir.unwrap().extend(0.);
@@ -103,9 +104,8 @@ pub fn player_controller(
         ),
         With<Player>,
     >,
+    player_movement_clamper: PlayerMovementClamper,
     time: Res<Time>,
-    game_meta: Res<GameMeta>,
-    left_movement_boundary: Res<LeftMovementBoundary>,
 ) {
     // Compute the new direction vectors; can be None if the state is not (idle or running).
     //
@@ -130,7 +130,7 @@ pub fn player_controller(
         })
         .collect::<Vec<_>>();
 
-    let player_dirs = clamp_player_movements(player_movements, &left_movement_boundary, &game_meta);
+    let player_dirs = player_movement_clamper.clamp(player_movements);
 
     for ((mut state, _, mut transform, mut facing, _), dir) in
         query.iter_mut().zip(player_dirs.iter())
@@ -286,71 +286,110 @@ pub fn update_left_movement_boundary(
     }
 }
 
-/// Returns the direction vectors, with X/Y clamping.
-///
-/// Not a system, but a utility method!.
-///
-/// player_movements: array of (location, direction vector).
-///
-/// WATCH OUT! All players must be included, even if they don't move, in which case, pass
-/// None as direction. This is because clamping is based on the position of _all_ the
-/// players.
-/// It's possible to pass an empty array; this can happen if the system doesn't guard the case
-/// where all the players are dead; an empty array will be returned.
-pub fn clamp_player_movements(
-    player_movements: Vec<(Vec3, Option<Vec2>)>,
-    left_movement_boundary: &LeftMovementBoundary,
-    game_meta: &GameMeta,
-) -> Vec<Option<Vec2>> {
-    // In the first pass, we perform the absolute clamping (screen limits), and we collect the data
-    // required for the relative clamping.
+#[derive(SystemParam)]
+pub struct PlayerMovementClamper<'w, 's> {
+    enemy_spawn_locations_query: Query<'w, 's, &'static SpawnLocationX>,
+    level_meta: Res<'w, LevelMeta>,
+    game_meta: Res<'w, GameMeta>,
+    left_movement_boundary: Res<'w, LeftMovementBoundary>,
+}
 
-    let mut min_new_player_x = f32::MAX;
+impl<'w, 's> PlayerMovementClamper<'w, 's> {
+    /// Returns the direction vectors, with X/Y clamping.
+    ///
+    /// Not a system, but a utility method!.
+    ///
+    /// player_movements: array of (location, direction vector).
+    /// enemy_spawn_location_query: spawn locations of _alive_ enemies.
+    ///
+    /// WATCH OUT! All players must be included, even if they don't move, in which case, pass
+    /// None as direction. This is because clamping is based on the position of _all_ the
+    /// players.
+    /// It's possible to pass an empty array; this can happen if the system doesn't guard the case
+    /// where all the players are dead; an empty array will be returned.
+    pub fn clamp(&self, mut player_movements: Vec<(Vec3, Option<Vec2>)>) -> Vec<Option<Vec2>> {
+        // In the first pass, we check the camera stop points. If a player is moving across a stop
+        // point, all the enemies up to that point must have been defeated, in order to move.
 
-    let player_movements = player_movements
-        .iter()
-        .map(|(location, movement)| {
-            let new_movement = movement.map(|mut movement| {
-                let new_x = location.x + movement.x;
-
-                if new_x < left_movement_boundary.0 {
-                    movement.x = 0.;
-                }
-
-                //Restrict player to the ground
-                let new_y = location.y + movement.y + consts::GROUND_OFFSET;
-
-                if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
-                    movement.y = 0.;
-                }
-
-                (movement, new_x)
-            });
-
-            if let Some((_, new_x)) = new_movement {
-                min_new_player_x = min_new_player_x.min(new_x);
-            } else {
-                min_new_player_x = min_new_player_x.min(location.x);
-            }
-
-            (location, new_movement)
-        })
-        .collect::<Vec<_>>();
-
-    // Then, we perform the clamping of the players relative to each other.
-
-    let max_players_x_distance = LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
-
-    player_movements
-        .iter()
-        .map(|(_, player_movement)| {
-            player_movement.map(|(player_dir, new_player_x)| {
-                if new_player_x > min_new_player_x + max_players_x_distance {
-                    Vec2::ZERO
+        let current_stop_point = self.level_meta.stop_points.iter().find(|point_x| {
+            player_movements.iter().any(|(location, dir)| {
+                if let Some(dir) = dir {
+                    location.x < **point_x && **point_x <= location.x + dir.x
                 } else {
-                    player_dir
+                    false
                 }
             })
-        })
-        .collect::<Vec<_>>()
+        });
+
+        if let Some(current_stop_point) = current_stop_point {
+            let any_enemy_behind_stop_point = self
+                .enemy_spawn_locations_query
+                .iter()
+                .any(|SpawnLocationX(spawn_x)| spawn_x <= current_stop_point);
+
+            if any_enemy_behind_stop_point {
+                for (location, movement) in player_movements.iter_mut() {
+                    if let Some(movement) = movement.as_mut() {
+                        // Can be simplified, but it's harder to understand.
+                        if location.x + movement.x > *current_stop_point {
+                            movement.x = 0.;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Then, we perform the absolute clamping (screen top/left/bottom), and we collect the data
+        // required for the relative clamping.
+
+        let mut min_new_player_x = f32::MAX;
+
+        let player_movements = player_movements
+            .iter()
+            .map(|(location, movement)| {
+                let new_movement = movement.map(|mut movement| {
+                    let new_x = location.x + movement.x;
+
+                    if new_x < self.left_movement_boundary.0 {
+                        movement.x = 0.;
+                    }
+
+                    //Restrict player to the ground
+                    let new_y = location.y + movement.y + consts::GROUND_OFFSET;
+
+                    if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
+                        movement.y = 0.;
+                    }
+
+                    (movement, new_x)
+                });
+
+                if let Some((_, new_x)) = new_movement {
+                    min_new_player_x = min_new_player_x.min(new_x);
+                } else {
+                    min_new_player_x = min_new_player_x.min(location.x);
+                }
+
+                (location, new_movement)
+            })
+            .collect::<Vec<_>>();
+
+        // Then, we perform the clamping of the players relative to each other.
+
+        let max_players_x_distance =
+            LEFT_BOUNDARY_MAX_DISTANCE + self.game_meta.camera_move_right_boundary;
+
+        player_movements
+            .iter()
+            .map(|(_, player_movement)| {
+                player_movement.map(|(player_dir, new_player_x)| {
+                    if new_player_x > min_new_player_x + max_players_x_distance {
+                        Vec2::ZERO
+                    } else {
+                        player_dir
+                    }
+                })
+            })
+            .collect::<Vec<_>>()
+    }
 }
