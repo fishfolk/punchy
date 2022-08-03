@@ -54,6 +54,7 @@ impl Plugin for FighterStatePlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(transition_from_idle)
                     .with_system(transition_from_flopping)
+                    .with_system(transition_from_knocked_back)
                     .into(),
             )
             // Flush stage
@@ -71,6 +72,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(idling)
                     .with_system(flopping)
                     .with_system(moving)
+                    .with_system(knocked_back)
                     .into(),
             );
     }
@@ -126,7 +128,7 @@ impl Idling {
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Moving {
-    velocity: Vec2,
+    pub velocity: Vec2,
 }
 impl Moving {
     const PRIORITY: i32 = 10;
@@ -137,12 +139,25 @@ impl Moving {
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Flopping {
-    has_started: bool,
-    is_finished: bool,
+    pub has_started: bool,
+    pub is_finished: bool,
 }
 impl Flopping {
-    const PRIORITY: i32 = 20;
+    const PRIORITY: i32 = 30;
     const ANIMATION: &'static str = "attacking";
+}
+
+/// Component indicating the player is getting knocked back
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct KnockedBack {
+    pub velocity: Vec2,
+    pub timer: Timer,
+}
+impl KnockedBack {
+    const PRIORITY: i32 = 20;
+    const ANIMATION_LEFT: &'static str = "knocked_left";
+    const ANIMATION_RIGHT: &'static str = "knocked_right";
 }
 
 //
@@ -165,6 +180,17 @@ fn collect_player_actions(
             transition_intents.push_back(StateTransition::new(
                 Flopping::default(),
                 Flopping::PRIORITY,
+            ));
+        }
+
+        // For testing only: knock back player when they hit the throw button.
+        if action_state.pressed(PlayerAction::Throw) {
+            transition_intents.push_back(StateTransition::new(
+                KnockedBack {
+                    velocity: Vec2::new(-200.0, 0.0),
+                    timer: Timer::from_seconds(0.15, false),
+                },
+                KnockedBack::PRIORITY,
             ));
         }
 
@@ -196,7 +222,7 @@ fn transition_from_idle(
 ) {
     let mut commands = transition_commands.commands();
 
-    for (entity, mut transition_intents) in &mut fighters {
+    'entity: for (entity, mut transition_intents) in &mut fighters {
         // Collect transitions and sort by priority
         let mut transitions = transition_intents.drain(..).collect::<Vec<_>>();
         transitions.sort_by(|a, b| a.priority.cmp(&b.priority));
@@ -211,6 +237,7 @@ fn transition_from_idle(
                     .entity(entity)
                     .remove::<Idling>()
                     .insert_dynamic(transition.reflect_component, transition.data);
+                continue 'entity;
             }
         }
     }
@@ -223,7 +250,7 @@ fn transition_from_flopping(
 ) {
     let mut commands = transition_commands.commands();
 
-    for (entity, mut transition_intents, flopping) in &mut fighters {
+    'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
         // Collect transitions and sort by priority
         let mut intents = transition_intents.drain(..).collect::<Vec<_>>();
         intents.sort_by(|a, b| a.priority.cmp(&b.priority));
@@ -237,7 +264,7 @@ fn transition_from_flopping(
                     .entity(entity)
                     .remove::<Flopping>()
                     .insert_dynamic(intent.reflect_component, intent.data);
-                continue;
+                continue 'entity;
             }
         }
 
@@ -245,6 +272,39 @@ fn transition_from_flopping(
         if flopping.is_finished {
             // Go back to idle
             commands.entity(entity).remove::<Flopping>().insert(Idling);
+        }
+    }
+}
+
+// Initiate any transitions from the knocked back state
+fn transition_from_knocked_back(
+    mut transition_commands: CustomCommands<TransitionCmds>,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &KnockedBack)>,
+) {
+    let mut commands = transition_commands.commands();
+
+    'entity: for (entity, mut transition_intents, knocked_back) in &mut fighters {
+        // Collect transitions and sort by priority
+        let mut intents = transition_intents.drain(..).collect::<Vec<_>>();
+        intents.sort_by(|a, b| a.priority.cmp(&b.priority));
+
+        for intent in intents {
+            // Transition to higher priority intents
+            if intent.priority > KnockedBack::PRIORITY {
+                commands
+                    .entity(entity)
+                    .remove::<KnockedBack>()
+                    .insert_dynamic(intent.reflect_component, intent.data);
+                continue 'entity;
+            }
+        }
+
+        // Transition to idle when finished
+        if knocked_back.timer.finished() {
+            commands
+                .entity(entity)
+                .remove::<KnockedBack>()
+                .insert(Idling);
         }
     }
 }
@@ -377,5 +437,29 @@ fn moving(
         // Moving is a little different than the other states because we transition out of it at the
         // end of every frame, so that we only move if the player continually inputs a movement.
         commands.entity(entity).remove::<Moving>().insert(Idling);
+    }
+}
+
+fn knocked_back(
+    mut fighters: Query<(&mut Animation, &Facing, &mut Velocity, &mut KnockedBack)>,
+    time: Res<Time>,
+) {
+    for (mut animation, facing, mut velocity, mut knocked_back) in &mut fighters {
+        // If this is the start of the knock back
+        if knocked_back.timer.elapsed_secs() == 0.0 {
+            let is_left = knocked_back.velocity.x < 0.0;
+            let use_left_anim = if facing.is_left() { !is_left } else { is_left };
+            let animation_name = if use_left_anim {
+                KnockedBack::ANIMATION_LEFT
+            } else {
+                KnockedBack::ANIMATION_RIGHT
+            };
+
+            animation.play(animation_name, false);
+        }
+
+        knocked_back.timer.tick(time.delta());
+
+        **velocity = knocked_back.velocity;
     }
 }
