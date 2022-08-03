@@ -77,5 +77,5 @@ stop_points: [500, 1000]
 items:
   - item: &bottle /items/bottle/bottle.item.yaml
     location: [50, -20, 0]
-  - item: &bottle /items/bottle/bottle.item.yaml
+  - item: *bottle
     location: [50, 20, 0]
