@@ -20,10 +20,6 @@ use crate::{
 /// Plugin for managing fighter states
 pub struct FighterStatePlugin;
 
-/// The Bevy stage that fighter state change commands are flushed
-#[derive(Clone, StageLabel)]
-struct FighterStateFlushStage;
-
 /// The system set that fighter state change intents are collected
 #[derive(Clone, SystemLabel)]
 struct FighterStateCollectSystems;
@@ -65,10 +61,11 @@ impl Plugin for FighterStatePlugin {
                     .into(),
             )
             // Flush stage
-            .add_stage_before(
-                CoreStage::Update,
-                FighterStateFlushStage,
-                SystemStage::single(flush_custom_commands::<TransitionCmds>.exclusive_system()),
+            .add_system_to_stage(
+                CoreStage::PreUpdate,
+                flush_custom_commands::<TransitionCmds>
+                    .exclusive_system()
+                    .at_end(),
             )
             // State handler systems
             .add_system_set_to_stage(
