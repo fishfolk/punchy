@@ -1,16 +1,21 @@
 use std::collections::VecDeque;
 
 use bevy::{prelude::*, reflect::FromType};
+use bevy_rapier2d::prelude::{ActiveCollisionTypes, ActiveEvents, CollisionGroups, Sensor};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::{Animation, Facing},
+    attack::{Attack, AttackFrames},
+    audio::AnimationAudioPlayback,
+    collisions::BodyLayers,
     commands::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
     enemy::Enemy,
     input::PlayerAction,
+    metadata::FighterMeta,
     movement::Velocity,
     player::Player,
     GameState, Stats,
@@ -132,6 +137,7 @@ impl Moving {
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Flopping {
+    has_started: bool,
     is_finished: bool,
 }
 impl Flopping {
@@ -262,18 +268,84 @@ fn idling(mut fighters: Query<(&mut Animation, &mut Velocity), With<Idling>>) {
 }
 
 /// Handle fighter flopping state
-fn flopping(mut fighters: Query<(&mut Animation, &mut Velocity, &mut Flopping)>) {
-    for (mut animation, mut velocity, mut flopping) in &mut fighters {
-        // Make sure we stop moving ( this is temporary, we should do sort of a forward lurch )
-        **velocity = Vec2::ZERO;
+fn flopping(
+    mut commands: Commands,
+    mut fighters: Query<(
+        Entity,
+        &mut Animation,
+        &mut Velocity,
+        &Facing,
+        &Stats,
+        &Handle<FighterMeta>,
+        &mut Flopping,
+    )>,
+    fighter_assets: Res<Assets<FighterMeta>>,
+    time: Res<Time>,
+) {
+    for (entity, mut animation, mut velocity, facing, stats, meta_handle, mut flopping) in
+        &mut fighters
+    {
+        // Spawn the flop attack
+        if !flopping.has_started {
+            flopping.has_started = true;
 
-        // If we aren't playing the flop animation
-        if animation.current_animation.as_deref() != Some(Flopping::ANIMATION) {
             // Start the flop animation from the beginning
             animation.play(Flopping::ANIMATION, false /* repeating */);
 
+            // Spawn the attack entity
+            let attack_entity = commands
+                .spawn_bundle(TransformBundle::default())
+                .insert(Sensor)
+                .insert(ActiveEvents::COLLISION_EVENTS)
+                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                .insert(CollisionGroups::new(
+                    BodyLayers::PLAYER_ATTACK,
+                    BodyLayers::ENEMY,
+                ))
+                .insert(Attack {
+                    damage: stats.damage,
+                })
+                .insert(AttackFrames {
+                    startup: 0,
+                    active: 3,
+                    recovery: 4,
+                })
+                .id();
+            commands.entity(entity).push_children(&[attack_entity]);
+
+            // Play attack sound effect
+            if let Some(fighter) = fighter_assets.get(meta_handle) {
+                if let Some(effects) = fighter.audio.effect_handles.get(Flopping::ANIMATION) {
+                    let fx_playback = AnimationAudioPlayback::new(
+                        Flopping::ANIMATION.to_owned(),
+                        effects.clone(),
+                    );
+                    commands.entity(entity).insert(fx_playback);
+                }
+            }
+        }
+
+        **velocity = Vec2::ZERO;
+
+        //TODO: Fix hacky way to get a forward jump
+        if animation.current_frame < 3 {
+            let dt = time.delta_seconds();
+
+            if facing.is_left() {
+                velocity.x -= 20_000.0 * dt;
+            } else {
+                velocity.x += 20_000.0 * dt;
+            }
+
+            if animation.current_frame < 1 {
+                velocity.y += 18_000. * dt;
+            } else if animation.current_frame < 3 {
+                velocity.y -= 9_000. * dt;
+            }
+        }
+
         // If the animation is done
-        } else if animation.is_finished() {
+        if animation.is_finished() {
             // Set flopping to finished
             flopping.is_finished = true;
         }

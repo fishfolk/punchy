@@ -18,7 +18,7 @@ pub struct MovementPlugin;
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
-            CoreStage::Last,
+            CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(
@@ -56,6 +56,12 @@ pub fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>, time: Res<
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deref, DerefMut, Default)]
 pub struct Torque(pub f32);
+
+impl Torque {
+    pub fn with_clockwise(r: f32, clockwise: bool) -> Self {
+        Torque(r * if clockwise { 0.0 } else { -1.0 })
+    }
+}
 
 /// System that applies rotations based on entity torques.
 pub fn torque_system(mut query: Query<(&mut Transform, &Torque)>, time: Res<Time>) {

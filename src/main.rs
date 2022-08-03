@@ -6,7 +6,7 @@ use bevy::{
     asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, prelude::*,
     render::texture::ImageSettings,
 };
-use bevy_kira_audio::{AudioApp, AudioPlugin};
+use bevy_kira_audio::AudioApp;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use consts::ENEMY_TARGET_MAX_OFFSET;
@@ -199,11 +199,11 @@ fn main() {
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
-        .add_plugin(AudioPlugin)
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
         .add_plugin(FighterStatePlugin)
         .add_plugin(MovementPlugin)
+        .add_plugin(AudioPlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
@@ -239,11 +239,7 @@ fn main() {
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                // .with_system(move_in_arc_system)
-                // .with_system(rotate_system)
                 .with_system(camera_follow_player)
-                // .with_system(update_left_movement_boundary)
-                // .with_system(fighter_sound_effect)
                 .with_system(game_over_on_players_death)
                 .into(),
         )
@@ -255,10 +251,9 @@ fn main() {
         .add_plugin(InspectableRapierPlugin)
         .add_plugin(WorldInspectorPlugin::new())
         .register_inspectable::<Stats>()
-        .register_inspectable::<State>()
-        .register_inspectable::<Velocity>()
-        .register_inspectable::<MoveInArc>()
-        .register_inspectable::<Rotate>()
+        // .register_inspectable::<Velocity>()
+        // .register_inspectable::<MoveInArc>()
+        .register_inspectable::<Torque>()
         .register_inspectable::<attack::Attack>()
         .register_inspectable::<YSort>()
         .register_inspectable::<Facing>();

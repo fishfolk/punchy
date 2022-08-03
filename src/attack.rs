@@ -26,7 +26,7 @@ use crate::{
     input::PlayerAction,
     item::item_carried_by_player,
     metadata::{FighterMeta, ItemMeta},
-    movement::{MoveInArc, Rotate, Target, Velocity},
+    movement::{Torque, Velocity},
     ArrivedEvent,
     Enemy,
     GameState,
@@ -41,18 +41,18 @@ impl Plugin for AttackPlugin {
         app.add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(player_projectile_attack)
-                .with_system(player_throw)
-                .with_system(player_flop)
-                .with_system(activate_hitbox)
-                .with_system(deactivate_hitbox)
-                .with_system(projectile_cleanup)
-                .with_system(projectile_tick)
+                // .with_system(player_projectile_attack)
+                // .with_system(player_throw)
+                // .with_system(player_flop)
+                // .with_system(activate_hitbox)
+                // .with_system(deactivate_hitbox)
+                // .with_system(projectile_cleanup)
+                // .with_system(projectile_tick)
                 .into(),
-        )
-        .add_system(
-            enemy_attack.run_in_state(GameState::InGame), // .after("move_to_target"),
         );
+        // .add_system(
+        //     enemy_attack.run_in_state(GameState::InGame), // .after("move_to_target"),
+        // );
     }
 }
 
@@ -81,14 +81,14 @@ pub struct ProjectileLifetime(pub Timer);
 pub struct Projectile {
     #[bundle]
     sprite_bundle: SpriteBundle,
-    rotate: Rotate,
+    torque: Torque,
     collider: Collider,
     sensor: Sensor,
     events: ActiveEvents,
     collision_types: ActiveCollisionTypes,
     collision_groups: CollisionGroups,
     facing: Facing,
-    move_in_direction: Velocity,
+    velocity: Velocity,
     attack: Attack,
     attack_timer: ProjectileLifetime,
 }
@@ -110,10 +110,7 @@ impl Projectile {
                 ),
                 ..default()
             },
-            rotate: Rotate {
-                speed: THROW_ITEM_ROTATION_SPEED,
-                to_right: !facing.is_left(),
-            },
+            torque: Torque::with_clockwise(THROW_ITEM_ROTATION_SPEED, !facing.is_left()),
             collider: Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.),
             sensor: Sensor,
             events: ActiveEvents::COLLISION_EVENTS,
@@ -121,7 +118,7 @@ impl Projectile {
             //TODO: define collision layer based on the fighter shooting projectile, load for asset files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
             facing: facing.clone(),
-            move_in_direction: Velocity(dir * 300.), //TODO: Put the velocity in a cons,
+            velocity: Velocity(dir * 300.), //TODO: Put the velocity in a cons,
             attack: Attack { damage: 10 },
             attack_timer: ProjectileLifetime(Timer::new(Duration::from_secs(1), false)),
         }
@@ -132,8 +129,8 @@ impl Projectile {
 pub struct ThrownItem {
     #[bundle]
     sprite_bundle: SpriteBundle,
-    rotate: Rotate,
-    move_in_arc: MoveInArc,
+    torque: Torque,
+    // move_in_arc: MoveInArc,
     collider: Collider,
     sensor: Sensor,
     events: ActiveEvents,
@@ -155,22 +152,19 @@ impl ThrownItem {
                 transform: Transform::from_xyz(position.x, position.y, ITEM_LAYER),
                 ..default()
             },
-            rotate: Rotate {
-                speed: consts::THROW_ITEM_ROTATION_SPEED,
-                to_right: !facing.is_left(),
-            },
-            move_in_arc: MoveInArc {
-                //TODO: Set in consts
-                radius: Vec2::new(
-                    50.,
-                    consts::PLAYER_HEIGHT + consts::THROW_ITEM_Y_OFFSET + consts::ITEM_HEIGHT,
-                ),
-                speed: consts::THROW_ITEM_SPEED,
-                angle: angles.0,
-                end_angle: angles.1,
-                inverse_direction: facing.is_left(),
-                origin: position,
-            },
+            torque: Torque::with_clockwise(consts::THROW_ITEM_ROTATION_SPEED, !facing.is_left()),
+            // move_in_arc: MoveInArc {
+            //     //TODO: Set in consts
+            //     radius: Vec2::new(
+            //         50.,
+            //         consts::PLAYER_HEIGHT + consts::THROW_ITEM_Y_OFFSET + consts::ITEM_HEIGHT,
+            //     ),
+            //     speed: consts::THROW_ITEM_SPEED,
+            //     angle: angles.0,
+            //     end_angle: angles.1,
+            //     inverse_direction: facing.is_left(),
+            //     origin: position,
+            // },
             collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
             sensor: Sensor,
             events: ActiveEvents::COLLISION_EVENTS,
@@ -277,121 +271,8 @@ fn player_throw(
     }
 }
 
-fn player_flop(
-    mut commands: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &mut Transform,
-            &Stats,
-            &Animation,
-            &Facing,
-            &ActionState<PlayerAction>,
-            &Handle<FighterMeta>,
-        ),
-        With<Player>,
-    >,
-    // player_movement_clamper: PlayerMovementClamper,
-    fighter_assets: Res<Assets<FighterMeta>>,
-    time: Res<Time>,
-    mut start_y: Local<Option<f32>>,
-) {
-    // let players_movement = query
-    //     .iter_mut()
-    //     .map(
-    //         |(entity, mut state, transform, stats, animation, facing, input, fighter_meta)| {
-    //             if *state != State::Attacking {
-    //                 if !(*state != State::Idle && *state != State::Running)
-    //                     && input.just_pressed(PlayerAction::FlopAttack)
-    //                 {
-    //                     state.set(State::Attacking);
-
-    //                     let attack_entity = commands
-    //                         .spawn_bundle(TransformBundle::default())
-    //                         .insert(Sensor)
-    //                         .insert(ActiveEvents::COLLISION_EVENTS)
-    //                         .insert(
-    //                             ActiveCollisionTypes::default()
-    //                                 | ActiveCollisionTypes::STATIC_STATIC,
-    //                         )
-    //                         .insert(CollisionGroups::new(
-    //                             BodyLayers::PLAYER_ATTACK,
-    //                             BodyLayers::ENEMY,
-    //                         ))
-    //                         .insert(Attack {
-    //                             damage: stats.damage,
-    //                         })
-    //                         .insert(AttackFrames {
-    //                             startup: 0,
-    //                             active: 3,
-    //                             recovery: 4,
-    //                         })
-    //                         .id();
-    //                     commands.entity(entity).push_children(&[attack_entity]);
-    //                     //TODO: define hitbox size and placement through resources
-
-    //                     //maybe move audio effects?
-    //                     if let Some(fighter) = fighter_assets.get(fighter_meta) {
-    //                         if let Some(effects) = fighter.audio.effect_handles.get(&state) {
-    //                             let fx_playback =
-    //                                 FighterStateEffectsPlayback::new(*state, effects.clone());
-    //                             commands.entity(entity).insert(fx_playback);
-    //                         }
-    //                     }
-    //                     // commands.
-    //                     // commands.entity(entity)
-    //                 }
-
-    //                 (transform.translation, None)
-    //             } else {
-    //                 let mut movement = Vec2::ZERO;
-
-    //                 //TODO: Replace with movement intent eventwriter in movement rewrite!
-    //                 //TODO: Fix hacky way to get a forward jump
-    //                 if animation.current_frame < 3 {
-    //                     if facing.is_left() {
-    //                         movement.x -= 200. * time.delta_seconds();
-    //                     } else {
-    //                         movement.x += 200. * time.delta_seconds();
-    //                     }
-    //                 }
-
-    //                 // For currently unclear reasons, the first Animation frame may run for less Bevy frames
-    //                 // than expected. When this is the case, the player jumps less then it should, netting,
-    //                 // at the end of the animation, a slightly negative Y than the beginning, which causes
-    //                 // problems. This is a workaround.
-    //                 //
-    //                 if start_y.is_none() {
-    //                     *start_y = Some(transform.translation.y);
-    //                 }
-
-    //                 if animation.current_frame < 1 {
-    //                     movement.y += 180. * time.delta_seconds();
-    //                 } else if animation.current_frame < 3 {
-    //                     movement.y -= 90. * time.delta_seconds();
-    //                 } else if animation.is_finished() {
-    //                     movement.y = start_y.unwrap();
-    //                     *start_y = None;
-    //                 }
-
-    //                 (transform.translation, Some(movement))
-    //             }
-    //         },
-    //     )
-    //     .collect::<Vec<_>>();
-
-    // let players_movement = player_movement_clamper.clamp(players_movement);
-
-    // for ((_, _, mut transform, _, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement)
-    // {
-    //     if let Some(player_dir) = player_dir {
-    //         transform.translation += player_dir.extend(0.);
-    //     }
-    // }
-}
-
 fn enemy_attack(
-    mut query: Query<(Entity, &Facing, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
+    // mut query: Query<(Entity, &Facing, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
     fighter_assets: Res<Assets<FighterMeta>>,

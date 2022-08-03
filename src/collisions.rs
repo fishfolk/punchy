@@ -8,7 +8,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     attack::{Attack, ProjectileLifetime},
-    movement::Knockback,
+    // movement::Knockback,
     Stats,
 };
 
