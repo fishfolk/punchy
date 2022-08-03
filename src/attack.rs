@@ -26,7 +26,7 @@ use crate::{
     input::PlayerAction,
     item::item_carried_by_player,
     metadata::{FighterMeta, ItemMeta},
-    movement::{MoveInArc, PlayerMovementClamper, Rotate, Target, Velocity},
+    movement::{MoveInArc, Rotate, Target, Velocity},
     ArrivedEvent,
     Enemy,
     GameState,
@@ -51,9 +51,7 @@ impl Plugin for AttackPlugin {
                 .into(),
         )
         .add_system(
-            enemy_attack
-                .run_in_state(GameState::InGame)
-                // .after("move_to_target"),
+            enemy_attack.run_in_state(GameState::InGame), // .after("move_to_target"),
         );
     }
 }
@@ -293,7 +291,7 @@ fn player_flop(
         ),
         With<Player>,
     >,
-    player_movement_clamper: PlayerMovementClamper,
+    // player_movement_clamper: PlayerMovementClamper,
     fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
     mut start_y: Local<Option<f32>>,
