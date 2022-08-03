@@ -18,7 +18,8 @@ default-features = false
 features = [
     "x11",
     "png",
-    "filesystem_watcher"
+    "filesystem_watcher",
+    "bevy_gilrs"
 ]
 
 [dependencies]
