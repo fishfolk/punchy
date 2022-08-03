@@ -75,6 +75,8 @@ enemies:
 stop_points: [500, 1000]
 
 items:
+  - item: &health /items/health/health.item.yaml
+    location: [50, -70, 0]
   - item: &bottle /items/bottle/bottle.item.yaml
     location: [50, -20, 0]
   - item: *bottle
