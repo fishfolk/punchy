@@ -262,7 +262,7 @@ impl AssetLoader for FighterLoader {
                     let frame_audio_handles = meta
                         .audio
                         .effect_handles
-                        .entry(*state)
+                        .entry(state.clone())
                         .or_insert_with(HashMap::new);
 
                     frame_audio_handles.insert(*animation_i, effect_handle);

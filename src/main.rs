@@ -16,7 +16,6 @@ use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use player::*;
-use rand::{seq::SliceRandom, Rng};
 
 #[cfg(feature = "debug")]
 use bevy_inspector_egui::{RegisterInspectable, WorldInspectorPlugin};
@@ -32,10 +31,12 @@ mod attack;
 mod audio;
 mod camera;
 mod collisions;
+mod commands;
 mod config;
 mod consts;
 mod enemy;
 mod fighter;
+mod fighter_state;
 mod input;
 mod item;
 mod loading;
@@ -44,7 +45,6 @@ mod metadata;
 mod movement;
 mod platform;
 mod player;
-mod state;
 mod ui;
 mod utils;
 mod y_sort;
@@ -55,16 +55,16 @@ use audio::*;
 use camera::*;
 use collisions::*;
 use metadata::GameMeta;
-use movement::*;
 use serde::Deserialize;
-use state::{State, StatePlugin};
 use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
 
 use crate::{
+    fighter_state::FighterStatePlugin,
     input::PlayerAction,
     item::{pick_items, use_health_item},
+    movement::{LeftMovementBoundary, MovementPlugin},
 };
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -108,7 +108,6 @@ pub struct DespawnMarker;
 
 #[derive(Bundle, Default)]
 struct CharacterBundle {
-    state: State,
     stats: Stats,
     ysort: YSort,
 }
@@ -201,9 +200,10 @@ fn main() {
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
         .add_plugin(AudioPlugin)
-        .add_plugin(StatePlugin)
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
+        .add_plugin(FighterStatePlugin)
+        .add_plugin(MovementPlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
@@ -215,38 +215,35 @@ fn main() {
         .add_system_set(
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(player_controller)
                 .with_system(pick_items)
                 .with_system(use_health_item)
                 .with_system(y_sort)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)
-                .with_system(knockback_system)
-                .with_system(move_direction_system)
                 .with_system(pause)
                 .into(),
         )
-        .add_system(
-            set_target_near_player
-                .run_in_state(GameState::InGame)
-                .label("set_target_near_player"),
-        )
-        .add_system(
-            move_to_target
-                .run_in_state(GameState::InGame)
-                .after("set_target_near_player")
-                .label("move_to_target"),
-        )
+        // .add_system(
+        //     set_target_near_player
+        //         .run_in_state(GameState::InGame)
+        //         .label("set_target_near_player"),
+        // )
+        // .add_system(
+        //     move_to_target
+        //         .run_in_state(GameState::InGame)
+        //         .after("set_target_near_player")
+        //         .label("move_to_target"),
+        // )
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(move_in_arc_system)
-                .with_system(rotate_system)
+                // .with_system(move_in_arc_system)
+                // .with_system(rotate_system)
                 .with_system(camera_follow_player)
-                .with_system(update_left_movement_boundary)
-                .with_system(fighter_sound_effect)
+                // .with_system(update_left_movement_boundary)
+                // .with_system(fighter_sound_effect)
                 .with_system(game_over_on_players_death)
                 .into(),
         )
@@ -259,7 +256,7 @@ fn main() {
         .add_plugin(WorldInspectorPlugin::new())
         .register_inspectable::<Stats>()
         .register_inspectable::<State>()
-        .register_inspectable::<MoveInDirection>()
+        .register_inspectable::<Velocity>()
         .register_inspectable::<MoveInArc>()
         .register_inspectable::<Rotate>()
         .register_inspectable::<attack::Attack>()
@@ -302,20 +299,17 @@ fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
     }
 }
 
-fn kill_entities(
-    mut commands: Commands,
-    mut query: Query<(Entity, &Stats, &Animation, &mut State)>,
-) {
-    for (entity, stats, animation, mut state) in query.iter_mut() {
-        if stats.health <= 0 {
-            state.set(State::Dying);
-        }
+fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &Animation)>) {
+    // for (entity, stats, animation, mut state) in query.iter_mut() {
+    //     if stats.health <= 0 {
+    //         state.set(State::Dying);
+    //     }
 
-        if *state == State::Dying && animation.is_finished() {
-            commands.entity(entity).insert(DespawnMarker);
-            // commands.entity(entity).despawn_recursive();
-        }
-    }
+    //     if *state == State::Dying && animation.is_finished() {
+    //         commands.entity(entity).insert(DespawnMarker);
+    //         // commands.entity(entity).despawn_recursive();
+    //     }
+    // }
 }
 
 fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMarker>>) {
@@ -337,44 +331,37 @@ fn game_over_on_players_death(
 }
 
 //for enemys without current target, pick a new spot near the player as target
-fn set_target_near_player(
-    mut commands: Commands,
-    mut enemies_query: Query<(Entity, &State, &mut TripPointX), (With<Enemy>, Without<Target>)>,
-    player_query: Query<&Transform, With<Player>>,
-) {
-    let mut rng = rand::thread_rng();
-    let p_transforms = player_query.iter().collect::<Vec<_>>();
-    let max_player_x = p_transforms
-        .iter()
-        .map(|transform| transform.translation.x)
-        .max_by(f32::total_cmp);
+// fn set_target_near_player(
+//     mut commands: Commands,
+//     mut enemies_query: Query<(Entity, &mut TripPointX), (With<Enemy>, Without<Target>)>,
+//     player_query: Query<&Transform, With<Player>>,
+// ) {
+    // let mut rng = rand::thread_rng();
+    // let p_transforms = player_query.iter().collect::<Vec<_>>();
+    // let max_player_x = p_transforms
+    //     .iter()
+    //     .map(|transform| transform.translation.x)
+    //     .max_by(f32::total_cmp);
 
-    if let Some(max_player_x) = max_player_x {
-        for (e_entity, e_state, mut e_trip_point_x) in enemies_query.iter_mut() {
-            if *e_state == State::Idle {
-                if let Some(p_transform) = p_transforms.choose(&mut rng) {
-                    if max_player_x > e_trip_point_x.0 {
-                        e_trip_point_x.0 = f32::MIN;
+    // if let Some(max_player_x) = max_player_x {
+    //     for (e_entity, e_state, mut e_trip_point_x) in enemies_query.iter_mut() {
+    //         if *e_state == State::Idle {
+    //             if let Some(p_transform) = p_transforms.choose(&mut rng) {
+    //                 if max_player_x > e_trip_point_x.0 {
+    //                     e_trip_point_x.0 = f32::MIN;
 
-                        let x_offset =
-                            rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
-                        let y_offset =
-                            rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
-
-                        let attack_distance =
-                            rng.gen_range(ENEMY_MIN_ATTACK_DISTANCE..ENEMY_MAX_ATTACK_DISTANCE);
-
-                        commands.entity(e_entity).insert(Target {
-                            position: Vec2::new(
-                                p_transform.translation.x + x_offset,
-                                (p_transform.translation.y + y_offset)
-                                    .clamp(consts::MIN_Y, consts::MAX_Y),
-                            ),
-                            attack_distance,
-                        });
-                    }
-                }
-            }
-        }
-    }
-}
+    //                     let x_offset = rng.gen_range(-100.0..100.);
+    //                     let y_offset = rng.gen_range(-100.0..100.);
+    //                     commands.entity(e_entity).insert(Target {
+    //                         position: Vec2::new(
+    //                             p_transform.translation.x + x_offset,
+    //                             (p_transform.translation.y + y_offset)
+    //                                 .clamp(consts::MIN_Y, consts::MAX_Y),
+    //                         ),
+    //                     });
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+// }

@@ -3,8 +3,14 @@ use bevy_rapier2d::prelude::CollisionGroups;
 use rand::prelude::SliceRandom;
 
 use crate::{
-    animation::Animation, collisions::BodyLayers, enemy::Enemy, metadata::FighterMeta,
-    player::Player, AnimatedSpriteSheetBundle, CharacterBundle, PhysicsBundle,
+    animation::Animation,
+    collisions::BodyLayers,
+    enemy::Enemy,
+    fighter_state::{Idling, StateTransitionIntents},
+    metadata::FighterMeta,
+    movement::Velocity,
+    player::Player,
+    AnimatedSpriteSheetBundle, CharacterBundle, PhysicsBundle,
 };
 
 /// Bundle added to a fighter stub, in order to activate it.
@@ -17,6 +23,10 @@ pub struct ActiveFighterBundle {
     character_bundle: CharacterBundle,
     #[bundle]
     physics_bundle: PhysicsBundle,
+    state_transition_intents: StateTransitionIntents,
+    /// Fighters start off idling, but this component may be removed when the fighter state changes.
+    idling: Idling,
+    velocity: Velocity,
 }
 
 /// Turns a fighter stub data (loaded from the metadata) into a fully active fighter.
@@ -64,6 +74,9 @@ impl ActiveFighterBundle {
                 collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
                 ..default()
             },
+            idling: Idling,
+            state_transition_intents: default(),
+            velocity: default(),
         };
 
         commands.entity(entity).insert_bundle(active_fighter_bundle);

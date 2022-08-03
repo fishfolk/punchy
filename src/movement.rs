@@ -1,12 +1,10 @@
 use bevy::{
     ecs::system::SystemParam,
     math::{Quat, Vec2, Vec3},
-    prelude::{
-        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
-        With,
-    },
+    prelude::*,
     time::{Time, Timer},
 };
+use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
@@ -15,13 +13,36 @@ use crate::{
     enemy::SpawnLocationX,
     input::PlayerAction,
     metadata::{GameMeta, LevelMeta},
-    state::State,
-    ArrivedEvent, DespawnMarker, Player, Stats,
+    ArrivedEvent, DespawnMarker, GameState, Player, Stats,
 };
 
+pub struct MovementPlugin;
+
+impl Plugin for MovementPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            velocity_constraint_system.run_in_state(GameState::InGame),
+        );
+    }
+}
+
+/// An entity's velocity.
+///
+/// This is similar to the velocity you would set in a physics simulation, but in our case we use a
+/// simple constraints system instead of actual physics simulation.
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut)]
-pub struct MoveInDirection(pub Vec2);
+#[derive(Component, Deref, DerefMut, Default)]
+pub struct Velocity(pub Vec2);
+
+/// System that updates translations based on entity velocities.
+///
+/// TODO: This system will also apply any movement constraints.
+pub fn velocity_constraint_system(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
+    for (mut transform, dir) in &mut query.iter_mut() {
+        transform.translation += dir.0.extend(0.) * time.delta_seconds();
+    }
+}
 
 // (Moving) bondary before which, the players can't go back.
 #[derive(Component)]
@@ -96,7 +117,6 @@ pub fn knockback_system(
 pub fn player_controller(
     mut query: Query<
         (
-            &mut State,
             &Stats,
             &mut Transform,
             &mut Facing,
@@ -107,61 +127,52 @@ pub fn player_controller(
     player_movement_clamper: PlayerMovementClamper,
     time: Res<Time>,
 ) {
-    // Compute the new direction vectors; can be None if the state is not (idle or running).
-    //
-    let player_movements = query
-        .iter()
-        .map(|(state, stats, transform, _, input)| {
-            if *state != State::Idle && *state != State::Running {
-                (transform.translation, None)
-            } else {
-                let mut dir = if input.pressed(PlayerAction::Move) {
-                    input.axis_pair(PlayerAction::Move).unwrap().xy()
-                } else {
-                    Vec2::ZERO
-                };
+    // // Compute the new direction vectors; can be None if the state is not (idle or running).
+    // //
+    // let player_movements = query
+    //     .iter()
+    //     .map(|(state, stats, transform, _, input)| {
+    //         if *state != State::Idle && *state != State::Running {
+    //             (transform.translation, None)
+    //         } else {
+    //             let mut dir = if input.pressed(PlayerAction::Move) {
+    //                 input.axis_pair(PlayerAction::Move).unwrap().xy()
+    //             } else {
+    //                 Vec2::ZERO
+    //             };
 
-                // Apply speed
-                dir = dir * stats.movement_speed * time.delta_seconds();
+    //             // Apply speed
+    //             dir = dir * stats.movement_speed * time.delta_seconds();
 
-                //Move the player
-                (transform.translation, Some(dir))
-            }
-        })
-        .collect::<Vec<_>>();
+    //             //Move the player
+    //             (transform.translation, Some(dir))
+    //         }
+    //     })
+    //     .collect::<Vec<_>>();
 
-    let player_dirs = player_movement_clamper.clamp(player_movements);
+    // let player_dirs = player_movement_clamper.clamp(player_movements);
 
-    for ((mut state, _, mut transform, mut facing, _), dir) in
-        query.iter_mut().zip(player_dirs.iter())
-    {
-        if let Some(dir) = dir {
-            transform.translation.x += dir.x;
-            transform.translation.y += dir.y;
+    // for ((mut state, _, mut transform, mut facing, _), dir) in
+    //     query.iter_mut().zip(player_dirs.iter())
+    // {
+    //     if let Some(dir) = dir {
+    //         transform.translation.x += dir.x;
+    //         transform.translation.y += dir.y;
 
-            //Set the player state and direction
-            if dir.x < 0. {
-                facing.set(Facing::Left);
-            } else if dir.x > 0. {
-                facing.set(Facing::Right);
-            }
+    //         //Set the player state and direction
+    //         if dir.x < 0. {
+    //             facing.set(Facing::Left);
+    //         } else if dir.x > 0. {
+    //             facing.set(Facing::Right);
+    //         }
 
-            if dir == &Vec2::ZERO {
-                state.set(State::Idle);
-            } else {
-                state.set(State::Running);
-            }
-        }
-    }
-}
-
-pub fn move_direction_system(
-    mut query: Query<(&mut Transform, &MoveInDirection)>,
-    time: Res<Time>,
-) {
-    for (mut transform, dir) in &mut query.iter_mut() {
-        transform.translation += dir.0.extend(0.) * time.delta_seconds();
-    }
+    //         if dir == &Vec2::ZERO {
+    //             state.set(State::Idle);
+    //         } else {
+    //             state.set(State::Running);
+    //         }
+    //     }
+    // }
 }
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -241,51 +252,31 @@ pub struct Target {
 }
 
 pub fn move_to_target(
-    mut query: Query<(
-        Entity,
-        &mut Transform,
-        &Stats,
-        &Target,
-        &mut State,
-        &mut Facing,
-    )>,
+    mut query: Query<(Entity, &mut Transform, &Stats, &Target, &mut Facing)>,
     mut commands: Commands,
     time: Res<Time>,
     mut event_writer: EventWriter<ArrivedEvent>,
 ) {
-    for (entity, mut transform, stats, target, mut state, mut facing) in query.iter_mut() {
-        if *state == State::Idle || *state == State::Running {
-            let translation_old = transform.translation;
-            transform.translation += (target.position.extend(0.) - translation_old).normalize()
-                * stats.movement_speed
-                * time.delta_seconds();
-
-            let target_distance = transform.translation.truncate().distance(target.position);
-
-            if target_distance <= target.attack_distance {
-                // Note that the target includes an offset, so this can still not point to the
-                // player.
-
-                *facing = if target.position.x > transform.translation.x {
-                    Facing::Right
-                } else {
-                    Facing::Left
-                };
-
-                commands.entity(entity).remove::<Target>();
-                *state = State::Idle;
-                event_writer.send(ArrivedEvent(entity))
-            } else {
-                *facing = if transform.translation.x > translation_old.x {
-                    Facing::Right
-                } else {
-                    Facing::Left
-                };
-
-                *state = State::Running;
-            }
-        }
-    }
+    // for (entity, mut transform, stats, target, mut state, mut facing) in query.iter_mut() {
+    //     if *state == State::Idle || *state == State::Running {
+    //         let translation_old = transform.translation;
+    //         transform.translation += (target.position.extend(0.) - translation_old).normalize()
+    //             * stats.movement_speed
+    //             * time.delta_seconds();
+    //         if transform.translation.x > translation_old.x {
+    //             *facing = Facing::Right;
+    //         } else {
+    //             *facing = Facing::Left;
+    //         }
+    //         if transform.translation.truncate().distance(target.position) <= 100. {
+    //             commands.entity(entity).remove::<Target>();
+    //             *state = State::Idle;
+    //             event_writer.send(ArrivedEvent(entity))
+    //         } else {
+    //             *state = State::Running;
+    //         }
+    //     }
+    // }
 }
 
 pub fn update_left_movement_boundary(

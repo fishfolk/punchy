@@ -17,7 +17,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::{Animation, Facing},
-    audio::FighterStateEffectsPlayback,
+    // audio::FighterStateEffectsPlayback,
     collisions::BodyLayers,
     consts::{
         self, ATTACK_HEIGHT, ATTACK_LAYER, ATTACK_WIDTH, ITEM_BOTTLE_NAME, ITEM_HEIGHT, ITEM_LAYER,
@@ -26,9 +26,12 @@ use crate::{
     input::PlayerAction,
     item::item_carried_by_player,
     metadata::{FighterMeta, ItemMeta},
-    movement::{MoveInArc, MoveInDirection, PlayerMovementClamper, Rotate, Target},
-    state::State,
-    ArrivedEvent, Enemy, GameState, Player, Stats,
+    movement::{MoveInArc, PlayerMovementClamper, Rotate, Target, Velocity},
+    ArrivedEvent,
+    Enemy,
+    GameState,
+    Player,
+    Stats,
 };
 
 pub struct AttackPlugin;
@@ -61,6 +64,11 @@ pub struct Attack {
     pub damage: i32,
 }
 
+/// A component that indicates that an entity can currently be attacked
+#[derive(Component)]
+#[component(storage = "SparseSet")]
+pub struct Attackable;
+
 #[derive(Component)]
 pub struct AttackFrames {
     pub startup: usize,
@@ -82,7 +90,7 @@ pub struct Projectile {
     collision_types: ActiveCollisionTypes,
     collision_groups: CollisionGroups,
     facing: Facing,
-    move_in_direction: MoveInDirection,
+    move_in_direction: Velocity,
     attack: Attack,
     attack_timer: ProjectileLifetime,
 }
@@ -115,7 +123,7 @@ impl Projectile {
             //TODO: define collision layer based on the fighter shooting projectile, load for asset files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
             facing: facing.clone(),
-            move_in_direction: MoveInDirection(dir * 300.), //TODO: Put the velocity in a cons,
+            move_in_direction: Velocity(dir * 300.), //TODO: Put the velocity in a cons,
             attack: Attack { damage: 10 },
             attack_timer: ProjectileLifetime(Timer::new(Duration::from_secs(1), false)),
         }
@@ -179,49 +187,40 @@ impl ThrownItem {
 }
 
 fn player_projectile_attack(
-    player_query: Query<
-        (
-            &Children,
-            &Transform,
-            &Facing,
-            &State,
-            &ActionState<PlayerAction>,
-        ),
-        With<Player>,
-    >,
+    player_query: Query<(&Children, &Transform, &Facing, &ActionState<PlayerAction>), With<Player>>,
     items_meta_query: Query<&Handle<ItemMeta>>,
     items_meta: Res<Assets<ItemMeta>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    for (player_children, transform, facing, state, input) in player_query.iter() {
-        if *state != State::Idle && *state != State::Running {
-            continue;
-        }
+    // for (player_children, transform, facing, state, input) in player_query.iter() {
+    //     if *state != State::Idle && *state != State::Running {
+    //         continue;
+    //     }
 
-        let carried_item = item_carried_by_player(
-            player_children,
-            ITEM_BOTTLE_NAME,
-            &items_meta_query,
-            &items_meta,
-        );
+    //     let carried_item = item_carried_by_player(
+    //         player_children,
+    //         ITEM_BOTTLE_NAME,
+    //         &items_meta_query,
+    //         &items_meta,
+    //     );
 
-        if let Some(bottle_id) = carried_item {
-            if input.just_pressed(PlayerAction::Shoot) {
-                let mut dir = Vec2::X;
+    //     if let Some(bottle_id) = carried_item {
+    //         if input.just_pressed(PlayerAction::Shoot) {
+    //             let mut dir = Vec2::X;
 
-                if facing.is_left() {
-                    dir = -dir;
-                }
+    //             if facing.is_left() {
+    //                 dir = -dir;
+    //             }
 
-                let projectile = Projectile::new(transform, facing, dir, &asset_server);
+    //             let projectile = Projectile::new(transform, facing, dir, &asset_server);
 
-                commands.spawn_bundle(projectile);
+    //             commands.spawn_bundle(projectile);
 
-                commands.entity(bottle_id).despawn();
-            }
-        }
-    }
+    //             commands.entity(bottle_id).despawn();
+    //         }
+    //     }
+    // }
 }
 
 fn player_throw(
@@ -285,7 +284,6 @@ fn player_flop(
     mut query: Query<
         (
             Entity,
-            &mut State,
             &mut Transform,
             &Stats,
             &Animation,
@@ -300,180 +298,177 @@ fn player_flop(
     time: Res<Time>,
     mut start_y: Local<Option<f32>>,
 ) {
-    let players_movement = query
-        .iter_mut()
-        .map(
-            |(entity, mut state, transform, stats, animation, facing, input, fighter_meta)| {
-                if *state != State::Attacking {
-                    if !(*state != State::Idle && *state != State::Running)
-                        && input.just_pressed(PlayerAction::FlopAttack)
-                    {
-                        state.set(State::Attacking);
+    // let players_movement = query
+    //     .iter_mut()
+    //     .map(
+    //         |(entity, mut state, transform, stats, animation, facing, input, fighter_meta)| {
+    //             if *state != State::Attacking {
+    //                 if !(*state != State::Idle && *state != State::Running)
+    //                     && input.just_pressed(PlayerAction::FlopAttack)
+    //                 {
+    //                     state.set(State::Attacking);
 
-                        let attack_entity = commands
-                            .spawn_bundle(TransformBundle::default())
-                            .insert(Sensor)
-                            .insert(ActiveEvents::COLLISION_EVENTS)
-                            .insert(
-                                ActiveCollisionTypes::default()
-                                    | ActiveCollisionTypes::STATIC_STATIC,
-                            )
-                            .insert(CollisionGroups::new(
-                                BodyLayers::PLAYER_ATTACK,
-                                BodyLayers::ENEMY,
-                            ))
-                            .insert(Attack {
-                                damage: stats.damage,
-                            })
-                            .insert(AttackFrames {
-                                startup: 0,
-                                active: 3,
-                                recovery: 4,
-                            })
-                            .id();
-                        commands.entity(entity).push_children(&[attack_entity]);
-                        //TODO: define hitbox size and placement through resources
+    //                     let attack_entity = commands
+    //                         .spawn_bundle(TransformBundle::default())
+    //                         .insert(Sensor)
+    //                         .insert(ActiveEvents::COLLISION_EVENTS)
+    //                         .insert(
+    //                             ActiveCollisionTypes::default()
+    //                                 | ActiveCollisionTypes::STATIC_STATIC,
+    //                         )
+    //                         .insert(CollisionGroups::new(
+    //                             BodyLayers::PLAYER_ATTACK,
+    //                             BodyLayers::ENEMY,
+    //                         ))
+    //                         .insert(Attack {
+    //                             damage: stats.damage,
+    //                         })
+    //                         .insert(AttackFrames {
+    //                             startup: 0,
+    //                             active: 3,
+    //                             recovery: 4,
+    //                         })
+    //                         .id();
+    //                     commands.entity(entity).push_children(&[attack_entity]);
+    //                     //TODO: define hitbox size and placement through resources
 
-                        //maybe move audio effects?
-                        if let Some(fighter) = fighter_assets.get(fighter_meta) {
-                            if let Some(effects) = fighter.audio.effect_handles.get(&state) {
-                                let fx_playback =
-                                    FighterStateEffectsPlayback::new(*state, effects.clone());
-                                commands.entity(entity).insert(fx_playback);
-                            }
-                        }
-                        // commands.
-                        // commands.entity(entity)
-                    }
+    //                     //maybe move audio effects?
+    //                     if let Some(fighter) = fighter_assets.get(fighter_meta) {
+    //                         if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+    //                             let fx_playback =
+    //                                 FighterStateEffectsPlayback::new(*state, effects.clone());
+    //                             commands.entity(entity).insert(fx_playback);
+    //                         }
+    //                     }
+    //                     // commands.
+    //                     // commands.entity(entity)
+    //                 }
 
-                    (transform.translation, None)
-                } else {
-                    let mut movement = Vec2::ZERO;
+    //                 (transform.translation, None)
+    //             } else {
+    //                 let mut movement = Vec2::ZERO;
 
-                    //TODO: Replace with movement intent eventwriter in movement rewrite!
-                    //TODO: Fix hacky way to get a forward jump
-                    if animation.current_frame < 3 {
-                        if facing.is_left() {
-                            movement.x -= 200. * time.delta_seconds();
-                        } else {
-                            movement.x += 200. * time.delta_seconds();
-                        }
-                    }
+    //                 //TODO: Replace with movement intent eventwriter in movement rewrite!
+    //                 //TODO: Fix hacky way to get a forward jump
+    //                 if animation.current_frame < 3 {
+    //                     if facing.is_left() {
+    //                         movement.x -= 200. * time.delta_seconds();
+    //                     } else {
+    //                         movement.x += 200. * time.delta_seconds();
+    //                     }
+    //                 }
 
-                    // For currently unclear reasons, the first Animation frame may run for less Bevy frames
-                    // than expected. When this is the case, the player jumps less then it should, netting,
-                    // at the end of the animation, a slightly negative Y than the beginning, which causes
-                    // problems. This is a workaround.
-                    //
-                    if start_y.is_none() {
-                        *start_y = Some(transform.translation.y);
-                    }
+    //                 // For currently unclear reasons, the first Animation frame may run for less Bevy frames
+    //                 // than expected. When this is the case, the player jumps less then it should, netting,
+    //                 // at the end of the animation, a slightly negative Y than the beginning, which causes
+    //                 // problems. This is a workaround.
+    //                 //
+    //                 if start_y.is_none() {
+    //                     *start_y = Some(transform.translation.y);
+    //                 }
 
-                    if animation.current_frame < 1 {
-                        movement.y += 180. * time.delta_seconds();
-                    } else if animation.current_frame < 3 {
-                        movement.y -= 90. * time.delta_seconds();
-                    } else if animation.is_finished() {
-                        movement.y = start_y.unwrap();
-                        *start_y = None;
-                    }
+    //                 if animation.current_frame < 1 {
+    //                     movement.y += 180. * time.delta_seconds();
+    //                 } else if animation.current_frame < 3 {
+    //                     movement.y -= 90. * time.delta_seconds();
+    //                 } else if animation.is_finished() {
+    //                     movement.y = start_y.unwrap();
+    //                     *start_y = None;
+    //                 }
 
-                    (transform.translation, Some(movement))
-                }
-            },
-        )
-        .collect::<Vec<_>>();
+    //                 (transform.translation, Some(movement))
+    //             }
+    //         },
+    //     )
+    //     .collect::<Vec<_>>();
 
-    let players_movement = player_movement_clamper.clamp(players_movement);
+    // let players_movement = player_movement_clamper.clamp(players_movement);
 
-    for ((_, _, mut transform, _, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement)
-    {
-        if let Some(player_dir) = player_dir {
-            transform.translation += player_dir.extend(0.);
-        }
-    }
+    // for ((_, _, mut transform, _, _, _, _, _), player_dir) in query.iter_mut().zip(players_movement)
+    // {
+    //     if let Some(player_dir) = player_dir {
+    //         transform.translation += player_dir.extend(0.);
+    //     }
+    // }
 }
 
 fn enemy_attack(
-    mut query: Query<
-        (Entity, &mut State, &Facing, &Handle<FighterMeta>),
-        (With<Enemy>, With<Target>),
-    >,
+    mut query: Query<(Entity, &Facing, &Handle<FighterMeta>), (With<Enemy>, With<Target>)>,
     mut event_reader: EventReader<ArrivedEvent>,
     mut commands: Commands,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
-    for event in event_reader.iter() {
-        if let Ok((entity, mut state, facing, fighter_handle)) = query.get_mut(event.0) {
-            if *state != State::Attacking {
-                if rand::random() && *state != State::Waiting {
-                    state.set(State::Waiting);
-                } else {
-                    state.set(State::Attacking);
+    // for event in event_reader.iter() {
+    //     if let Ok((entity, mut state, facing, fighter_handle)) = query.get_mut(event.0) {
+    //         if *state != State::Attacking {
+    //             if rand::random() && *state != State::Waiting {
+    //                 state.set(State::Waiting);
+    //             } else {
+    //                 state.set(State::Attacking);
 
-                    //TODO: remove this offset in favor of offsets defined in fighter assets
-                    let offset = match facing {
-                        Facing::Left => -24.0,
-                        Facing::Right => 24.0,
-                    };
+    //                 //TODO: remove this offset in favor of offsets defined in fighter assets
+    //                 let offset = match facing {
+    //                     Facing::Left => -24.0,
+    //                     Facing::Right => 24.0,
+    //                 };
 
-                    let attack_entity = commands
-                        .spawn_bundle(TransformBundle::from_transform(
-                            Transform::from_translation(Vec3::new(offset, 0.0, 0.0)),
-                        ))
-                        .insert(Sensor)
-                        .insert(ActiveEvents::COLLISION_EVENTS)
-                        .insert(
-                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
-                        )
-                        .insert(CollisionGroups::new(
-                            BodyLayers::ENEMY_ATTACK,
-                            BodyLayers::PLAYER,
-                        ))
-                        .insert(Attack { damage: 10 })
-                        .insert(AttackFrames {
-                            startup: 1,
-                            active: 2,
-                            recovery: 3,
-                        })
-                        .id();
-                    commands.entity(event.0).push_children(&[attack_entity]);
+    //                 let attack_entity = commands
+    //                     .spawn_bundle(TransformBundle::from_transform(
+    //                         Transform::from_translation(Vec3::new(offset, 0.0, 0.0)),
+    //                     ))
+    //                     .insert(Sensor)
+    //                     .insert(ActiveEvents::COLLISION_EVENTS)
+    //                     .insert(
+    //                         ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+    //                     )
+    //                     .insert(CollisionGroups::new(
+    //                         BodyLayers::ENEMY_ATTACK,
+    //                         BodyLayers::PLAYER,
+    //                     ))
+    //                     .insert(Attack { damage: 10 })
+    //                     .insert(AttackFrames {
+    //                         startup: 1,
+    //                         active: 2,
+    //                         recovery: 3,
+    //                     })
+    //                     .id();
+    //                 commands.entity(event.0).push_children(&[attack_entity]);
 
-                    if let Some(fighter) = fighter_assets.get(fighter_handle) {
-                        if let Some(effects) = fighter.audio.effect_handles.get(&state) {
-                            let fx_playback =
-                                FighterStateEffectsPlayback::new(*state, effects.clone());
-                            commands.entity(entity).insert(fx_playback);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    //                 if let Some(fighter) = fighter_assets.get(fighter_handle) {
+    //                     if let Some(effects) = fighter.audio.effect_handles.get(&state) {
+    //                         let fx_playback =
+    //                             FighterStateEffectsPlayback::new(*state, effects.clone());
+    //                         commands.entity(entity).insert(fx_playback);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
-    fighter_query: Query<&Animation, With<State>>,
+    fighter_query: Query<&Animation>,
     mut commands: Commands,
 ) {
-    for (entity, attack_frames, parent) in attack_query.iter() {
-        if let Ok(animation) = fighter_query.get(**parent) {
-            if animation.current_frame >= attack_frames.startup
-                && animation.current_frame <= attack_frames.active
-            {
-                //TODO: insert Collider based on size and transform offset in attack asset
-                commands
-                    .entity(entity)
-                    .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8));
-            }
-        }
-    }
+    // for (entity, attack_frames, parent) in attack_query.iter() {
+    //     if let Ok(animation) = fighter_query.get(**parent) {
+    //         if animation.current_frame >= attack_frames.startup
+    //             && animation.current_frame <= attack_frames.active
+    //         {
+    //             //TODO: insert Collider based on size and transform offset in attack asset
+    //             commands
+    //                 .entity(entity)
+    //                 .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8));
+    //         }
+    //     }
+    // }
 }
 
 fn deactivate_hitbox(
     query: Query<(Entity, &AttackFrames, &Parent), (With<Attack>, With<Collider>)>,
-    fighter_query: Query<&Animation, With<State>>,
+    fighter_query: Query<&Animation>,
     mut commands: Commands,
 ) {
     for (entity, attack_frames, parent) in query.iter() {

@@ -11,7 +11,7 @@ use bevy_parallax::{LayerData, ParallaxResource};
 use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
 
-use crate::{animation::Clip, assets::EguiFont, state::State, Stats};
+use crate::{animation::Clip, assets::EguiFont, Stats};
 
 pub mod settings;
 pub use settings::*;
@@ -117,15 +117,15 @@ pub struct FighterSpritesheetMeta {
     pub columns: usize,
     pub rows: usize,
     pub animation_fps: f32,
-    pub animations: HashMap<State, Clip>,
+    pub animations: HashMap<String, Clip>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct AudioMeta {
-    pub effects: HashMap<State, HashMap<usize, String>>,
+    pub effects: HashMap<String, HashMap<usize, String>>,
     #[serde(skip)]
-    pub effect_handles: HashMap<State, HashMap<usize, Handle<AudioSource>>>,
+    pub effect_handles: HashMap<String, HashMap<usize, Handle<AudioSource>>>,
 }
 
 #[derive(HasLoadProgress, Deserialize, Clone, Debug)]

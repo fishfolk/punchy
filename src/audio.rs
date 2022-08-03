@@ -8,7 +8,6 @@ use crate::{
     animation::Animation,
     config::ENGINE_CONFIG,
     metadata::{GameMeta, LevelMeta},
-    state::State,
 };
 
 /// For readability.
@@ -26,55 +25,55 @@ pub fn set_audio_channels_volume(
     effects_channel.set_volume(0.5);
 }
 
-/// Add this to a fighter, when want to play sound effects attached to certain animation indexes.
-#[derive(Component)]
-pub struct FighterStateEffectsPlayback {
-    pub state: State,
-    pub effects: HashMap<usize, Handle<AudioSource>>,
-    pub last_played: Option<usize>,
-}
+// /// Add this to a fighter, when want to play sound effects attached to certain animation indexes.
+// #[derive(Component)]
+// pub struct FighterStateEffectsPlayback {
+//     pub state: State,
+//     pub effects: HashMap<usize, Handle<AudioSource>>,
+//     pub last_played: Option<usize>,
+// }
 
-impl FighterStateEffectsPlayback {
-    pub fn new(state: State, effects: HashMap<usize, Handle<AudioSource>>) -> Self {
-        Self {
-            state,
-            effects,
-            last_played: None,
-        }
-    }
-}
+// impl FighterStateEffectsPlayback {
+//     pub fn new(state: State, effects: HashMap<usize, Handle<AudioSource>>) -> Self {
+//         Self {
+//             state,
+//             effects,
+//             last_played: None,
+//         }
+//     }
+// }
 
-pub fn fighter_sound_effect(
-    mut commands: Commands,
-    mut query: Query<(Entity, &State, &Animation, &mut FighterStateEffectsPlayback)>,
-    effects_channel: Res<AudioChannel<EffectsChannel>>,
-) {
-    for (entity, fighter_state, animation, mut state_effects) in query.iter_mut() {
-        // The safest way to remove the sound component is on the next state, because the component
-        // can be remove only at the last frame of animation, which in theory, may be skipped if
-        // there is an unexpected lag.
-        // Alternatively, we could just not care, since subsequent states+effects will overwrite
-        // the component.
-        if *fighter_state != state_effects.state {
-            commands
-                .entity(entity)
-                .remove::<FighterStateEffectsPlayback>();
+// pub fn fighter_sound_effect(
+//     mut commands: Commands,
+//     mut query: Query<(Entity, &State, &Animation, &mut FighterStateEffectsPlayback)>,
+//     effects_channel: Res<AudioChannel<EffectsChannel>>,
+// ) {
+//     for (entity, fighter_state, animation, mut state_effects) in query.iter_mut() {
+//         // The safest way to remove the sound component is on the next state, because the component
+//         // can be remove only at the last frame of animation, which in theory, may be skipped if
+//         // there is an unexpected lag.
+//         // Alternatively, we could just not care, since subsequent states+effects will overwrite
+//         // the component.
+//         if *fighter_state != state_effects.state {
+//             commands
+//                 .entity(entity)
+//                 .remove::<FighterStateEffectsPlayback>();
 
-            continue;
-        }
+//             continue;
+//         }
 
-        if let Some(fighter_animation_i) = animation.get_current_index() {
-            if let Some(audio_handle) = state_effects.effects.get(&fighter_animation_i) {
-                if state_effects.last_played.unwrap_or(IMPOSSIBLE_ANIMATION_I)
-                    != fighter_animation_i
-                {
-                    effects_channel.play(audio_handle.clone());
-                    state_effects.last_played = Some(fighter_animation_i);
-                }
-            }
-        }
-    }
-}
+//         if let Some(fighter_animation_i) = animation.get_current_index() {
+//             if let Some(audio_handle) = state_effects.effects.get(&fighter_animation_i) {
+//                 if state_effects.last_played.unwrap_or(IMPOSSIBLE_ANIMATION_I)
+//                     != fighter_animation_i
+//                 {
+//                     effects_channel.play(audio_handle.clone());
+//                     state_effects.last_played = Some(fighter_animation_i);
+//                 }
+//             }
+//         }
+//     }
+// }
 
 pub fn play_menu_music(game_meta: Res<GameMeta>, music_channel: Res<AudioChannel<MusicChannel>>) {
     // This is a workaround for a Bevy Kira bug where stopping a sound immediately after
