@@ -179,7 +179,7 @@ fn collect_player_actions(
 ) {
     // info!("Collect");
     for (action_state, mut transition_intents, stats) in &mut players {
-        if action_state.just_pressed(PlayerAction::FlopAttack) {
+        if action_state.pressed(PlayerAction::FlopAttack) {
             transition_intents.push_back(StateTransition::new(
                 Flopping::default(),
                 Flopping::PRIORITY,
@@ -331,9 +331,8 @@ fn moving(
             *facing = Facing::Left
         }
 
-        // Moving is a little different than the other states because we transition out of it to the
-        // Idling state at the end of every frame, so that we only move if the player continually
-        // inputs a movement.
+        // Moving is a little different than the other states because we transition out of it at the
+        // end of every frame, so that we only move if the player continually inputs a movement.
         commands.entity(entity).remove::<Moving>().insert(Idling);
     }
 }
