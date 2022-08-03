@@ -11,7 +11,6 @@ use crate::{
     },
     enemy::Enemy,
     input::PlayerAction,
-    metadata::FighterMeta,
     movement::Velocity,
     player::Player,
     GameState, Stats,
@@ -30,13 +29,6 @@ pub struct TransitionCmds;
 impl Plugin for FighterStatePlugin {
     fn build(&self, app: &mut App) {
         app
-            // // Debugging systems
-            // .add_system_to_stage(CoreStage::First, || {
-            //     info!("=====Start=====");
-            // })
-            // .add_system_to_stage(CoreStage::Last, || {
-            //     info!("======End======");
-            // })
             // State transition queue
             .init_custom_commands::<TransitionCmds>()
             // The collect systems
@@ -47,7 +39,6 @@ impl Plugin for FighterStatePlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(collect_player_actions)
                     .with_system(collect_enemy_actions)
-                    // .with_system(print_fighters)
                     .into(),
             )
             // The transition systems
@@ -77,20 +68,6 @@ impl Plugin for FighterStatePlugin {
                     .with_system(moving)
                     .into(),
             );
-        // .add_system_to_stage(CoreStage::PostUpdate, print_fighters);
-    }
-}
-
-/// Debugging system
-/// TODO: remove when done testing
-fn _print_fighters(
-    fighters: Query<
-        (Entity, Option<&Idling>, Option<&Flopping>, Option<&Moving>),
-        With<Handle<FighterMeta>>,
-    >,
-) {
-    for (entity, idling, flopping, moving) in &fighters {
-        info!("    {:?} {:?} {:?} {:?}", entity, idling, flopping, moving);
     }
 }
 
@@ -177,7 +154,6 @@ fn collect_player_actions(
         With<Player>,
     >,
 ) {
-    // info!("Collect");
     for (action_state, mut transition_intents, stats) in &mut players {
         if action_state.pressed(PlayerAction::FlopAttack) {
             transition_intents.push_back(StateTransition::new(
@@ -212,7 +188,6 @@ fn transition_from_idle(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
-    // info!("trans from idle");
     let mut commands = transition_commands.commands();
 
     for (entity, mut transition_intents) in &mut fighters {
@@ -240,7 +215,6 @@ fn transition_from_flopping(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
 ) {
-    // info!("trans from flop");
     let mut commands = transition_commands.commands();
 
     for (entity, mut transition_intents, flopping) in &mut fighters {
@@ -275,7 +249,6 @@ fn transition_from_flopping(
 
 /// Handle fighter idle state
 fn idling(mut fighters: Query<(&mut Animation, &mut Velocity), With<Idling>>) {
-    // info!("Idling");
     for (mut animation, mut velocity) in &mut fighters {
         // If we aren't playing the idle animation
         if animation.current_animation.as_deref() != Some(Idling::ANIMATION) {
@@ -290,7 +263,6 @@ fn idling(mut fighters: Query<(&mut Animation, &mut Velocity), With<Idling>>) {
 
 /// Handle fighter flopping state
 fn flopping(mut fighters: Query<(&mut Animation, &mut Velocity, &mut Flopping)>) {
-    // info!("Flopping");
     for (mut animation, mut velocity, mut flopping) in &mut fighters {
         // Make sure we stop moving ( this is temporary, we should do sort of a forward lurch )
         **velocity = Vec2::ZERO;
@@ -313,7 +285,6 @@ fn moving(
     mut commands: Commands,
     mut fighters: Query<(Entity, &mut Animation, &mut Facing, &mut Velocity, &Moving)>,
 ) {
-    // info!("Moving");
     for (entity, mut animation, mut facing, mut velocity, moving) in &mut fighters {
         // If we aren't playing the moving animation
         if animation.current_animation.as_deref() != Some(Moving::ANIMATION) {
