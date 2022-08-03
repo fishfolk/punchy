@@ -1,20 +1,14 @@
 use std::collections::VecDeque;
-use std::marker::PhantomData;
 
-use bevy::{
-    ecs::{
-        entity::Entities,
-        system::{CommandQueue, SystemParam},
-    },
-    prelude::*,
-    reflect::FromType,
-};
+use bevy::{prelude::*, reflect::FromType};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
     animation::{Animation, Facing},
-    commands::DynamicEntityCommandsExt,
+    commands::{
+        flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
+    },
     enemy::Enemy,
     input::PlayerAction,
     metadata::FighterMeta,
@@ -26,11 +20,16 @@ use crate::{
 /// Plugin for managing fighter states
 pub struct FighterStatePlugin;
 
+/// The Bevy stage that fighter state change commands are flushed
 #[derive(Clone, StageLabel)]
 struct FighterStateFlushStage;
 
+/// The system set that fighter state change intents are collected
 #[derive(Clone, SystemLabel)]
 struct FighterStateCollectSystems;
+
+/// [`CustomCommands`] marker type.
+pub struct TransitionCmds;
 
 impl Plugin for FighterStatePlugin {
     fn build(&self, app: &mut App) {
@@ -43,7 +42,7 @@ impl Plugin for FighterStatePlugin {
             //     info!("======End======");
             // })
             // State transition queue
-            .init_resource::<StateTransitionCommandQueue>()
+            .init_custom_commands::<TransitionCmds>()
             // The collect systems
             .add_system_set_to_stage(
                 CoreStage::PreUpdate,
@@ -69,7 +68,7 @@ impl Plugin for FighterStatePlugin {
             .add_stage_before(
                 CoreStage::Update,
                 FighterStateFlushStage,
-                SystemStage::single(flush_state_transition_commands.exclusive_system()),
+                SystemStage::single(flush_custom_commands::<TransitionCmds>.exclusive_system()),
             )
             // State handler systems
             .add_system_set_to_stage(
@@ -86,6 +85,7 @@ impl Plugin for FighterStatePlugin {
 }
 
 /// Debugging system
+/// TODO: remove when done testing
 fn _print_fighters(
     fighters: Query<
         (Entity, Option<&Idling>, Option<&Flopping>, Option<&Moving>),
@@ -94,27 +94,6 @@ fn _print_fighters(
 ) {
     for (entity, idling, flopping, moving) in &fighters {
         info!("    {:?} {:?} {:?} {:?}", entity, idling, flopping, moving);
-    }
-}
-
-/// Resource containing the state transition command queue
-#[derive(Default, Deref, DerefMut)]
-pub struct StateTransitionCommandQueue(CommandQueue);
-
-/// System parameter very similar to the [`Commands`] parameter, but commands issued though it will
-/// be flushed during [`FighterStateSystemSet::FlushStateTransitions`] instead of at the end of the
-/// frame.
-#[derive(SystemParam)]
-pub struct StateTransitionCommands<'w, 's> {
-    queue: ResMut<'w, StateTransitionCommandQueue>,
-    entities: &'w Entities,
-    #[system_param(ignore)]
-    _phantom: PhantomData<&'s ()>,
-}
-
-impl<'w, 's> StateTransitionCommands<'w, 's> {
-    pub fn commands<'a>(&'a mut self) -> Commands<'w, 'a> {
-        Commands::new_from_entities(&mut self.queue, self.entities)
     }
 }
 
@@ -147,6 +126,7 @@ impl StateTransition {
     }
 }
 
+/// Component on fighters that contains the queue of state transition intents
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct StateTransitionIntents(VecDeque<StateTransition>);
 
@@ -154,6 +134,7 @@ pub struct StateTransitionIntents(VecDeque<StateTransition>);
 // Fighter state components
 //
 
+/// Component indicating the player is idling
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Idling;
@@ -162,6 +143,7 @@ impl Idling {
     const ANIMATION: &'static str = "idle";
 }
 
+/// Component indicating the player is moving
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Moving {
@@ -172,6 +154,7 @@ impl Moving {
     const ANIMATION: &'static str = "running";
 }
 
+/// Component indicating the player is flopping
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Flopping {
@@ -229,7 +212,7 @@ fn collect_enemy_actions(mut _enemies: Query<&mut StateTransitionIntents, With<E
 
 /// Initiate any transitions from the idling state
 fn transition_from_idle(
-    mut transition_commands: StateTransitionCommands,
+    mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
     // info!("trans from idle");
@@ -257,7 +240,7 @@ fn transition_from_idle(
 
 // Initiate any transitions from the flopping state
 fn transition_from_flopping(
-    mut transition_commands: StateTransitionCommands,
+    mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
 ) {
     // info!("trans from flop");
@@ -287,21 +270,6 @@ fn transition_from_flopping(
             commands.entity(entity).remove::<Flopping>().insert(Idling);
         }
     }
-}
-
-//
-// Flush state transitions system
-//
-
-fn flush_state_transition_commands(world: &mut World) {
-    // info!("Flush");
-    let mut queue = world
-        .remove_resource::<StateTransitionCommandQueue>()
-        .unwrap();
-
-    queue.apply(world);
-
-    world.insert_resource(queue);
 }
 
 //

@@ -53,7 +53,7 @@ impl Plugin for AttackPlugin {
         .add_system(
             enemy_attack
                 .run_in_state(GameState::InGame)
-                .after("move_to_target"),
+                // .after("move_to_target"),
         );
     }
 }
