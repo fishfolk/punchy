@@ -54,7 +54,7 @@ impl Plugin for FighterStatePlugin {
                 ConditionSet::new()
                     .after(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
-                    .with_system(transition_from_idle)
+                    .with_system(transition_from_idling)
                     .with_system(transition_from_attacking)
                     .with_system(transition_from_knocked_back)
                     .into(),
@@ -72,7 +72,7 @@ impl Plugin for FighterStatePlugin {
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
                     .with_system(idling)
-                    .with_system(flopping)
+                    .with_system(attacking)
                     .with_system(moving)
                     .with_system(knocked_back)
                     .into(),
@@ -216,7 +216,7 @@ fn collect_player_actions(
 //
 
 /// Initiate any transitions from the idling state
-fn transition_from_idle(
+fn transition_from_idling(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
@@ -328,7 +328,7 @@ fn idling(mut fighters: Query<(&mut Animation, &mut LinearVelocity), With<Idling
 }
 
 /// Handle fighter flopping state
-fn flopping(
+fn attacking(
     mut commands: Commands,
     mut fighters: Query<(
         Entity,

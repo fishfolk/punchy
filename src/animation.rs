@@ -36,10 +36,6 @@ impl Facing {
     pub fn is_left(&self) -> bool {
         self == &Facing::Left
     }
-
-    pub fn set(&mut self, facing: Facing) {
-        *self = facing;
-    }
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
