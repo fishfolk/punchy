@@ -8,7 +8,7 @@ use crate::{
     enemy::Enemy,
     fighter_state::{Idling, StateTransitionIntents},
     metadata::FighterMeta,
-    movement::Velocity,
+    movement::LinearVelocity,
     player::Player,
     AnimatedSpriteSheetBundle, CharacterBundle, PhysicsBundle,
 };
@@ -26,7 +26,7 @@ pub struct ActiveFighterBundle {
     state_transition_intents: StateTransitionIntents,
     /// Fighters start off idling, but this component may be removed when the fighter state changes.
     idling: Idling,
-    velocity: Velocity,
+    velocity: LinearVelocity,
 }
 
 /// Turns a fighter stub data (loaded from the metadata) into a fully active fighter.

@@ -16,7 +16,7 @@ use crate::{
     enemy_ai,
     input::PlayerAction,
     metadata::FighterMeta,
-    movement::Velocity,
+    movement::LinearVelocity,
     player::Player,
     GameState, Stats,
 };
@@ -314,7 +314,7 @@ fn transition_from_knocked_back(
 //
 
 /// Handle fighter idle state
-fn idling(mut fighters: Query<(&mut Animation, &mut Velocity), With<Idling>>) {
+fn idling(mut fighters: Query<(&mut Animation, &mut LinearVelocity), With<Idling>>) {
     for (mut animation, mut velocity) in &mut fighters {
         // If we aren't playing the idle animation
         if animation.current_animation.as_deref() != Some(Idling::ANIMATION) {
@@ -333,7 +333,7 @@ fn flopping(
     mut fighters: Query<(
         Entity,
         &mut Animation,
-        &mut Velocity,
+        &mut LinearVelocity,
         &Facing,
         &Stats,
         &Handle<FighterMeta>,
@@ -415,7 +415,13 @@ fn flopping(
 /// Handle fighter moving state
 fn moving(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &mut Animation, &mut Facing, &mut Velocity, &Moving)>,
+    mut fighters: Query<(
+        Entity,
+        &mut Animation,
+        &mut Facing,
+        &mut LinearVelocity,
+        &Moving,
+    )>,
 ) {
     for (entity, mut animation, mut facing, mut velocity, moving) in &mut fighters {
         // If we aren't playing the moving animation
@@ -441,7 +447,12 @@ fn moving(
 }
 
 fn knocked_back(
-    mut fighters: Query<(&mut Animation, &Facing, &mut Velocity, &mut KnockedBack)>,
+    mut fighters: Query<(
+        &mut Animation,
+        &Facing,
+        &mut LinearVelocity,
+        &mut KnockedBack,
+    )>,
     time: Res<Time>,
 ) {
     for (mut animation, facing, mut velocity, mut knocked_back) in &mut fighters {

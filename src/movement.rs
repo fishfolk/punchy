@@ -41,10 +41,10 @@ impl Plugin for MovementPlugin {
 /// simple constraints system instead of actual physics simulation.
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deref, DerefMut, Default)]
-pub struct Velocity(pub Vec2);
+pub struct LinearVelocity(pub Vec2);
 
 /// System that updates translations based on entity velocities.
-pub fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
+pub fn velocity_system(mut query: Query<(&mut Transform, &LinearVelocity)>, time: Res<Time>) {
     for (mut transform, dir) in &mut query.iter_mut() {
         transform.translation += dir.0.extend(0.) * time.delta_seconds();
     }
@@ -55,16 +55,16 @@ pub fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>, time: Res<
 /// A positive value means a clockwise rotation and a negative value means couter-clockwise.
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deref, DerefMut, Default)]
-pub struct Torque(pub f32);
+pub struct AngularVelocity(pub f32);
 
-impl Torque {
+impl AngularVelocity {
     pub fn with_clockwise(r: f32, clockwise: bool) -> Self {
-        Torque(r * if clockwise { 0.0 } else { -1.0 })
+        AngularVelocity(r * if clockwise { 0.0 } else { -1.0 })
     }
 }
 
 /// System that applies rotations based on entity torques.
-pub fn torque_system(mut query: Query<(&mut Transform, &Torque)>, time: Res<Time>) {
+pub fn torque_system(mut query: Query<(&mut Transform, &AngularVelocity)>, time: Res<Time>) {
     for (mut transform, torque) in &mut query.iter_mut() {
         transform.rotation *= Quat::from_rotation_z(**torque * time.delta_seconds());
     }
@@ -104,7 +104,7 @@ fn constrain_player_movement(
     level_meta: Res<LevelMeta>,
     game_meta: Res<GameMeta>,
     left_movement_boundary: Res<LeftMovementBoundary>,
-    mut players: Query<(&Transform, &mut Velocity), With<Player>>,
+    mut players: Query<(&Transform, &mut LinearVelocity), With<Player>>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();

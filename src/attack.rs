@@ -26,7 +26,7 @@ use crate::{
     input::PlayerAction,
     item::item_carried_by_player,
     metadata::{FighterMeta, ItemMeta},
-    movement::{Torque, Velocity},
+    movement::{AngularVelocity, LinearVelocity},
     ArrivedEvent,
     Enemy,
     GameState,
@@ -81,14 +81,14 @@ pub struct ProjectileLifetime(pub Timer);
 pub struct Projectile {
     #[bundle]
     sprite_bundle: SpriteBundle,
-    torque: Torque,
+    torque: AngularVelocity,
     collider: Collider,
     sensor: Sensor,
     events: ActiveEvents,
     collision_types: ActiveCollisionTypes,
     collision_groups: CollisionGroups,
     facing: Facing,
-    velocity: Velocity,
+    velocity: LinearVelocity,
     attack: Attack,
     attack_timer: ProjectileLifetime,
 }
@@ -110,7 +110,7 @@ impl Projectile {
                 ),
                 ..default()
             },
-            torque: Torque::with_clockwise(THROW_ITEM_ROTATION_SPEED, !facing.is_left()),
+            torque: AngularVelocity::with_clockwise(THROW_ITEM_ROTATION_SPEED, !facing.is_left()),
             collider: Collider::cuboid(ATTACK_WIDTH / 2., ATTACK_HEIGHT / 2.),
             sensor: Sensor,
             events: ActiveEvents::COLLISION_EVENTS,
@@ -118,7 +118,7 @@ impl Projectile {
             //TODO: define collision layer based on the fighter shooting projectile, load for asset files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
             facing: facing.clone(),
-            velocity: Velocity(dir * 300.), //TODO: Put the velocity in a cons,
+            velocity: LinearVelocity(dir * 300.), //TODO: Put the velocity in a cons,
             attack: Attack { damage: 10 },
             attack_timer: ProjectileLifetime(Timer::new(Duration::from_secs(1), false)),
         }
@@ -129,7 +129,7 @@ impl Projectile {
 pub struct ThrownItem {
     #[bundle]
     sprite_bundle: SpriteBundle,
-    torque: Torque,
+    torque: AngularVelocity,
     // move_in_arc: MoveInArc,
     collider: Collider,
     sensor: Sensor,
@@ -152,7 +152,10 @@ impl ThrownItem {
                 transform: Transform::from_xyz(position.x, position.y, ITEM_LAYER),
                 ..default()
             },
-            torque: Torque::with_clockwise(consts::THROW_ITEM_ROTATION_SPEED, !facing.is_left()),
+            torque: AngularVelocity::with_clockwise(
+                consts::THROW_ITEM_ROTATION_SPEED,
+                !facing.is_left(),
+            ),
             // move_in_arc: MoveInArc {
             //     //TODO: Set in consts
             //     radius: Vec2::new(
