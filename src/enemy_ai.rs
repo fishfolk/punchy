@@ -104,12 +104,17 @@ pub fn emit_enemy_intents(
             intents.push_back(StateTransition::new(
                 Attacking::default(),
                 Attacking::PRIORITY,
+                false,
             ));
 
         // If we aren't near our target yet
         } else {
             // Move towards our target
-            intents.push_back(StateTransition::new(Moving { velocity }, Moving::PRIORITY));
+            intents.push_back(StateTransition::new(
+                Moving { velocity },
+                Moving::PRIORITY,
+                false,
+            ));
         }
     }
 }

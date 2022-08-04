@@ -18,7 +18,7 @@ use crate::{
     enemy::Enemy,
     enemy_ai,
     input::PlayerAction,
-    metadata::FighterMeta,
+    metadata::{FighterMeta, ItemMeta},
     movement::LinearVelocity,
     player::Player,
     GameState, Stats,
@@ -79,6 +79,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(idling)
                     .with_system(attacking)
                     .with_system(moving)
+                    .with_system(throwing)
                     .with_system(knocked_back)
                     .with_system(dying)
                     .into(),
@@ -97,11 +98,14 @@ pub struct StateTransition {
     /// A priority of `i32::MAX` should usually be transitioned to immediately regardless of
     /// the current state.
     priority: i32,
+    /// If a state transition is additive, it means that the existing state should not be removed
+    /// when this state is applied.
+    is_additive: bool,
 }
 
 impl StateTransition {
     /// Create a new fighter state event from the given state and priority
-    pub fn new<T>(component: T, priority: i32) -> Self
+    pub fn new<T>(component: T, priority: i32, is_additive: bool) -> Self
     where
         T: Reflect + Default + Component,
     {
@@ -111,13 +115,44 @@ impl StateTransition {
             reflect_component,
             data,
             priority,
+            is_additive,
         }
+    }
+
+    /// Apply this state transition to the given entity.
+    ///
+    /// Returns whether or not the transition was additive.
+    ///
+    /// If a transition was additive, it means the current state will still be active.
+    pub fn apply<CurrentState: Component>(
+        self,
+        entity: Entity,
+        transition_commands: &mut CustomCommands<TransitionCmds>,
+    ) -> bool {
+        let mut commands = transition_commands.commands();
+        let mut entity_cmds = commands.entity(entity);
+
+        if !self.is_additive {
+            entity_cmds.remove::<CurrentState>();
+        }
+
+        entity_cmds.insert_dynamic(self.reflect_component, self.data);
+
+        self.is_additive
     }
 }
 
 /// Component on fighters that contains the queue of state transition intents
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct StateTransitionIntents(VecDeque<StateTransition>);
+
+/// Component on fighters containing the action intent queue.
+///
+/// Actions are things that the fighter should try to do that doesn't represent a state change. The
+/// current fighter state must choose to act upon an action intent for it to be effect, and it will
+/// otherwise be ignored.q
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct ActionIntents(VecDeque<Box<dyn Reflect>>);
 
 //
 // Fighter state components
@@ -141,6 +176,13 @@ pub struct Moving {
 impl Moving {
     pub const PRIORITY: i32 = 10;
     pub const ANIMATION: &'static str = "running";
+}
+
+/// The player is throwing an item
+#[derive(Component, Reflect, Default, Debug)]
+pub struct Throwing;
+impl Throwing {
+    pub const PRIORITY: i32 = 15;
 }
 
 /// Component indicating the player is flopping
@@ -198,7 +240,12 @@ fn collect_player_actions(
             transition_intents.push_back(StateTransition::new(
                 Attacking::default(),
                 Attacking::PRIORITY,
+                false,
             ));
+        }
+
+        if action_state.pressed(PlayerAction::Throw) {
+            transition_intents.push_back(StateTransition::new(Throwing, Throwing::PRIORITY, true));
         }
 
         if action_state.pressed(PlayerAction::Move) {
@@ -210,6 +257,7 @@ fn collect_player_actions(
                     velocity: direction * stats.movement_speed * time.delta_seconds(),
                 },
                 Moving::PRIORITY,
+                false,
             ));
         }
     }
@@ -228,6 +276,7 @@ fn collect_attack_knockbacks(
                     timer: Timer::from_seconds(0.18, false),
                 },
                 KnockedBack::PRIORITY,
+                false,
             ));
         }
     }
@@ -239,7 +288,7 @@ fn collect_fighter_eliminations(
 ) {
     for (health, mut transition_intents) in &mut fighters {
         if **health <= 0 {
-            transition_intents.push_back(StateTransition::new(Dying, Dying::PRIORITY));
+            transition_intents.push_back(StateTransition::new(Dying, Dying::PRIORITY, false));
         }
     }
 }
@@ -253,8 +302,6 @@ fn transition_from_idle(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
-    let mut commands = transition_commands.commands();
-
     'entity: for (entity, mut transition_intents) in &mut fighters {
         // Collect transitions and sort by priority
         let mut transitions = transition_intents.drain(..).collect::<Vec<_>>();
@@ -266,11 +313,11 @@ fn transition_from_idle(
         // This logic may become more sophisticated later.
         if let Some(transition) = transitions.pop() {
             if transition.priority > Idling::PRIORITY {
-                commands
-                    .entity(entity)
-                    .remove::<Idling>()
-                    .insert_dynamic(transition.reflect_component, transition.data);
-                continue 'entity;
+                let was_additive = transition.apply::<Idling>(entity, &mut transition_commands);
+
+                if !was_additive {
+                    continue 'entity;
+                }
             }
         }
     }
@@ -281,8 +328,6 @@ fn transition_from_attacking(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &Attacking)>,
 ) {
-    let mut commands = transition_commands.commands();
-
     'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
         // Collect transitions and sort by priority
         let mut intents = transition_intents.drain(..).collect::<Vec<_>>();
@@ -293,18 +338,22 @@ fn transition_from_attacking(
             // If the intent is a higher priority than flopping
             if intent.priority > Attacking::PRIORITY {
                 // Transition to the new state
-                commands
-                    .entity(entity)
-                    .remove::<Attacking>()
-                    .insert_dynamic(intent.reflect_component, intent.data);
-                continue 'entity;
+                let was_additive = intent.apply::<Attacking>(entity, &mut transition_commands);
+
+                if !was_additive {
+                    continue 'entity;
+                }
             }
         }
 
         // If we're done flopping
         if flopping.is_finished {
             // Go back to idle
-            commands.entity(entity).remove::<Attacking>().insert(Idling);
+            transition_commands
+                .commands()
+                .entity(entity)
+                .remove::<Attacking>()
+                .insert(Idling);
         }
     }
 }
@@ -314,8 +363,6 @@ fn transition_from_knocked_back(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &KnockedBack)>,
 ) {
-    let mut commands = transition_commands.commands();
-
     'entity: for (entity, mut transition_intents, knocked_back) in &mut fighters {
         // Collect transitions and sort by priority
         let mut intents = transition_intents.drain(..).collect::<Vec<_>>();
@@ -324,17 +371,18 @@ fn transition_from_knocked_back(
         for intent in intents {
             // Transition to higher priority intents
             if intent.priority > KnockedBack::PRIORITY {
-                commands
-                    .entity(entity)
-                    .remove::<KnockedBack>()
-                    .insert_dynamic(intent.reflect_component, intent.data);
-                continue 'entity;
+                let was_additive = intent.apply::<KnockedBack>(entity, &mut transition_commands);
+
+                if !was_additive {
+                    continue 'entity;
+                }
             }
         }
 
         // Transition to idle when finished
         if knocked_back.timer.finished() {
-            commands
+            transition_commands
+                .commands()
                 .entity(entity)
                 .remove::<KnockedBack>()
                 .insert(Idling);
@@ -511,6 +559,7 @@ fn moving(
     }
 }
 
+/// Update knocked back players
 fn knocked_back(
     mut fighters: Query<(
         &mut Animation,
@@ -540,6 +589,7 @@ fn knocked_back(
     }
 }
 
+/// Update dying players
 fn dying(
     mut commands: Commands,
     mut fighters: Query<(Entity, &mut Animation, &mut LinearVelocity), With<Dying>>,
@@ -554,5 +604,13 @@ fn dying(
         } else if animation.is_finished() {
             commands.entity(entity).despawn_recursive();
         }
+    }
+}
+
+fn throwing(mut commands: Commands, mut fighters: Query<Entity, With<Throwing>>) {
+    for entity in &mut fighters {
+
+
+        commands.entity(entity).remove::<Throwing>();
     }
 }

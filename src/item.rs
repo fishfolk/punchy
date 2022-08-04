@@ -36,6 +36,7 @@ impl ItemBundle {
         Self {
             item: Item,
             item_meta_handle: item_spawn_meta.item_handle.clone(),
+            // TODO: Actually include the item's name
             name: Name::new("Map Item"),
         }
     }
