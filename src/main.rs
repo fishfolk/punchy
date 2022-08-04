@@ -62,7 +62,6 @@ use utils::ResetController;
 use y_sort::*;
 
 use crate::{
-    enemy_ai::EnemyAiPlugin,
     fighter_state::FighterStatePlugin,
     input::PlayerAction,
     item::{pick_items, use_health_item},
@@ -206,7 +205,6 @@ fn main() {
         .add_plugin(FighterStatePlugin)
         .add_plugin(MovementPlugin)
         .add_plugin(AudioPlugin)
-        .add_plugin(EnemyAiPlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())

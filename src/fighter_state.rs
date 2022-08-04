@@ -13,8 +13,7 @@ use crate::{
     commands::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
-    enemy::Enemy,
-    enemy_ai::EnemyTarget,
+    enemy_ai,
     input::PlayerAction,
     metadata::FighterMeta,
     movement::Velocity,
@@ -44,7 +43,9 @@ impl Plugin for FighterStatePlugin {
                     .label(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
                     .with_system(collect_player_actions)
-                    .with_system(collect_enemy_actions)
+                    .with_system(
+                        enemy_ai::set_target_near_player.chain(enemy_ai::emit_enemy_intents),
+                    )
                     .into(),
             )
             // The transition systems
@@ -121,8 +122,8 @@ pub struct StateTransitionIntents(VecDeque<StateTransition>);
 #[component(storage = "SparseSet")]
 pub struct Idling;
 impl Idling {
-    const PRIORITY: i32 = 0;
-    const ANIMATION: &'static str = "idle";
+    pub const PRIORITY: i32 = 0;
+    pub const ANIMATION: &'static str = "idle";
 }
 
 /// Component indicating the player is moving
@@ -132,8 +133,8 @@ pub struct Moving {
     pub velocity: Vec2,
 }
 impl Moving {
-    const PRIORITY: i32 = 10;
-    const ANIMATION: &'static str = "running";
+    pub const PRIORITY: i32 = 10;
+    pub const ANIMATION: &'static str = "running";
 }
 
 /// Component indicating the player is flopping
@@ -144,8 +145,8 @@ pub struct Attacking {
     pub is_finished: bool,
 }
 impl Attacking {
-    const PRIORITY: i32 = 30;
-    const ANIMATION: &'static str = "attacking";
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "attacking";
 }
 
 /// Component indicating the player is getting knocked back
@@ -156,9 +157,9 @@ pub struct KnockedBack {
     pub timer: Timer,
 }
 impl KnockedBack {
-    const PRIORITY: i32 = 20;
-    const ANIMATION_LEFT: &'static str = "knocked_left";
-    const ANIMATION_RIGHT: &'static str = "knocked_right";
+    pub const PRIORITY: i32 = 20;
+    pub const ANIMATION_LEFT: &'static str = "knocked_left";
+    pub const ANIMATION_RIGHT: &'static str = "knocked_right";
 }
 
 //
@@ -206,55 +207,6 @@ fn collect_player_actions(
                 },
                 Moving::PRIORITY,
             ));
-        }
-    }
-}
-
-// TODO: Implement AI actions
-fn collect_enemy_actions(
-    mut query: Query<
-        (
-            Entity,
-            &Transform,
-            &Stats,
-            &EnemyTarget,
-            &mut Facing,
-            &mut StateTransitionIntents,
-        ),
-        // All enemies that are either moving or idling
-        (With<Enemy>, Or<(With<Idling>, With<Moving>)>),
-    >,
-    mut transition_commands: CustomCommands<TransitionCmds>,
-    time: Res<Time>,
-) {
-    let mut commands = transition_commands.commands();
-
-    for (entity, transform, stats, target, mut facing, mut intents) in &mut query {
-        let position = transform.translation.truncate();
-        let velocity =
-            (target.position - position).normalize() * stats.movement_speed * time.delta_seconds();
-
-        if velocity.x < 0.0 {
-            *facing = Facing::Left;
-        } else {
-            *facing = Facing::Right;
-        }
-
-        // If we're close to our target
-        if position.distance(target.position) <= 100. {
-            // Remove the target
-            commands.entity(entity).remove::<EnemyTarget>();
-
-            // And attack!
-            intents.push_back(StateTransition::new(
-                Attacking::default(),
-                Attacking::PRIORITY,
-            ));
-
-        // If we aren't near our target yet
-        } else {
-            // Move towards our target
-            intents.push_back(StateTransition::new(Moving { velocity }, Moving::PRIORITY));
         }
     }
 }
