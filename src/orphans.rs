@@ -1,4 +1,54 @@
 //! Old code before the refactor that needs to be either cut out or worked into the new design
+//!
+
+pub fn attack_fighter_collision(
+    mut commands: Commands,
+    mut events: EventReader<CollisionEvent>,
+    mut fighter_query: Query<(&mut Stats, &Transform)>,
+    // attack_query: Query<(&Attack, &Transform, Option<&ProjectileLifetime>)>,
+) {
+    for event in events.iter() {
+        if let CollisionEvent::Started(e1, e2, _flags) = event {
+            let (attack_entity, fighter_entity) = if attack_query.contains(*e1) {
+                // In this case, it's guaranteed that e1 is found (as projectile), but e2 and the
+                // entities in the else case, may potentially not be found.
+                (*e1, *e2)
+            } else {
+                (*e2, *e1)
+            };
+
+            if let Ok((mut f_state, mut f_stats, f_transform)) =
+                fighter_query.get_mut(fighter_entity)
+            {
+                if let Ok((a_attack, a_transform, maybe_projectile)) =
+                    attack_query.get(attack_entity)
+                {
+                    f_stats.health -= a_attack.damage;
+
+                    let force = 150.; //TODO: set this to a constant
+                    let mut direction = Vec2::new(0., 0.);
+
+                    if a_transform.translation.x < f_transform.translation.x {
+                        f_state.set(State::KnockedLeft);
+                        direction.x = force;
+                    } else {
+                        f_state.set(State::KnockedRight);
+                        direction.x = -force;
+                    }
+
+                    commands.entity(fighter_entity).insert(Knockback {
+                        direction,
+                        duration: Timer::from_seconds(0.15, false),
+                    });
+
+                    if maybe_projectile.is_some() {
+                        commands.entity(attack_entity).despawn_recursive();
+                    }
+                }
+            }
+        }
+    }
+}
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]

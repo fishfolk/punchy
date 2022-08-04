@@ -58,6 +58,7 @@ pub fn velocity_system(mut query: Query<(&mut Transform, &LinearVelocity)>, time
 pub struct AngularVelocity(pub f32);
 
 impl AngularVelocity {
+    #[allow(unused)] // TODO: Remove when used
     pub fn with_clockwise(r: f32, clockwise: bool) -> Self {
         AngularVelocity(r * if clockwise { 0.0 } else { -1.0 })
     }

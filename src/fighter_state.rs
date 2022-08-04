@@ -13,6 +13,7 @@ use crate::{
     commands::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
+    damage::Health,
     enemy::Enemy,
     enemy_ai,
     input::PlayerAction,
@@ -43,6 +44,7 @@ impl Plugin for FighterStatePlugin {
                 ConditionSet::new()
                     .label(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
+                    .with_system(collect_fighter_eliminations)
                     .with_system(collect_player_actions)
                     .with_system(
                         enemy_ai::set_target_near_player.chain(enemy_ai::emit_enemy_intents),
@@ -76,6 +78,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(attacking)
                     .with_system(moving)
                     .with_system(knocked_back)
+                    .with_system(dying)
                     .into(),
             );
     }
@@ -163,6 +166,15 @@ impl KnockedBack {
     pub const ANIMATION_RIGHT: &'static str = "knocked_right";
 }
 
+/// Component indicating the player is dying
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct Dying;
+impl Dying {
+    pub const PRIORITY: i32 = 1000;
+    pub const ANIMATION: &'static str = "dying";
+}
+
 //
 // Fighter input collector systems
 //
@@ -208,6 +220,17 @@ fn collect_player_actions(
                 },
                 Moving::PRIORITY,
             ));
+        }
+    }
+}
+
+/// Look for fighters with their health depleated and transition them to dying state
+fn collect_fighter_eliminations(
+    mut fighters: Query<(&Health, &mut StateTransitionIntents), With<Handle<FighterMeta>>>,
+) {
+    for (health, mut transition_intents) in &mut fighters {
+        if **health <= 0 {
+            transition_intents.push_back(StateTransition::new(Dying, Dying::PRIORITY));
         }
     }
 }
@@ -500,5 +523,22 @@ fn knocked_back(
         knocked_back.timer.tick(time.delta());
 
         **velocity = knocked_back.velocity;
+    }
+}
+
+fn dying(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut Animation, &mut LinearVelocity), With<Dying>>,
+) {
+    for (entity, mut animation, mut velocity) in &mut fighters {
+        // Start playing the dying animation if it isn't already
+        if animation.current_animation.as_deref() != Some(Dying::ANIMATION) {
+            **velocity = Vec2::ZERO;
+            animation.play(Dying::ANIMATION, false);
+
+        // When the animatino is finished, despawn the fighter
+        } else if animation.is_finished() {
+            commands.entity(entity).despawn_recursive();
+        }
     }
 }

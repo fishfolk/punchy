@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{GameStage, GameState};
 use bevy::{
-    prelude::{App, Component, Plugin, Query, Res},
+    prelude::*,
     sprite::TextureAtlasSprite,
     time::{Time, Timer},
     utils::HashMap,
@@ -23,6 +23,14 @@ impl Plugin for AnimationPlugin {
                 .into(),
         );
     }
+}
+
+/// Bundle for animated sprite sheets
+#[derive(Bundle)]
+pub struct AnimatedSpriteSheetBundle {
+    #[bundle]
+    pub sprite_sheet: SpriteSheetBundle,
+    pub animation: Animation,
 }
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]

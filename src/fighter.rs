@@ -4,33 +4,33 @@ use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
 use crate::{
-    animation::Animation,
-    collisions::BodyLayers,
+    animation::{AnimatedSpriteSheetBundle, Animation},
+    collisions::{BodyLayers, PhysicsBundle},
     damage::{Damageable, Health},
     enemy::Enemy,
     fighter_state::{Idling, StateTransitionIntents},
     metadata::FighterMeta,
     movement::LinearVelocity,
     player::Player,
-    AnimatedSpriteSheetBundle, CharacterBundle, PhysicsBundle,
+    y_sort::YSort,
 };
 
 /// Bundle added to a fighter stub, in order to activate it.
 #[derive(Bundle)]
 pub struct ActiveFighterBundle {
-    name: Name,
+    pub name: Name,
     #[bundle]
-    animated_spritesheet_bundle: AnimatedSpriteSheetBundle,
+    pub animated_spritesheet_bundle: AnimatedSpriteSheetBundle,
     #[bundle]
-    character_bundle: CharacterBundle,
-    #[bundle]
-    physics_bundle: PhysicsBundle,
-    health: Health,
-    damageable: Damageable,
-    state_transition_intents: StateTransitionIntents,
+    pub physics_bundle: PhysicsBundle,
+    pub stats: Stats,
+    pub ysort: YSort,
+    pub health: Health,
+    pub damageable: Damageable,
+    pub state_transition_intents: StateTransitionIntents,
     /// Fighters start off idling, but this component may be removed when the fighter state changes.
-    idling: Idling,
-    velocity: LinearVelocity,
+    pub idling: Idling,
+    pub velocity: LinearVelocity,
 }
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -89,10 +89,7 @@ impl ActiveFighterBundle {
                     fighter.spritesheet.animations.clone(),
                 ),
             },
-            character_bundle: CharacterBundle {
-                stats: fighter.stats.clone(),
-                ..default()
-            },
+            stats: fighter.stats.clone(),
             health: Health(fighter.stats.max_health),
             damageable: default(),
             physics_bundle: PhysicsBundle {
@@ -101,6 +98,7 @@ impl ActiveFighterBundle {
             },
             idling: Idling,
             state_transition_intents: default(),
+            ysort: default(),
             velocity: default(),
         };
 

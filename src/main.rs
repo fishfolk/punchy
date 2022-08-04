@@ -3,8 +3,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use bevy::{
-    asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, prelude::*,
-    render::texture::ImageSettings,
+    asset::AssetServerSettings, log::LogSettings, prelude::*, render::texture::ImageSettings,
 };
 use bevy_kira_audio::AudioApp;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
@@ -59,6 +58,7 @@ use utils::ResetController;
 use y_sort::*;
 
 use crate::{
+    damage::DamagePlugin,
     fighter_state::FighterStatePlugin,
     input::PlayerAction,
     item::{pick_items, use_health_item},
@@ -81,48 +81,6 @@ enum GameState {
     Paused,
     //Editor,
 }
-
-#[derive(Component)]
-pub struct DespawnMarker;
-
-#[derive(Bundle, Default)]
-struct CharacterBundle {
-    stats: Stats,
-    ysort: YSort,
-}
-
-#[derive(Bundle)]
-struct AnimatedSpriteSheetBundle {
-    #[bundle]
-    sprite_sheet: SpriteSheetBundle,
-    animation: Animation,
-}
-
-#[derive(Bundle)]
-struct PhysicsBundle {
-    collider: Collider,
-    sensor: Sensor,
-    active_events: ActiveEvents,
-    active_collision_types: ActiveCollisionTypes,
-    collision_groups: CollisionGroups,
-}
-impl Default for PhysicsBundle {
-    fn default() -> Self {
-        PhysicsBundle {
-            collider: (Collider::cuboid(
-                consts::PLAYER_SPRITE_WIDTH / 8.,
-                consts::PLAYER_HITBOX_HEIGHT / 8.,
-            )),
-            sensor: Sensor,
-            active_events: ActiveEvents::COLLISION_EVENTS,
-            active_collision_types: ActiveCollisionTypes::default()
-                | ActiveCollisionTypes::STATIC_STATIC,
-            collision_groups: CollisionGroups::default(),
-        }
-    }
-}
-
-pub struct ArrivedEvent(Entity);
 
 fn main() {
     // Load engine config. This will parse CLI arguments or web query string so we want to do it
@@ -168,7 +126,6 @@ fn main() {
             GameStage::Animation,
             SystemStage::parallel(),
         )
-        .add_event::<ArrivedEvent>()
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
@@ -183,6 +140,7 @@ fn main() {
         .add_plugin(FighterStatePlugin)
         .add_plugin(MovementPlugin)
         .add_plugin(AudioPlugin)
+        .add_plugin(DamagePlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
@@ -210,8 +168,7 @@ fn main() {
                 .with_system(camera_follow_player)
                 .with_system(game_over_on_players_death)
                 .into(),
-        )
-        .add_system_to_stage(CoreStage::Last, despawn_entities);
+        );
 
     // Add debug plugins
     #[cfg(feature = "debug")]
@@ -262,25 +219,7 @@ fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
     }
 }
 
-fn kill_entities(mut commands: Commands, mut query: Query<(Entity, &Stats, &Animation)>) {
-    // for (entity, stats, animation, mut state) in query.iter_mut() {
-    //     if stats.health <= 0 {
-    //         state.set(State::Dying);
-    //     }
-
-    //     if *state == State::Dying && animation.is_finished() {
-    //         commands.entity(entity).insert(DespawnMarker);
-    //         // commands.entity(entity).despawn_recursive();
-    //     }
-    // }
-}
-
-fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMarker>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
-    }
-}
-
+/// Transition back to main menu and reset world when all players have died
 fn game_over_on_players_death(
     mut commands: Commands,
     query: Query<(), With<Player>>,

@@ -1,17 +1,9 @@
-use bevy::{
-    hierarchy::DespawnRecursiveExt,
-    math::Vec2,
-    prelude::{Commands, EventReader, Query, Transform},
-    time::Timer,
-};
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::{
-    attack::Attack,
-    // movement::Knockback,
-    Stats,
-};
+use crate::consts;
 
+/// Empty struct simply for grouping collision layer constants.
 #[derive(Copy, Clone)]
 pub struct BodyLayers;
 
@@ -30,51 +22,26 @@ impl BodyLayers {
     pub const ALL: u32 = u32::MAX;
 }
 
-pub fn attack_fighter_collision(
-    mut commands: Commands,
-    mut events: EventReader<CollisionEvent>,
-    mut fighter_query: Query<(&mut Stats, &Transform)>,
-    // attack_query: Query<(&Attack, &Transform, Option<&ProjectileLifetime>)>,
-) {
-    // for event in events.iter() {
-    //     if let CollisionEvent::Started(e1, e2, _flags) = event {
-    //         let (attack_entity, fighter_entity) = if attack_query.contains(*e1) {
-    //             // In this case, it's guaranteed that e1 is found (as projectile), but e2 and the
-    //             // entities in the else case, may potentially not be found.
-    //             (*e1, *e2)
-    //         } else {
-    //             (*e2, *e1)
-    //         };
-
-    //         if let Ok((mut f_state, mut f_stats, f_transform)) =
-    //             fighter_query.get_mut(fighter_entity)
-    //         {
-    //             if let Ok((a_attack, a_transform, maybe_projectile)) =
-    //                 attack_query.get(attack_entity)
-    //             {
-    //                 f_stats.health -= a_attack.damage;
-
-    //                 let force = 150.; //TODO: set this to a constant
-    //                 let mut direction = Vec2::new(0., 0.);
-
-    //                 if a_transform.translation.x < f_transform.translation.x {
-    //                     f_state.set(State::KnockedLeft);
-    //                     direction.x = force;
-    //                 } else {
-    //                     f_state.set(State::KnockedRight);
-    //                     direction.x = -force;
-    //                 }
-
-    //                 commands.entity(fighter_entity).insert(Knockback {
-    //                     direction,
-    //                     duration: Timer::from_seconds(0.15, false),
-    //                 });
-
-    //                 if maybe_projectile.is_some() {
-    //                     commands.entity(attack_entity).despawn_recursive();
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+#[derive(Bundle)]
+pub struct PhysicsBundle {
+    pub collider: Collider,
+    pub sensor: Sensor,
+    pub active_events: ActiveEvents,
+    pub active_collision_types: ActiveCollisionTypes,
+    pub collision_groups: CollisionGroups,
+}
+impl Default for PhysicsBundle {
+    fn default() -> Self {
+        PhysicsBundle {
+            collider: (Collider::cuboid(
+                consts::PLAYER_SPRITE_WIDTH / 8.,
+                consts::PLAYER_HITBOX_HEIGHT / 8.,
+            )),
+            sensor: Sensor,
+            active_events: ActiveEvents::COLLISION_EVENTS,
+            active_collision_types: ActiveCollisionTypes::default()
+                | ActiveCollisionTypes::STATIC_STATIC,
+            collision_groups: CollisionGroups::default(),
+        }
+    }
 }
