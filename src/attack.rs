@@ -1,8 +1,8 @@
 use bevy::{
     hierarchy::DespawnRecursiveExt,
     prelude::{
-        App, Commands, Component, Entity, EventReader, EventWriter, Parent, Plugin, Query, With,
-        Without,
+        App, Commands, Component, CoreStage, Entity, EventReader, EventWriter, Parent, Plugin,
+        Query, With, Without,
     },
 };
 use bevy_rapier2d::prelude::*;
@@ -26,18 +26,24 @@ impl Plugin for AttackPlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(activate_hitbox)
                     .with_system(deactivate_hitbox)
-                    .with_system(attack_damage_system)
                     .into(),
-            );
+            )
+            // Attack damage is run in PostUpdate to make sure it runs after rapier generates collision events
+            .add_system_to_stage(CoreStage::PostUpdate, attack_damage_system);
     }
 }
 
+/// A component representing an attack that can do damage to [`Damageable`]s with [`Health`].
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component)]
 pub struct Attack {
     pub damage: i32,
 }
 
+/// A component identifying the attacks active collision frames.
+///
+/// Must be added to an entity that is a child of an entity with an [`Animation`] and an [`Attack`]
+/// and will be used to spawn a collider for that attack during the `active` frames.
 #[derive(Component)]
 pub struct AttackFrames {
     pub startup: usize,
@@ -45,6 +51,7 @@ pub struct AttackFrames {
     pub recovery: usize,
 }
 
+/// Activate collisions for entities with [`AttackFrames`]
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
     animated_query: Query<&Animation>,
@@ -64,6 +71,7 @@ fn activate_hitbox(
     }
 }
 
+/// Deactivate collisions for entities with [`AttackFrames`]
 fn deactivate_hitbox(
     query: Query<(Entity, &AttackFrames, &Parent), (With<Attack>, With<Collider>)>,
     fighter_query: Query<&Animation>,
@@ -78,7 +86,7 @@ fn deactivate_hitbox(
     }
 }
 
-/// Depletes the health of damageables that have collided with attacks.
+/// Depletes the health of damageables that have collided with attacks
 fn attack_damage_system(
     mut events: EventReader<CollisionEvent>,
     mut damageables: Query<&mut Health, With<Damageable>>,
