@@ -34,6 +34,7 @@ impl ItemBundle {
         Self {
             item: Item,
             item_meta_handle: item_spawn_meta.item_handle.clone(),
+            name: Name::new("Map Item"),
         }
     }
 
