@@ -13,7 +13,8 @@ use crate::{
     commands::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
-    damage::Health,
+    consts,
+    damage::{DamageEvent, Health},
     enemy::Enemy,
     enemy_ai,
     input::PlayerAction,
@@ -45,6 +46,7 @@ impl Plugin for FighterStatePlugin {
                     .label(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
                     .with_system(collect_fighter_eliminations)
+                    .with_system(collect_attack_knockbacks)
                     .with_system(collect_player_actions)
                     .with_system(
                         enemy_ai::set_target_near_player.chain(enemy_ai::emit_enemy_intents),
@@ -199,17 +201,6 @@ fn collect_player_actions(
             ));
         }
 
-        // For testing only: knock back player when they hit the throw button.
-        if action_state.pressed(PlayerAction::Throw) {
-            transition_intents.push_back(StateTransition::new(
-                KnockedBack {
-                    velocity: Vec2::new(-200.0, 0.0),
-                    timer: Timer::from_seconds(0.15, false),
-                },
-                KnockedBack::PRIORITY,
-            ));
-        }
-
         if action_state.pressed(PlayerAction::Move) {
             let dual_axis = action_state.clamped_axis_pair(PlayerAction::Move).unwrap();
             let direction = dual_axis.xy();
@@ -219,6 +210,24 @@ fn collect_player_actions(
                     velocity: direction * stats.movement_speed * time.delta_seconds(),
                 },
                 Moving::PRIORITY,
+            ));
+        }
+    }
+}
+
+/// Look for attacks that have contacted a figher and knock them back
+fn collect_attack_knockbacks(
+    mut fighters: Query<&mut StateTransitionIntents, With<Handle<FighterMeta>>>,
+    mut damage_events: EventReader<DamageEvent>,
+) {
+    for event in damage_events.iter() {
+        if let Ok(mut transition_intents) = fighters.get_mut(event.damaged_entity) {
+            transition_intents.push_back(StateTransition::new(
+                KnockedBack {
+                    velocity: event.damage_velocity,
+                    timer: Timer::from_seconds(0.18, false),
+                },
+                KnockedBack::PRIORITY,
             ));
         }
     }
@@ -414,6 +423,11 @@ fn attacking(
                 ))
                 .insert(Attack {
                     damage: stats.damage,
+                    velocity: if facing.is_left() {
+                        Vec2::NEG_X
+                    } else {
+                        Vec2::X
+                    } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
                 })
                 // TODO: Read from figher metadata
                 .insert(AttackFrames {

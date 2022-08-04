@@ -40,7 +40,7 @@ impl Plugin for MovementPlugin {
 /// This is similar to the velocity you would set in a physics simulation, but in our case we use a
 /// simple constraints system instead of actual physics simulation.
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut, Default)]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
 pub struct LinearVelocity(pub Vec2);
 
 /// System that updates translations based on entity velocities.

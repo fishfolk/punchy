@@ -1,5 +1,6 @@
 use bevy::{
     hierarchy::DespawnRecursiveExt,
+    math::Vec2,
     prelude::{
         App, Commands, Component, CoreStage, Entity, EventReader, EventWriter, Parent, Plugin,
         Query, With, Without,
@@ -35,9 +36,11 @@ impl Plugin for AttackPlugin {
 
 /// A component representing an attack that can do damage to [`Damageable`]s with [`Health`].
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub struct Attack {
     pub damage: i32,
+    /// The direction and speed that the attack is hitting something in.
+    pub velocity: Vec2,
 }
 
 /// A component identifying the attacks active collision frames.
@@ -109,9 +112,10 @@ fn attack_damage_system(
             **health -= attack.damage;
 
             event_writer.send(DamageEvent {
-                attack_entity,
-                damaged_entity: damageable_entity,
+                damageing_entity: attack_entity,
+                damage_velocity: attack.velocity,
                 damage: attack.damage,
+                damaged_entity: damageable_entity,
             })
         }
     }

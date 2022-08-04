@@ -22,7 +22,8 @@ pub struct Damageable;
 
 /// Event emitted when an entity is damaged
 pub struct DamageEvent {
-    pub attack_entity: Entity,
+    pub damage_velocity: Vec2,
+    pub damageing_entity: Entity,
     pub damaged_entity: Entity,
     pub damage: i32,
 }
