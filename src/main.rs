@@ -9,9 +9,7 @@ use bevy::{
 use bevy_kira_audio::AudioApp;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
-use consts::ENEMY_TARGET_MAX_OFFSET;
-use consts::{ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE};
-use enemy::*;
+use fighter::Stats;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -34,6 +32,7 @@ mod collisions;
 mod commands;
 mod config;
 mod consts;
+mod damage;
 mod enemy;
 mod enemy_ai;
 mod fighter;
@@ -54,9 +53,7 @@ use animation::*;
 use attack::AttackPlugin;
 use audio::*;
 use camera::*;
-use collisions::*;
 use metadata::GameMeta;
-use serde::Deserialize;
 use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
@@ -67,25 +64,6 @@ use crate::{
     item::{pick_items, use_health_item},
     movement::{LeftMovementBoundary, MovementPlugin},
 };
-
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Stats {
-    pub health: i32,
-    pub damage: i32,
-    pub movement_speed: f32,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Stats {
-            health: 100,
-            damage: 35,
-            movement_speed: 17000.,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
 enum GameStage {
@@ -219,8 +197,8 @@ fn main() {
                 .with_system(pick_items)
                 .with_system(use_health_item)
                 .with_system(y_sort)
-                .with_system(attack_fighter_collision)
-                .with_system(kill_entities)
+                // .with_system(attack_fighter_collision)
+                // .with_system(kill_entities)
                 .with_system(pause)
                 .into(),
         )
@@ -241,9 +219,9 @@ fn main() {
         .add_plugin(InspectableRapierPlugin)
         .add_plugin(WorldInspectorPlugin::new())
         .register_inspectable::<Stats>()
-        // .register_inspectable::<Velocity>()
+        .register_inspectable::<crate::movement::LinearVelocity>()
+        .register_inspectable::<crate::movement::AngularVelocity>()
         // .register_inspectable::<MoveInArc>()
-        .register_inspectable::<Torque>()
         .register_inspectable::<attack::Attack>()
         .register_inspectable::<YSort>()
         .register_inspectable::<Facing>();

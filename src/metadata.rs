@@ -11,7 +11,7 @@ use bevy_parallax::{LayerData, ParallaxResource};
 use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
 
-use crate::{animation::Clip, assets::EguiFont, Stats};
+use crate::{animation::Clip, assets::EguiFont, fighter::Stats};
 
 pub mod settings;
 pub use settings::*;

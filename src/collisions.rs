@@ -7,7 +7,7 @@ use bevy::{
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    attack::{Attack, ProjectileLifetime},
+    attack::Attack,
     // movement::Knockback,
     Stats,
 };
@@ -34,7 +34,7 @@ pub fn attack_fighter_collision(
     mut commands: Commands,
     mut events: EventReader<CollisionEvent>,
     mut fighter_query: Query<(&mut Stats, &Transform)>,
-    attack_query: Query<(&Attack, &Transform, Option<&ProjectileLifetime>)>,
+    // attack_query: Query<(&Attack, &Transform, Option<&ProjectileLifetime>)>,
 ) {
     // for event in events.iter() {
     //     if let CollisionEvent::Started(e1, e2, _flags) = event {

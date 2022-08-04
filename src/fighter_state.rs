@@ -13,6 +13,7 @@ use crate::{
     commands::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
+    enemy::Enemy,
     enemy_ai,
     input::PlayerAction,
     metadata::FighterMeta,
@@ -54,7 +55,7 @@ impl Plugin for FighterStatePlugin {
                 ConditionSet::new()
                     .after(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
-                    .with_system(transition_from_idling)
+                    .with_system(transition_from_idle)
                     .with_system(transition_from_attacking)
                     .with_system(transition_from_knocked_back)
                     .into(),
@@ -216,7 +217,7 @@ fn collect_player_actions(
 //
 
 /// Initiate any transitions from the idling state
-fn transition_from_idling(
+fn transition_from_idle(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
@@ -338,13 +339,31 @@ fn attacking(
         &Stats,
         &Handle<FighterMeta>,
         &mut Attacking,
+        Option<&Player>,
+        Option<&Enemy>,
     )>,
     fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
 ) {
-    for (entity, mut animation, mut velocity, facing, stats, meta_handle, mut flopping) in
-        &mut fighters
+    for (
+        entity,
+        mut animation,
+        mut velocity,
+        facing,
+        stats,
+        meta_handle,
+        mut flopping,
+        player,
+        enemy,
+    ) in &mut fighters
     {
+        let is_player = player.is_some();
+        let is_enemy = enemy.is_some();
+        if !is_player && !is_enemy {
+            // This system only knows how to attack for players and enemies
+            continue;
+        }
+
         // Spawn the flop attack
         if !flopping.has_started {
             flopping.has_started = true;
@@ -359,12 +378,21 @@ fn attacking(
                 .insert(ActiveEvents::COLLISION_EVENTS)
                 .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                 .insert(CollisionGroups::new(
-                    BodyLayers::PLAYER_ATTACK,
-                    BodyLayers::ENEMY,
+                    if is_player {
+                        BodyLayers::PLAYER_ATTACK
+                    } else {
+                        BodyLayers::ENEMY_ATTACK
+                    },
+                    if is_player {
+                        BodyLayers::ENEMY
+                    } else {
+                        BodyLayers::PLAYER
+                    },
                 ))
                 .insert(Attack {
                     damage: stats.damage,
                 })
+                // TODO: Read from figher metadata
                 .insert(AttackFrames {
                     startup: 0,
                     active: 3,

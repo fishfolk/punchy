@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use bevy::{
+    core::Name,
     ecs::system::EntityCommands,
     hierarchy::{BuildChildren, Children},
     math::Vec3,
@@ -27,6 +28,7 @@ pub struct Item;
 pub struct ItemBundle {
     item: Item,
     item_meta_handle: Handle<ItemMeta>,
+    name: Name,
 }
 
 impl ItemBundle {
