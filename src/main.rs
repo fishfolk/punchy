@@ -35,6 +35,7 @@ mod commands;
 mod config;
 mod consts;
 mod enemy;
+mod enemy_ai;
 mod fighter;
 mod fighter_state;
 mod input;
@@ -61,6 +62,7 @@ use utils::ResetController;
 use y_sort::*;
 
 use crate::{
+    enemy_ai::EnemyAiPlugin,
     fighter_state::FighterStatePlugin,
     input::PlayerAction,
     item::{pick_items, use_health_item},
@@ -81,7 +83,7 @@ impl Default for Stats {
         Stats {
             health: 100,
             damage: 35,
-            movement_speed: 150.,
+            movement_speed: 17000.,
         }
     }
 }
@@ -204,6 +206,7 @@ fn main() {
         .add_plugin(FighterStatePlugin)
         .add_plugin(MovementPlugin)
         .add_plugin(AudioPlugin)
+        .add_plugin(EnemyAiPlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
@@ -223,17 +226,6 @@ fn main() {
                 .with_system(pause)
                 .into(),
         )
-        // .add_system(
-        //     set_target_near_player
-        //         .run_in_state(GameState::InGame)
-        //         .label("set_target_near_player"),
-        // )
-        // .add_system(
-        //     move_to_target
-        //         .run_in_state(GameState::InGame)
-        //         .after("set_target_near_player")
-        //         .label("move_to_target"),
-        // )
         .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
@@ -324,39 +316,3 @@ fn game_over_on_players_death(
         reset_controller.reset_world();
     }
 }
-
-//for enemys without current target, pick a new spot near the player as target
-// fn set_target_near_player(
-//     mut commands: Commands,
-//     mut enemies_query: Query<(Entity, &mut TripPointX), (With<Enemy>, Without<Target>)>,
-//     player_query: Query<&Transform, With<Player>>,
-// ) {
-// let mut rng = rand::thread_rng();
-// let p_transforms = player_query.iter().collect::<Vec<_>>();
-// let max_player_x = p_transforms
-//     .iter()
-//     .map(|transform| transform.translation.x)
-//     .max_by(f32::total_cmp);
-
-// if let Some(max_player_x) = max_player_x {
-//     for (e_entity, e_state, mut e_trip_point_x) in enemies_query.iter_mut() {
-//         if *e_state == State::Idle {
-//             if let Some(p_transform) = p_transforms.choose(&mut rng) {
-//                 if max_player_x > e_trip_point_x.0 {
-//                     e_trip_point_x.0 = f32::MIN;
-
-//                     let x_offset = rng.gen_range(-100.0..100.);
-//                     let y_offset = rng.gen_range(-100.0..100.);
-//                     commands.entity(e_entity).insert(Target {
-//                         position: Vec2::new(
-//                             p_transform.translation.x + x_offset,
-//                             (p_transform.translation.y + y_offset)
-//                                 .clamp(consts::MIN_Y, consts::MAX_Y),
-//                         ),
-//                     });
-//                 }
-//             }
-//         }
-//     }
-// }
-// }

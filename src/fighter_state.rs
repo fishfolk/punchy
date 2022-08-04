@@ -14,6 +14,7 @@ use crate::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
     enemy::Enemy,
+    enemy_ai::EnemyTarget,
     input::PlayerAction,
     metadata::FighterMeta,
     movement::Velocity,
@@ -26,7 +27,7 @@ pub struct FighterStatePlugin;
 
 /// The system set that fighter state change intents are collected
 #[derive(Clone, SystemLabel)]
-struct FighterStateCollectSystems;
+pub struct FighterStateCollectSystems;
 
 /// [`CustomCommands`] marker type.
 pub struct TransitionCmds;
@@ -53,7 +54,7 @@ impl Plugin for FighterStatePlugin {
                     .after(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
                     .with_system(transition_from_idle)
-                    .with_system(transition_from_flopping)
+                    .with_system(transition_from_attacking)
                     .with_system(transition_from_knocked_back)
                     .into(),
             )
@@ -138,11 +139,11 @@ impl Moving {
 /// Component indicating the player is flopping
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-pub struct Flopping {
+pub struct Attacking {
     pub has_started: bool,
     pub is_finished: bool,
 }
-impl Flopping {
+impl Attacking {
     const PRIORITY: i32 = 30;
     const ANIMATION: &'static str = "attacking";
 }
@@ -174,12 +175,13 @@ fn collect_player_actions(
         ),
         With<Player>,
     >,
+    time: Res<Time>,
 ) {
     for (action_state, mut transition_intents, stats) in &mut players {
         if action_state.pressed(PlayerAction::FlopAttack) {
             transition_intents.push_back(StateTransition::new(
-                Flopping::default(),
-                Flopping::PRIORITY,
+                Attacking::default(),
+                Attacking::PRIORITY,
             ));
         }
 
@@ -200,7 +202,7 @@ fn collect_player_actions(
 
             transition_intents.push_back(StateTransition::new(
                 Moving {
-                    velocity: direction * stats.movement_speed,
+                    velocity: direction * stats.movement_speed * time.delta_seconds(),
                 },
                 Moving::PRIORITY,
             ));
@@ -209,7 +211,53 @@ fn collect_player_actions(
 }
 
 // TODO: Implement AI actions
-fn collect_enemy_actions(mut _enemies: Query<&mut StateTransitionIntents, With<Enemy>>) {}
+fn collect_enemy_actions(
+    mut query: Query<
+        (
+            Entity,
+            &Transform,
+            &Stats,
+            &EnemyTarget,
+            &mut Facing,
+            &mut StateTransitionIntents,
+        ),
+        // All enemies that are either moving or idling
+        (With<Enemy>, Or<(With<Idling>, With<Moving>)>),
+    >,
+    mut transition_commands: CustomCommands<TransitionCmds>,
+    time: Res<Time>,
+) {
+    let mut commands = transition_commands.commands();
+
+    for (entity, transform, stats, target, mut facing, mut intents) in &mut query {
+        let position = transform.translation.truncate();
+        let velocity =
+            (target.position - position).normalize() * stats.movement_speed * time.delta_seconds();
+
+        if velocity.x < 0.0 {
+            *facing = Facing::Left;
+        } else {
+            *facing = Facing::Right;
+        }
+
+        // If we're close to our target
+        if position.distance(target.position) <= 100. {
+            // Remove the target
+            commands.entity(entity).remove::<EnemyTarget>();
+
+            // And attack!
+            intents.push_back(StateTransition::new(
+                Attacking::default(),
+                Attacking::PRIORITY,
+            ));
+
+        // If we aren't near our target yet
+        } else {
+            // Move towards our target
+            intents.push_back(StateTransition::new(Moving { velocity }, Moving::PRIORITY));
+        }
+    }
+}
 
 //
 // Transition states systems
@@ -244,9 +292,9 @@ fn transition_from_idle(
 }
 
 // Initiate any transitions from the flopping state
-fn transition_from_flopping(
+fn transition_from_attacking(
     mut transition_commands: CustomCommands<TransitionCmds>,
-    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Attacking)>,
 ) {
     let mut commands = transition_commands.commands();
 
@@ -258,11 +306,11 @@ fn transition_from_flopping(
         // For every intent
         for intent in intents {
             // If the intent is a higher priority than flopping
-            if intent.priority > Flopping::PRIORITY {
+            if intent.priority > Attacking::PRIORITY {
                 // Transition to the new state
                 commands
                     .entity(entity)
-                    .remove::<Flopping>()
+                    .remove::<Attacking>()
                     .insert_dynamic(intent.reflect_component, intent.data);
                 continue 'entity;
             }
@@ -271,7 +319,7 @@ fn transition_from_flopping(
         // If we're done flopping
         if flopping.is_finished {
             // Go back to idle
-            commands.entity(entity).remove::<Flopping>().insert(Idling);
+            commands.entity(entity).remove::<Attacking>().insert(Idling);
         }
     }
 }
@@ -337,7 +385,7 @@ fn flopping(
         &Facing,
         &Stats,
         &Handle<FighterMeta>,
-        &mut Flopping,
+        &mut Attacking,
     )>,
     fighter_assets: Res<Assets<FighterMeta>>,
     time: Res<Time>,
@@ -350,7 +398,7 @@ fn flopping(
             flopping.has_started = true;
 
             // Start the flop animation from the beginning
-            animation.play(Flopping::ANIMATION, false /* repeating */);
+            animation.play(Attacking::ANIMATION, false /* repeating */);
 
             // Spawn the attack entity
             let attack_entity = commands
@@ -375,9 +423,9 @@ fn flopping(
 
             // Play attack sound effect
             if let Some(fighter) = fighter_assets.get(meta_handle) {
-                if let Some(effects) = fighter.audio.effect_handles.get(Flopping::ANIMATION) {
+                if let Some(effects) = fighter.audio.effect_handles.get(Attacking::ANIMATION) {
                     let fx_playback = AnimationAudioPlayback::new(
-                        Flopping::ANIMATION.to_owned(),
+                        Attacking::ANIMATION.to_owned(),
                         effects.clone(),
                     );
                     commands.entity(entity).insert(fx_playback);
