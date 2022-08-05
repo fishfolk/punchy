@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 
-use bevy::{prelude::*, reflect::FromType};
+use bevy::{prelude::*, reflect::FromType, utils::HashSet};
 use bevy_rapier2d::prelude::{ActiveCollisionTypes, ActiveEvents, CollisionGroups, Sensor};
 use iyes_loopless::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
+use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
     animation::{Animation, Facing},
@@ -19,6 +19,7 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
+    item::Item,
     lifetime::Lifetime,
     metadata::{FighterMeta, ItemMeta},
     movement::{Force, LinearVelocity},
@@ -46,6 +47,7 @@ impl Plugin for FighterStatePlugin {
                 CoreStage::PreUpdate,
                 ConditionSet::new()
                     .label(FighterStateCollectSystems)
+                    .after(InputManagerSystem::Update)
                     .run_in_state(GameState::InGame)
                     .with_system(collect_fighter_eliminations)
                     .with_system(collect_attack_knockbacks)
@@ -82,6 +84,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(attacking)
                     .with_system(moving)
                     .with_system(throwing)
+                    .with_system(grabbing)
                     .with_system(knocked_back)
                     .with_system(dying)
                     .into(),
@@ -224,6 +227,13 @@ impl Throwing {
     pub const PRIORITY: i32 = 15;
 }
 
+/// The player is grabbing an item ( or trying to)
+#[derive(Component, Reflect, Default, Debug)]
+pub struct Grabbing;
+impl Grabbing {
+    pub const PRIORITY: i32 = Throwing::PRIORITY;
+}
+
 /// Component indicating the player is flopping
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
@@ -268,15 +278,16 @@ fn collect_player_actions(
         (
             &ActionState<PlayerAction>,
             &mut StateTransitionIntents,
+            &Inventory,
             &Stats,
         ),
         With<Player>,
     >,
     time: Res<Time>,
 ) {
-    for (action_state, mut transition_intents, stats) in &mut players {
+    for (action_state, mut transition_intents, inventory, stats) in &mut players {
         // Trigger attacks
-        if action_state.pressed(PlayerAction::FlopAttack) {
+        if action_state.just_pressed(PlayerAction::Attack) {
             transition_intents.push_back(StateTransition::new(
                 Attacking::default(),
                 Attacking::PRIORITY,
@@ -284,9 +295,21 @@ fn collect_player_actions(
             ));
         }
 
-        // Trigger throw
-        if action_state.pressed(PlayerAction::Throw) {
-            transition_intents.push_back(StateTransition::new(Throwing, Throwing::PRIORITY, true));
+        // Trigger grab/throw
+        if action_state.just_pressed(PlayerAction::Throw) {
+            if inventory.is_some() {
+                transition_intents.push_back(StateTransition::new(
+                    Throwing,
+                    Throwing::PRIORITY,
+                    true,
+                ));
+            } else {
+                transition_intents.push_back(StateTransition::new(
+                    Grabbing,
+                    Grabbing::PRIORITY,
+                    true,
+                ));
+            }
         }
 
         // Trigger movement
@@ -687,5 +710,44 @@ fn throwing(
 
         // Throwing is an "instant" state, that is removed at the end of every frame
         commands.entity(entity).remove::<Throwing>();
+    }
+}
+
+// Trying to grab an item off the map
+fn grabbing(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &Transform, &mut Inventory), With<Grabbing>>,
+    items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
+) {
+    // We need to track the picked items, otherwise, in theory, two players could pick the same item.
+    let mut picked_item_ids = HashSet::new();
+
+    for (fighter_ent, fighter_transform, mut fighter_inventory) in &mut fighters {
+        // If several items are at pick distance, an arbitrary one is picked.
+        for (item_ent, item_transform, item_meta_handle) in &items_query {
+            if !picked_item_ids.contains(&item_ent) {
+                // Get the distance the figher is from the item
+                let fighter_item_distance = fighter_transform
+                    .translation
+                    .truncate()
+                    .distance(item_transform.translation.truncate());
+
+                // If we are close enough
+                if fighter_item_distance <= consts::PICK_ITEM_RADIUS {
+                    // And our fighter isn't carrying another item
+                    if fighter_inventory.is_none() {
+                        // Pick up the item
+                        picked_item_ids.insert(item_ent);
+                        **fighter_inventory = Some(item_meta_handle.clone());
+                        commands.entity(item_ent).despawn_recursive();
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        // Throwing is an "instant" state, that is removed at the end of every frame
+        commands.entity(fighter_ent).remove::<Grabbing>();
     }
 }
