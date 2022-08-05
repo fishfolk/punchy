@@ -160,10 +160,8 @@ fn main() {
                 .with_system(y_sort)
                 // .with_system(attack_fighter_collision)
                 // .with_system(kill_entities)
-                .with_system(pause)
                 .into(),
         )
-        .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             ConditionSet::new()
@@ -204,22 +202,6 @@ fn main() {
     bevy_mod_debugdump::print_schedule(&mut app);
 
     app.run();
-}
-
-/// Transition game to pause state
-fn pause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
-    let input = input.single();
-    if input.just_pressed(MenuAction::Pause) {
-        commands.insert_resource(NextState(GameState::Paused));
-    }
-}
-
-// Transition game out of paused state
-fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
-    let input = input.single();
-    if input.just_pressed(MenuAction::Pause) {
-        commands.insert_resource(NextState(GameState::InGame));
-    }
 }
 
 /// Transition back to main menu and reset world when all players have died
