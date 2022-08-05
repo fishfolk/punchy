@@ -1,7 +1,7 @@
 name: Fishy The Fearsome
 
 stats:
-  max_health: 100
+  max_health: 600
   damage: 35
   movement_speed: 17000
 
