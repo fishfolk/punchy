@@ -179,18 +179,18 @@ impl ThrownItem {
                 consts::THROW_ITEM_ROTATION_SPEED,
                 !facing.is_left(),
             ),
-            // move_in_arc: MoveInArc {
-            //     //TODO: Set in consts
-            //     radius: Vec2::new(
-            //         50.,
-            //         consts::PLAYER_HEIGHT + consts::THROW_ITEM_Y_OFFSET + consts::ITEM_HEIGHT,
-            //     ),
-            //     speed: consts::THROW_ITEM_SPEED,
-            //     angle: angles.0,
-            //     end_angle: angles.1,
-            //     inverse_direction: facing.is_left(),
-            //     origin: position,
-            // },
+            move_in_arc: MoveInArc {
+                //TODO: Set in consts
+                radius: Vec2::new(
+                    50.,
+                    consts::PLAYER_HEIGHT + consts::THROW_ITEM_Y_OFFSET + consts::ITEM_HEIGHT,
+                ),
+                speed: consts::THROW_ITEM_SPEED,
+                angle: angles.0,
+                end_angle: angles.1,
+                inverse_direction: facing.is_left(),
+                origin: position,
+            },
             collider: Collider::cuboid(ITEM_WIDTH / 2., ITEM_HEIGHT / 2.),
             sensor: Sensor,
             events: ActiveEvents::COLLISION_EVENTS,
@@ -211,34 +211,34 @@ fn player_projectile_attack(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    // for (player_children, transform, facing, state, input) in player_query.iter() {
-    //     if *state != State::Idle && *state != State::Running {
-    //         continue;
-    //     }
+    for (player_children, transform, facing, state, input) in player_query.iter() {
+        if *state != State::Idle && *state != State::Running {
+            continue;
+        }
 
-    //     let carried_item = item_carried_by_player(
-    //         player_children,
-    //         ITEM_BOTTLE_NAME,
-    //         &items_meta_query,
-    //         &items_meta,
-    //     );
+        let carried_item = item_carried_by_player(
+            player_children,
+            ITEM_BOTTLE_NAME,
+            &items_meta_query,
+            &items_meta,
+        );
 
-    //     if let Some(bottle_id) = carried_item {
-    //         if input.just_pressed(PlayerAction::Shoot) {
-    //             let mut dir = Vec2::X;
+        if let Some(bottle_id) = carried_item {
+            if input.just_pressed(PlayerAction::Shoot) {
+                let mut dir = Vec2::X;
 
-    //             if facing.is_left() {
-    //                 dir = -dir;
-    //             }
+                if facing.is_left() {
+                    dir = -dir;
+                }
 
-    //             let projectile = Projectile::new(transform, facing, dir, &asset_server);
+                let projectile = Projectile::new(transform, facing, dir, &asset_server);
 
-    //             commands.spawn_bundle(projectile);
+                commands.spawn_bundle(projectile);
 
-    //             commands.entity(bottle_id).despawn();
-    //         }
-    //     }
-    // }
+                commands.entity(bottle_id).despawn();
+            }
+        }
+    }
 }
 
 fn player_throw(

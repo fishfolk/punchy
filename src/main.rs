@@ -38,6 +38,7 @@ mod fighter;
 mod fighter_state;
 mod input;
 mod item;
+mod lifetime;
 mod loading;
 mod localization;
 mod metadata;
@@ -61,7 +62,8 @@ use crate::{
     damage::DamagePlugin,
     fighter_state::FighterStatePlugin,
     input::PlayerAction,
-    item::{pick_items, use_health_item},
+    item::pick_items,
+    lifetime::LifetimePlugin,
     movement::{LeftMovementBoundary, MovementPlugin},
 };
 
@@ -141,6 +143,7 @@ fn main() {
         .add_plugin(MovementPlugin)
         .add_plugin(AudioPlugin)
         .add_plugin(DamagePlugin)
+        .add_plugin(LifetimePlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())

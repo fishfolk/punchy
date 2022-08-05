@@ -46,7 +46,7 @@ pub struct Stats {
 /// The player inventory.
 ///
 /// A player may be holding one item
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Deref, DerefMut)]
 pub struct Inventory(Option<Handle<ItemMeta>>);
 
 impl Default for Stats {

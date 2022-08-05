@@ -15,23 +15,39 @@ use crate::{
 /// Plugin handling movement and rotation through velocities and torques.
 pub struct MovementPlugin;
 
+#[derive(Clone, SystemLabel)]
+struct ForceSystems;
+
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set_to_stage(
-            CoreStage::PostUpdate,
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(
-                    // Here we add a chain of systems that act as constraints on movements, ending
-                    // the chain with the velocity system itself which applies the velocities to the
-                    // entities.
-                    update_left_movement_boundary
-                        .chain(constrain_player_movement)
-                        .chain(velocity_system),
-                )
-                .with_system(torque_system)
-                .into(),
-        );
+        app
+            // Add systems that modify velocity based on forces
+            .add_system_set_to_stage(
+                CoreStage::PostUpdate,
+                ConditionSet::new()
+                    .label(ForceSystems)
+                    .run_in_state(GameState::InGame)
+                    .with_system(force_system)
+                    .with_system(torque_system)
+                    .into(),
+            )
+            // Add systems that modify translation and rotation based on velocity
+            .add_system_set_to_stage(
+                CoreStage::PostUpdate,
+                ConditionSet::new()
+                    .after(ForceSystems)
+                    .run_in_state(GameState::InGame)
+                    .with_system(
+                        // Here we add a chain of systems that act as constraints on movements, ending
+                        // the chain with the velocity system itself which applies the velocities to the
+                        // entities.
+                        update_left_movement_boundary
+                            .chain(constrain_player_movement)
+                            .chain(velocity_system),
+                    )
+                    .with_system(angular_velocity_system)
+                    .into(),
+            );
     }
 }
 
@@ -65,9 +81,36 @@ impl AngularVelocity {
 }
 
 /// System that applies rotations based on entity torques.
-pub fn torque_system(mut query: Query<(&mut Transform, &AngularVelocity)>, time: Res<Time>) {
+pub fn angular_velocity_system(
+    mut query: Query<(&mut Transform, &AngularVelocity)>,
+    time: Res<Time>,
+) {
     for (mut transform, torque) in &mut query.iter_mut() {
         transform.rotation *= Quat::from_rotation_z(**torque * time.delta_seconds());
+    }
+}
+
+/// A force that while present continually modified an entity's linear velocity.
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+pub struct Force(pub Vec2);
+
+// Aplies forces to linear velocities
+pub fn force_system(mut query: Query<(&mut LinearVelocity, &Force)>, time: Res<Time>) {
+    for (mut velocity, force) in &mut query.iter_mut() {
+        **velocity += **force * time.delta_seconds();
+    }
+}
+
+/// A force that while present continually modified an entity's angular velocity
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+pub struct Torque(pub f32);
+
+// Aplies torques to angular velocities
+pub fn torque_system(mut query: Query<(&mut AngularVelocity, &Torque)>, time: Res<Time>) {
+    for (mut velocity, torque) in &mut query.iter_mut() {
+        **velocity += **torque * time.delta_seconds();
     }
 }
 

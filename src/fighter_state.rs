@@ -19,8 +19,9 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    metadata::FighterMeta,
-    movement::LinearVelocity,
+    lifetime::Lifetime,
+    metadata::{FighterMeta, ItemMeta},
+    movement::{Force, LinearVelocity},
     player::Player,
     GameState, Stats,
 };
@@ -647,8 +648,44 @@ fn dying(
 }
 
 /// Throw the item in the player's inventory
-fn throwing(mut commands: Commands, mut fighters: Query<(Entity, &mut Inventory), With<Throwing>>) {
-    for (entity, inventory) in &mut fighters {
+fn throwing(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    item_assets: Res<Assets<ItemMeta>>,
+) {
+    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
+        // If the player has an item in their inventory
+        if let Some(meta_handle) = inventory.take() {
+            // If the item asset has loaded
+            if let Some(item) = item_assets.get(&meta_handle) {
+                // Throw the item!
+
+                let x_mul = if facing.is_left() { -1.0 } else { 1.0 };
+
+                commands
+                    .spawn()
+                    // Sprite
+                    .insert_bundle(SpriteBundle {
+                        texture: item.image.image_handle.clone_weak(),
+                        transform: Transform::from_translation(fighter_transform.translation),
+                        ..default()
+                    })
+                    // Lifetime
+                    .insert(Lifetime(Timer::from_seconds(0.7, false)))
+                    // Throw trajectory
+                    .insert(LinearVelocity(Vec2::new(200.0 * x_mul, 400.0)))
+                    // Gravity
+                    .insert(Force(Vec2::new(0.0, -1200.0)));
+
+            // If the item asset isn't loaded yet
+            } else {
+                // This shouldn't happen because we make sure our assets are loaded before we start
+                // the game. But just in case, we'll want to know about it if it does happen.
+                warn!("Thrown item not spawned because it has not been loaded yet");
+            }
+        }
+
+        // Throwing is an "instant" state, that is removed at the end of every frame
         commands.entity(entity).remove::<Throwing>();
     }
 }
