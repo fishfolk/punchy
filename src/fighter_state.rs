@@ -9,7 +9,7 @@ use crate::{
     animation::{Animation, Facing},
     attack::{Attack, AttackFrames},
     audio::AnimationAudioPlayback,
-    collisions::BodyLayers,
+    collision::BodyLayers,
     commands::{
         flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
     },
@@ -18,7 +18,7 @@ use crate::{
     enemy::Enemy,
     enemy_ai,
     input::PlayerAction,
-    metadata::{FighterMeta, ItemMeta},
+    metadata::FighterMeta,
     movement::LinearVelocity,
     player::Player,
     GameState, Stats,
@@ -146,6 +146,43 @@ impl StateTransition {
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct StateTransitionIntents(VecDeque<StateTransition>);
 
+impl StateTransitionIntents {
+    /// Helper to transition to any higher priority states
+    ///
+    /// Returns `true` if a non-additive state has been transitioned to and the current state has been
+    /// removed.
+    fn transition_to_higher_priority_states<CurrentState: Component>(
+        &mut self,
+        entity: Entity,
+        current_state_priority: i32,
+        transition_commands: &mut CustomCommands<TransitionCmds>,
+    ) -> bool {
+        // Collect transitions and sort by priority
+        let mut transitions = self.drain(..).collect::<Vec<_>>();
+        transitions.sort_by(|a, b| b.priority.cmp(&a.priority));
+
+        // For every intent
+        for intent in transitions {
+            // If it's a higher priority
+            if intent.priority > current_state_priority {
+                // Apply the state
+                let was_additive = intent.apply::<CurrentState>(entity, transition_commands);
+
+                // If it was not an additive transition
+                if !was_additive {
+                    // Skip processing other transitions because our current state was removed, and
+                    // return true to indicate that a non-additive transition has been performed.
+                    return true;
+                }
+            }
+        }
+
+        // I we got here we are still in the same state so return false to indicate no non-additive
+        // transitions have been performed.
+        false
+    }
+}
+
 /// Component on fighters containing the action intent queue.
 ///
 /// Actions are things that the fighter should try to do that doesn't represent a state change. The
@@ -236,6 +273,7 @@ fn collect_player_actions(
     time: Res<Time>,
 ) {
     for (action_state, mut transition_intents, stats) in &mut players {
+        // Trigger attacks
         if action_state.pressed(PlayerAction::FlopAttack) {
             transition_intents.push_back(StateTransition::new(
                 Attacking::default(),
@@ -244,10 +282,12 @@ fn collect_player_actions(
             ));
         }
 
+        // Trigger throw
         if action_state.pressed(PlayerAction::Throw) {
             transition_intents.push_back(StateTransition::new(Throwing, Throwing::PRIORITY, true));
         }
 
+        // Trigger movement
         if action_state.pressed(PlayerAction::Move) {
             let dual_axis = action_state.clamped_axis_pair(PlayerAction::Move).unwrap();
             let direction = dual_axis.xy();
@@ -269,7 +309,9 @@ fn collect_attack_knockbacks(
     mut damage_events: EventReader<DamageEvent>,
 ) {
     for event in damage_events.iter() {
+        // If the damaged entity was a fighter
         if let Ok(mut transition_intents) = fighters.get_mut(event.damaged_entity) {
+            // Trigger knock back
             transition_intents.push_back(StateTransition::new(
                 KnockedBack {
                     velocity: event.damage_velocity,
@@ -287,7 +329,9 @@ fn collect_fighter_eliminations(
     mut fighters: Query<(&Health, &mut StateTransitionIntents), With<Handle<FighterMeta>>>,
 ) {
     for (health, mut transition_intents) in &mut fighters {
+        // If the fighter health is depleted
         if **health <= 0 {
+            // Transition to dying state
             transition_intents.push_back(StateTransition::new(Dying, Dying::PRIORITY, false));
         }
     }
@@ -302,24 +346,13 @@ fn transition_from_idle(
     mut transition_commands: CustomCommands<TransitionCmds>,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
-    'entity: for (entity, mut transition_intents) in &mut fighters {
-        // Collect transitions and sort by priority
-        let mut transitions = transition_intents.drain(..).collect::<Vec<_>>();
-        transitions.sort_by(|a, b| a.priority.cmp(&b.priority));
-
-        // Since idling is the lowest priority state, just transition to the highest priority in the
-        // intent list.
-        //
-        // This logic may become more sophisticated later.
-        if let Some(transition) = transitions.pop() {
-            if transition.priority > Idling::PRIORITY {
-                let was_additive = transition.apply::<Idling>(entity, &mut transition_commands);
-
-                if !was_additive {
-                    continue 'entity;
-                }
-            }
-        }
+    for (entity, mut transition_intents) in &mut fighters {
+        // Transition to higher priority states
+        transition_intents.transition_to_higher_priority_states::<Idling>(
+            entity,
+            Idling::PRIORITY,
+            &mut transition_commands,
+        );
     }
 }
 
@@ -329,21 +362,17 @@ fn transition_from_attacking(
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &Attacking)>,
 ) {
     'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
-        // Collect transitions and sort by priority
-        let mut intents = transition_intents.drain(..).collect::<Vec<_>>();
-        intents.sort_by(|a, b| a.priority.cmp(&b.priority));
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<Attacking>(
+                entity,
+                Attacking::PRIORITY,
+                &mut transition_commands,
+            );
 
-        // For every intent
-        for intent in intents {
-            // If the intent is a higher priority than flopping
-            if intent.priority > Attacking::PRIORITY {
-                // Transition to the new state
-                let was_additive = intent.apply::<Attacking>(entity, &mut transition_commands);
-
-                if !was_additive {
-                    continue 'entity;
-                }
-            }
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
         }
 
         // If we're done flopping
@@ -364,19 +393,17 @@ fn transition_from_knocked_back(
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &KnockedBack)>,
 ) {
     'entity: for (entity, mut transition_intents, knocked_back) in &mut fighters {
-        // Collect transitions and sort by priority
-        let mut intents = transition_intents.drain(..).collect::<Vec<_>>();
-        intents.sort_by(|a, b| a.priority.cmp(&b.priority));
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<KnockedBack>(
+                entity,
+                KnockedBack::PRIORITY,
+                &mut transition_commands,
+            );
 
-        for intent in intents {
-            // Transition to higher priority intents
-            if intent.priority > KnockedBack::PRIORITY {
-                let was_additive = intent.apply::<KnockedBack>(entity, &mut transition_commands);
-
-                if !was_additive {
-                    continue 'entity;
-                }
-            }
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
         }
 
         // Transition to idle when finished
@@ -609,8 +636,6 @@ fn dying(
 
 fn throwing(mut commands: Commands, mut fighters: Query<Entity, With<Throwing>>) {
     for entity in &mut fighters {
-
-
         commands.entity(entity).remove::<Throwing>();
     }
 }
