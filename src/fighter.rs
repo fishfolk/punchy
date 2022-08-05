@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
+    camera::YSort,
     collision::{BodyLayers, PhysicsBundle},
     damage::{Damageable, Health},
     enemy::Enemy,
@@ -12,7 +13,6 @@ use crate::{
     metadata::{FighterMeta, ItemMeta},
     movement::LinearVelocity,
     player::Player,
-    y_sort::YSort,
 };
 
 /// Bundle added to a fighter stub, in order to activate it.

@@ -47,7 +47,6 @@ mod platform;
 mod player;
 mod ui;
 mod utils;
-mod y_sort;
 
 use animation::*;
 use attack::AttackPlugin;
@@ -56,13 +55,11 @@ use camera::*;
 use metadata::GameMeta;
 use ui::UIPlugin;
 use utils::ResetController;
-use y_sort::*;
 
 use crate::{
     damage::DamagePlugin,
     fighter_state::FighterStatePlugin,
     input::PlayerAction,
-    item::pick_items,
     lifetime::LifetimePlugin,
     movement::{LeftMovementBoundary, MovementPlugin},
 };
@@ -144,6 +141,7 @@ fn main() {
         .add_plugin(AudioPlugin)
         .add_plugin(DamagePlugin)
         .add_plugin(LifetimePlugin)
+        .add_plugin(CameraPlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
@@ -152,21 +150,10 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(pick_items)
-                .with_system(use_health_item)
-                .with_system(y_sort)
-                // .with_system(attack_fighter_collision)
-                // .with_system(kill_entities)
-                .into(),
-        )
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(camera_follow_player)
                 .with_system(game_over_on_players_death)
                 .into(),
         );
