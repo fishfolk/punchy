@@ -99,6 +99,7 @@ pub struct FighterMeta {
 pub struct ItemMeta {
     pub name: String,
     pub image: ImageMeta,
+    pub damage: i32,
 }
 
 #[derive(Deserialize, Clone, Debug)]

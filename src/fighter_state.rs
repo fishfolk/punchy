@@ -19,10 +19,9 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    item::Item,
-    lifetime::Lifetime,
+    item::{Item, Projectile},
     metadata::{FighterMeta, ItemMeta},
-    movement::{Force, LinearVelocity},
+    movement::LinearVelocity,
     player::Player,
     GameState, Stats,
 };
@@ -682,23 +681,11 @@ fn throwing(
             // If the item asset has loaded
             if let Some(item) = item_assets.get(&meta_handle) {
                 // Throw the item!
-
-                let x_mul = if facing.is_left() { -1.0 } else { 1.0 };
-
-                commands
-                    .spawn()
-                    // Sprite
-                    .insert_bundle(SpriteBundle {
-                        texture: item.image.image_handle.clone_weak(),
-                        transform: Transform::from_translation(fighter_transform.translation),
-                        ..default()
-                    })
-                    // Lifetime
-                    .insert(Lifetime(Timer::from_seconds(0.7, false)))
-                    // Throw trajectory
-                    .insert(LinearVelocity(Vec2::new(200.0 * x_mul, 400.0)))
-                    // Gravity
-                    .insert(Force(Vec2::new(0.0, -1200.0)));
+                commands.spawn_bundle(Projectile::from_thrown_item(
+                    fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                    item,
+                    facing,
+                ));
 
             // If the item asset isn't loaded yet
             } else {
