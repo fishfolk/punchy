@@ -27,7 +27,7 @@ mod assets;
 mod attack;
 mod audio;
 mod camera;
-mod collisions;
+mod collision;
 mod commands;
 mod config;
 mod consts;
