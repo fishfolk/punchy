@@ -5,11 +5,11 @@ use serde::Deserialize;
 
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
-    collisions::{BodyLayers, PhysicsBundle},
+    collision::{BodyLayers, PhysicsBundle},
     damage::{Damageable, Health},
     enemy::Enemy,
     fighter_state::{Idling, StateTransitionIntents},
-    metadata::FighterMeta,
+    metadata::{FighterMeta, ItemMeta},
     movement::LinearVelocity,
     player::Player,
     y_sort::YSort,
@@ -27,6 +27,7 @@ pub struct ActiveFighterBundle {
     pub ysort: YSort,
     pub health: Health,
     pub damageable: Damageable,
+    pub inventory: Inventory,
     pub state_transition_intents: StateTransitionIntents,
     /// Fighters start off idling, but this component may be removed when the fighter state changes.
     pub idling: Idling,
@@ -41,6 +42,12 @@ pub struct Stats {
     pub damage: i32,
     pub movement_speed: f32,
 }
+
+/// The player inventory.
+///
+/// A player may be holding one item
+#[derive(Component, Clone, Debug, Default)]
+pub struct Inventory(Option<Handle<ItemMeta>>);
 
 impl Default for Stats {
     fn default() -> Self {
@@ -91,6 +98,7 @@ impl ActiveFighterBundle {
             },
             stats: fighter.stats.clone(),
             health: Health(fighter.stats.max_health),
+            inventory: default(),
             damageable: default(),
             physics_bundle: PhysicsBundle {
                 collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),

@@ -17,6 +17,7 @@ use crate::{
     damage::{DamageEvent, Health},
     enemy::Enemy,
     enemy_ai,
+    fighter::Inventory,
     input::PlayerAction,
     metadata::FighterMeta,
     movement::LinearVelocity,
@@ -435,7 +436,12 @@ fn idling(mut fighters: Query<(&mut Animation, &mut LinearVelocity), With<Idling
     }
 }
 
-/// Handle fighter flopping state
+/// Handle fighter attacking state
+///
+/// > **Note:** This system currently applies attacks for both enemies and players, doing a sort of
+/// > jumping "punch". In the future there will be different attacks, which will each have their own
+/// > state system, and we will trigger different attack states for different players and enemies,
+/// > based on the attacks available to that fighter.
 fn attacking(
     mut commands: Commands,
     mut fighters: Query<(
@@ -459,7 +465,7 @@ fn attacking(
         facing,
         stats,
         meta_handle,
-        mut flopping,
+        mut attacking,
         player,
         enemy,
     ) in &mut fighters
@@ -471,12 +477,12 @@ fn attacking(
             continue;
         }
 
-        // Spawn the flop attack
-        if !flopping.has_started {
-            flopping.has_started = true;
+        // Start the attack
+        if !attacking.has_started {
+            attacking.has_started = true;
 
-            // Start the flop animation from the beginning
-            animation.play(Attacking::ANIMATION, false /* repeating */);
+            // Start the attack  from the beginning
+            animation.play(Attacking::ANIMATION, false);
 
             // Spawn the attack entity
             let attack_entity = commands
@@ -525,8 +531,10 @@ fn attacking(
             }
         }
 
+        // Reset velocity
         **velocity = Vec2::ZERO;
 
+        // Do a forward jump thing
         //TODO: Fix hacky way to get a forward jump
         if animation.current_frame < 3 {
             let dt = time.delta_seconds();
@@ -547,7 +555,7 @@ fn attacking(
         // If the animation is done
         if animation.is_finished() {
             // Set flopping to finished
-            flopping.is_finished = true;
+            attacking.is_finished = true;
         }
     }
 }
@@ -599,6 +607,7 @@ fn knocked_back(
     for (mut animation, facing, mut velocity, mut knocked_back) in &mut fighters {
         // If this is the start of the knock back
         if knocked_back.timer.elapsed_secs() == 0.0 {
+            // Calculate animation to use based on attack direction
             let is_left = knocked_back.velocity.x < 0.0;
             let use_left_anim = if facing.is_left() { !is_left } else { is_left };
             let animation_name = if use_left_anim {
@@ -607,11 +616,14 @@ fn knocked_back(
                 KnockedBack::ANIMATION_RIGHT
             };
 
+            // Play the animation
             animation.play(animation_name, false);
         }
 
+        // Tick the knock-back timer
         knocked_back.timer.tick(time.delta());
 
+        // Set our figher velocity to the knock back velocity
         **velocity = knocked_back.velocity;
     }
 }
@@ -634,8 +646,9 @@ fn dying(
     }
 }
 
-fn throwing(mut commands: Commands, mut fighters: Query<Entity, With<Throwing>>) {
-    for entity in &mut fighters {
+/// Throw the item in the player's inventory
+fn throwing(mut commands: Commands, mut fighters: Query<(Entity, &mut Inventory), With<Throwing>>) {
+    for (entity, inventory) in &mut fighters {
         commands.entity(entity).remove::<Throwing>();
     }
 }
