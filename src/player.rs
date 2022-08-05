@@ -5,6 +5,7 @@ use crate::{
     animation::Facing,
     consts,
     input::PlayerAction,
+    fighter::Inventory,
     metadata::{FighterMeta, FighterSpawnMeta, GameMeta, Settings},
 };
 
@@ -19,6 +20,7 @@ pub struct PlayerBundle {
     player: Player,
     index: PlayerIndex,
     facing: Facing,
+    inventory: Inventory,
     #[bundle]
     transform_bundle: TransformBundle,
     fighter_handle: Handle<FighterMeta>,
@@ -56,6 +58,7 @@ impl PlayerBundle {
             transform_bundle,
             fighter_handle,
             input_manager_bundle,
+            inventory: Inventory(None),
         }
     }
 }

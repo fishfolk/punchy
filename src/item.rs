@@ -1,4 +1,4 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
@@ -7,39 +7,14 @@ use crate::{
     collision::BodyLayers,
     consts,
     lifetime::Lifetime,
-    metadata::{ItemMeta, ItemSpawnMeta},
+    metadata::ItemMeta,
     movement::{AngularVelocity, Force, LinearVelocity},
 };
 
-#[derive(Component)]
-pub struct Item;
-
-/// Represents an item, that is either on the map.
-#[derive(Bundle)]
-pub struct ItemBundle {
-    item: Item,
-    item_meta_handle: Handle<ItemMeta>,
-    name: Name,
-}
-
-impl ItemBundle {
-    pub fn new(item_spawn_meta: &ItemSpawnMeta) -> Self {
-        Self {
-            item: Item,
-            item_meta_handle: item_spawn_meta.item_handle.clone(),
-            // TODO: Actually include the item's name at some point
-            name: Name::new("Map Item"),
-        }
-    }
-
-    pub fn spawn(mut commands: EntityCommands, item_spawn_meta: &ItemSpawnMeta) {
-        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-        let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
-            item_spawn_meta.location + ground_offset,
-        ));
-
-        commands.insert_bundle(transform_bundle);
-    }
+#[derive(Component, Clone, Debug)]
+pub struct Item {
+    pub name: Name,
+    pub meta_handle: Handle<ItemMeta>,
 }
 
 #[derive(Bundle)]
@@ -56,10 +31,16 @@ pub struct Projectile {
     collision_groups: CollisionGroups,
     attack: Attack,
     lifetime: Lifetime,
+    item: Item,
 }
 
 impl Projectile {
-    pub fn from_thrown_item(translation: Vec3, item: &ItemMeta, facing: &Facing) -> Self {
+    pub fn from_thrown_item(
+        translation: Vec3,
+        item: Item,
+        item_meta: &ItemMeta,
+        facing: &Facing,
+    ) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
@@ -68,12 +49,12 @@ impl Projectile {
 
         Self {
             sprite_bundle: SpriteBundle {
-                texture: item.image.image_handle.clone(),
+                texture: item_meta.image.image_handle.clone(),
                 transform: Transform::from_xyz(translation.x, translation.y, consts::PROJECTILE_Z),
                 ..default()
             },
             attack: Attack {
-                damage: match item.kind {
+                damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
                     crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
                 },
@@ -91,6 +72,7 @@ impl Projectile {
             //files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
+            item,
         }
     }
 }

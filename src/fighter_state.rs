@@ -783,20 +783,21 @@ fn throwing(
 ) {
     for (entity, fighter_transform, facing, stats, mut inventory, mut health) in &mut fighters {
         // If the player has an item in their inventory
-        if let Some(meta_handle) = inventory.take() {
+        if let Some(item) = inventory.take() {
             // If the item asset has loaded
-            if let Some(item) = item_assets.get(&meta_handle) {
+            if let Some(item_meta) = item_assets.get(&item.meta_handle) {
                 // Check what kind of item this is.
                 //
                 // TODO: We should probably create a flexible item system abstraction similar to the
                 // fighter state abstraction so that items can flexibly defined without a
                 // centralized enum.
-                match item.kind {
+                match item_meta.kind {
                     ItemKind::Throwable { .. } => {
                         // Throw the item!
                         commands.spawn_bundle(Projectile::from_thrown_item(
                             fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                             item,
+                            item_meta,
                             facing,
                         ));
                     }
@@ -826,14 +827,14 @@ fn throwing(
 fn grabbing(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Transform, &mut Inventory), With<Grabbing>>,
-    items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
+    items_query: Query<(Entity, &Transform, &Item)>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
 
     for (fighter_ent, fighter_transform, mut fighter_inventory) in &mut fighters {
         // If several items are at pick distance, an arbitrary one is picked.
-        for (item_ent, item_transform, item_meta_handle) in &items_query {
+        for (item_ent, item_transform, item) in &items_query {
             if !picked_item_ids.contains(&item_ent) {
                 // Get the distance the figher is from the item
                 let fighter_item_distance = fighter_transform
@@ -847,7 +848,7 @@ fn grabbing(
                     if fighter_inventory.is_none() {
                         // Pick up the item
                         picked_item_ids.insert(item_ent);
-                        **fighter_inventory = Some(item_meta_handle.clone());
+                        **fighter_inventory = Some(item.clone());
                         commands.entity(item_ent).despawn_recursive();
                     }
 

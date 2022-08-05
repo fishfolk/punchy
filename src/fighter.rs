@@ -10,10 +10,11 @@ use crate::{
     damage::{Damageable, Health},
     enemy::Enemy,
     fighter_state::{Idling, StateTransitionIntents},
-    metadata::{FighterMeta, ItemMeta},
+    metadata::FighterMeta,
     movement::LinearVelocity,
     player::Player,
 };
+use crate::item::Item;
 
 /// Bundle added to a fighter stub, in order to activate it.
 #[derive(Bundle)]
@@ -47,7 +48,7 @@ pub struct Stats {
 ///
 /// A player may be holding one item
 #[derive(Component, Clone, Debug, Default, Deref, DerefMut)]
-pub struct Inventory(Option<Handle<ItemMeta>>);
+pub struct Inventory(pub Option<Item>);
 
 impl Default for Stats {
     fn default() -> Self {
@@ -113,3 +114,4 @@ impl ActiveFighterBundle {
         commands.entity(entity).insert_bundle(active_fighter_bundle);
     }
 }
+
