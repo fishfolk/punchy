@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_parallax::ParallaxMoveEvent;
 use iyes_loopless::prelude::*;
 
-use crate::{consts, metadata::GameMeta, GameState, Player};
+use crate::{consts, metadata::GameMeta, movement::VelocitySystems, GameState, Player};
 
 pub struct CameraPlugin;
 
@@ -12,6 +12,7 @@ impl Plugin for CameraPlugin {
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
+                .after(VelocitySystems)
                 .with_system(camera_follow_player)
                 .with_system(y_sort)
                 .into(),

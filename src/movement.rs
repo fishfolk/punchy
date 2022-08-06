@@ -16,7 +16,10 @@ use crate::{
 pub struct MovementPlugin;
 
 #[derive(Clone, SystemLabel)]
-struct ForceSystems;
+pub struct ForceSystems;
+
+#[derive(Clone, SystemLabel)]
+pub struct VelocitySystems;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
@@ -35,6 +38,7 @@ impl Plugin for MovementPlugin {
             .add_system_set_to_stage(
                 CoreStage::PostUpdate,
                 ConditionSet::new()
+                    .label(VelocitySystems)
                     .after(ForceSystems)
                     .run_in_state(GameState::InGame)
                     .with_system(
