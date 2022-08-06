@@ -13,12 +13,18 @@ impl Plugin for DamagePlugin {
 #[derive(Component, Deref, DerefMut)]
 pub struct Health(pub i32);
 
-/// A component that indicates that an entity can currently be damaged.
+/// A component that indicates whether an entity can be damaged.
 ///
 /// In other words, something that has [`Health`] but isn't [`Damageable`] is currently invincible.
-#[derive(Component, Default)]
+#[derive(Component, Deref, DerefMut)]
 #[component(storage = "SparseSet")]
-pub struct Damageable;
+pub struct Damageable(pub bool);
+
+impl Default for Damageable {
+    fn default() -> Self {
+        Self(true)
+    }
+}
 
 /// Event emitted when an entity is damaged
 pub struct DamageEvent {

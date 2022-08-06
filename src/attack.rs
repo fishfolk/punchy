@@ -92,7 +92,7 @@ fn deactivate_hitbox(
 /// Depletes the health of damageables that have collided with attacks
 fn attack_damage_system(
     mut events: EventReader<CollisionEvent>,
-    mut damageables: Query<&mut Health, With<Damageable>>,
+    mut damageables: Query<(&mut Health, &Damageable)>,
     attacks: Query<&Attack>,
     mut event_writer: EventWriter<DamageEvent>,
 ) {
@@ -108,15 +108,18 @@ fn attack_damage_system(
                 };
 
             let attack = attacks.get(attack_entity).unwrap();
-            let mut health = damageables.get_mut(damageable_entity).unwrap();
-            **health -= attack.damage;
+            let (mut health, damageable) = damageables.get_mut(damageable_entity).unwrap();
 
-            event_writer.send(DamageEvent {
-                damageing_entity: attack_entity,
-                damage_velocity: attack.velocity,
-                damage: attack.damage,
-                damaged_entity: damageable_entity,
-            })
+            if **damageable {
+                **health -= attack.damage;
+
+                event_writer.send(DamageEvent {
+                    damageing_entity: attack_entity,
+                    damage_velocity: attack.velocity,
+                    damage: attack.damage,
+                    damaged_entity: damageable_entity,
+                })
+            }
         }
     }
 }
