@@ -3,6 +3,13 @@ pub const PLAYER_SPRITE_HEIGHT: f32 = 80.;
 pub const PLAYER_HITBOX_HEIGHT: f32 = 50.;
 
 pub const PLAYER_HEIGHT: f32 = PLAYER_SPRITE_HEIGHT - 50.;
+
+/// Absolute value.
+pub const ENEMY_TARGET_MAX_OFFSET: f32 = 40.;
+
+pub const ENEMY_MIN_ATTACK_DISTANCE: f32 = 5.;
+pub const ENEMY_MAX_ATTACK_DISTANCE: f32 = 100.;
+
 // Distance from the player, after which the player movement boundary is moved forward.
 //
 pub const LEFT_BOUNDARY_MAX_DISTANCE: f32 = 380.;
