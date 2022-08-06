@@ -62,7 +62,10 @@ use ui::UIPlugin;
 use utils::ResetController;
 use y_sort::*;
 
-use crate::{input::PlayerAction, item::pick_items};
+use crate::{
+    input::PlayerAction,
+    item::{pick_items, use_health_item},
+};
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
 #[derive(Component, Deserialize, Clone, Debug)]
@@ -214,6 +217,7 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(player_controller)
                 .with_system(pick_items)
+                .with_system(use_health_item)
                 .with_system(y_sort)
                 .with_system(attack_fighter_collision)
                 .with_system(kill_entities)

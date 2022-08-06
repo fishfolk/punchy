@@ -4,17 +4,18 @@ use bevy::{
     ecs::system::EntityCommands,
     hierarchy::{BuildChildren, Children},
     math::Vec3,
-    prelude::{Assets, Bundle, Commands, Component, Entity, Handle, Query, Transform, With},
+    prelude::{Assets, Bundle, Commands, Component, Entity, Handle, Query, Res, Transform, With},
     transform::TransformBundle,
 };
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    consts::{self, ITEM_LAYER, PICK_ITEM_RADIUS},
+    consts::{self, ITEM_HEALTH_NAME, ITEM_LAYER, PICK_ITEM_RADIUS},
     input::PlayerAction,
-    metadata::{ItemMeta, ItemSpawnMeta},
+    metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
     player::Player,
     state::State,
+    Stats,
 };
 
 #[derive(Component)]
@@ -99,4 +100,27 @@ pub fn item_carried_by_player(
     }
 
     None
+}
+
+pub fn use_health_item(
+    mut player_query: Query<(&Children, &mut Stats, &Handle<FighterMeta>), With<Player>>,
+    items_meta_query: Query<&Handle<ItemMeta>>,
+    items_meta: Res<Assets<ItemMeta>>,
+    mut commands: Commands,
+    fighter_assets: Res<Assets<FighterMeta>>,
+) {
+    for (player_children, mut stats, player_meta) in player_query.iter_mut() {
+        let health_item = item_carried_by_player(
+            player_children,
+            ITEM_HEALTH_NAME,
+            &items_meta_query,
+            &items_meta,
+        );
+
+        if let Some(health_id) = health_item {
+            let player_meta = fighter_assets.get(player_meta).unwrap();
+            stats.health = player_meta.stats.health;
+            commands.entity(health_id).despawn();
+        }
+    }
 }
