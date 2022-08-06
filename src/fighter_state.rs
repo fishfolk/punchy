@@ -20,7 +20,7 @@ use crate::{
     fighter::Inventory,
     input::PlayerAction,
     item::{Item, Projectile},
-    metadata::{FighterMeta, ItemMeta},
+    metadata::{FighterMeta, ItemKind, ItemMeta},
     movement::LinearVelocity,
     player::Player,
     GameState, Stats,
@@ -672,20 +672,45 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &Facing,
+            &Stats,
+            &mut Inventory,
+            &mut Health,
+        ),
+        With<Throwing>,
+    >,
     item_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
+    for (entity, fighter_transform, facing, stats, mut inventory, mut health) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(meta_handle) = inventory.take() {
             // If the item asset has loaded
             if let Some(item) = item_assets.get(&meta_handle) {
-                // Throw the item!
-                commands.spawn_bundle(Projectile::from_thrown_item(
-                    fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
-                    item,
-                    facing,
-                ));
+                // Check what kind of item this is.
+                //
+                // TODO: We should probably create a flexible item system abstraction similar to the
+                // fighter state abstraction so that items can flexibly defined without a
+                // centralized enum.
+                match item.kind {
+                    ItemKind::Throwable { .. } => {
+                        // Throw the item!
+                        commands.spawn_bundle(Projectile::from_thrown_item(
+                            fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                            item,
+                            facing,
+                        ));
+                    }
+                    ItemKind::Health {
+                        health: item_health,
+                    } => {
+                        // Refill player's health
+                        **health = (**health + item_health).clamp(0, stats.max_health);
+                    }
+                }
 
             // If the item asset isn't loaded yet
             } else {

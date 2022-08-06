@@ -99,7 +99,14 @@ pub struct FighterMeta {
 pub struct ItemMeta {
     pub name: String,
     pub image: ImageMeta,
-    pub damage: i32,
+    pub kind: ItemKind,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub enum ItemKind {
+    Throwable { damage: i32 },
+    Health { health: i32 },
 }
 
 #[derive(Deserialize, Clone, Debug)]

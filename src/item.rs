@@ -73,7 +73,10 @@ impl Projectile {
                 ..default()
             },
             attack: Attack {
-                damage: item.damage,
+                damage: match item.kind {
+                    crate::metadata::ItemKind::Throwable { damage } => damage,
+                    crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
+                },
                 velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
             },
             velocity: LinearVelocity(consts::THROW_ITEM_SPEED * direction_mul),
