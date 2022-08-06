@@ -282,7 +282,6 @@ fn collect_player_actions(
         ),
         With<Player>,
     >,
-    time: Res<Time>,
 ) {
     for (action_state, mut transition_intents, inventory, stats) in &mut players {
         // Trigger attacks
@@ -318,7 +317,7 @@ fn collect_player_actions(
 
             transition_intents.push_back(StateTransition::new(
                 Moving {
-                    velocity: direction * stats.movement_speed * time.delta_seconds(),
+                    velocity: direction * stats.movement_speed,
                 },
                 Moving::PRIORITY,
                 false,
@@ -479,7 +478,6 @@ fn attacking(
         Option<&Enemy>,
     )>,
     fighter_assets: Res<Assets<FighterMeta>>,
-    time: Res<Time>,
 ) {
     for (
         entity,
@@ -560,18 +558,16 @@ fn attacking(
         // Do a forward jump thing
         //TODO: Fix hacky way to get a forward jump
         if animation.current_frame < 3 {
-            let dt = time.delta_seconds();
-
             if facing.is_left() {
-                velocity.x -= 20_000.0 * dt;
+                velocity.x -= 200.0;
             } else {
-                velocity.x += 20_000.0 * dt;
+                velocity.x += 200.0;
             }
 
             if animation.current_frame < 1 {
-                velocity.y += 18_000. * dt;
+                velocity.y += 180.0;
             } else if animation.current_frame < 3 {
-                velocity.y -= 9_000. * dt;
+                velocity.y -= 90.0;
             }
         }
 

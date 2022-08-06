@@ -3,7 +3,7 @@ name: Brute
 stats:
   max_health: 200
   damage: 10
-  movement_speed: 7000
+  movement_speed: 50
 
 hud:
   portrait:

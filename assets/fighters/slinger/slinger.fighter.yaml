@@ -3,7 +3,7 @@ name: Slinger
 stats:
   max_health: 100
   damage: 7
-  movement_speed: 17000
+  movement_speed: 150
 
 hud:
   portrait:

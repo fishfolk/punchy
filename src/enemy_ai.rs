@@ -90,14 +90,12 @@ pub fn emit_enemy_intents(
         (With<Enemy>, Or<(With<Idling>, With<Moving>)>),
     >,
     mut transition_commands: CustomCommands<TransitionCmds>,
-    time: Res<Time>,
 ) {
     let mut commands = transition_commands.commands();
 
     for (entity, transform, stats, target, mut facing, mut intents) in &mut query {
         let position = transform.translation.truncate();
-        let velocity =
-            (target.position - position).normalize() * stats.movement_speed * time.delta_seconds();
+        let velocity = (target.position - position).normalize() * stats.movement_speed;
 
         // If we're close to our target
         if position.distance(target.position) <= target.attack_distance {
