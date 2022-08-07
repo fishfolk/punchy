@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::{GameStage, GameState};
+use crate::GameState;
 use bevy::{
     prelude::*,
     sprite::TextureAtlasSprite,
@@ -15,7 +15,7 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
-            GameStage::Animation,
+            CoreStage::Last,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
                 .with_system(animation_flipping)

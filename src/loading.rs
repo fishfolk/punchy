@@ -1,4 +1,4 @@
-use bevy::{asset::AssetStage, prelude::*};
+use bevy::prelude::*;
 use bevy_parallax::ParallaxResource;
 use iyes_loopless::{prelude::*, state::NextState};
 
@@ -14,7 +14,7 @@ use crate::{
     metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
     platform::Storage,
     player::{Player, PlayerBundle},
-    GameStage, GameState, Stats,
+    GameState, Stats,
 };
 
 use bevy::{ecs::system::SystemParam, render::camera::ScalingMode};
@@ -50,20 +50,15 @@ impl Plugin for LoadingPlugin {
 
         // Configure hot reload
         if ENGINE_CONFIG.hot_reload {
-            app.add_stage_after(
-                AssetStage::LoadAssets,
-                GameStage::HotReload,
-                SystemStage::parallel(),
-            )
-            .add_system_to_stage(GameStage::HotReload, hot_reload_game)
-            .add_system_set_to_stage(
-                GameStage::HotReload,
-                ConditionSet::new()
-                    .run_in_state(GameState::InGame)
-                    .with_system(hot_reload_level)
-                    .with_system(hot_reload_fighters)
-                    .into(),
-            );
+            app.add_system_to_stage(CoreStage::Last, hot_reload_game)
+                .add_system_set_to_stage(
+                    CoreStage::Last,
+                    ConditionSet::new()
+                        .run_in_state(GameState::InGame)
+                        .with_system(hot_reload_level)
+                        .with_system(hot_reload_fighters)
+                        .into(),
+                );
         }
     }
 }

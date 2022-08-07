@@ -64,12 +64,6 @@ use crate::{
     movement::{LeftMovementBoundary, MovementPlugin},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
-enum GameStage {
-    Animation,
-    HotReload,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GameState {
     LoadingStorage,
@@ -120,11 +114,6 @@ fn main() {
 
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
-        .add_stage_after(
-            CoreStage::Update,
-            GameStage::Animation,
-            SystemStage::parallel(),
-        )
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
