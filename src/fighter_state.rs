@@ -10,9 +10,7 @@ use crate::{
     attack::{Attack, AttackFrames},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
-    commands::{
-        flush_custom_commands, CustomCommands, DynamicEntityCommandsExt, InitCustomCommandsAppExt,
-    },
+    commands::DynamicEntityCommandsExt,
     consts,
     damage::{DamageEvent, Health},
     enemy::Enemy,
@@ -33,14 +31,9 @@ pub struct FighterStatePlugin;
 #[derive(Clone, SystemLabel)]
 pub struct FighterStateCollectSystems;
 
-/// [`CustomCommands`] marker type.
-pub struct TransitionCmds;
-
 impl Plugin for FighterStatePlugin {
     fn build(&self, app: &mut App) {
         app
-            // State transition queue
-            .init_custom_commands::<TransitionCmds>()
             // The collect systems
             .add_system_set_to_stage(
                 CoreStage::PreUpdate,
@@ -66,13 +59,6 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_attacking)
                     .with_system(transition_from_knocked_back)
                     .into(),
-            )
-            // Flush stage
-            .add_system_to_stage(
-                CoreStage::PreUpdate,
-                flush_custom_commands::<TransitionCmds>
-                    .exclusive_system()
-                    .at_end(),
             )
             // State handler systems
             .add_system_set_to_stage(
@@ -128,12 +114,7 @@ impl StateTransition {
     /// Returns whether or not the transition was additive.
     ///
     /// If a transition was additive, it means the current state will still be active.
-    pub fn apply<CurrentState: Component>(
-        self,
-        entity: Entity,
-        transition_commands: &mut CustomCommands<TransitionCmds>,
-    ) -> bool {
-        let mut commands = transition_commands.commands();
+    pub fn apply<CurrentState: Component>(self, entity: Entity, commands: &mut Commands) -> bool {
         let mut entity_cmds = commands.entity(entity);
 
         if !self.is_additive {
@@ -159,7 +140,7 @@ impl StateTransitionIntents {
         &mut self,
         entity: Entity,
         current_state_priority: i32,
-        transition_commands: &mut CustomCommands<TransitionCmds>,
+        commands: &mut Commands,
     ) -> bool {
         // Collect transitions and sort by priority
         let mut transitions = self.drain(..).collect::<Vec<_>>();
@@ -170,7 +151,7 @@ impl StateTransitionIntents {
             // If it's a higher priority
             if intent.priority > current_state_priority {
                 // Apply the state
-                let was_additive = intent.apply::<CurrentState>(entity, transition_commands);
+                let was_additive = intent.apply::<CurrentState>(entity, commands);
 
                 // If it was not an additive transition
                 if !was_additive {
@@ -368,7 +349,7 @@ fn collect_fighter_eliminations(
 
 /// Initiate any transitions from the idling state
 fn transition_from_idle(
-    mut transition_commands: CustomCommands<TransitionCmds>,
+    mut commands: Commands,
     mut fighters: Query<(Entity, &mut StateTransitionIntents), With<Idling>>,
 ) {
     for (entity, mut transition_intents) in &mut fighters {
@@ -376,14 +357,14 @@ fn transition_from_idle(
         transition_intents.transition_to_higher_priority_states::<Idling>(
             entity,
             Idling::PRIORITY,
-            &mut transition_commands,
+            &mut commands,
         );
     }
 }
 
 // Initiate any transitions from the flopping state
 fn transition_from_attacking(
-    mut transition_commands: CustomCommands<TransitionCmds>,
+    mut commands: Commands,
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &Attacking)>,
 ) {
     'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
@@ -392,7 +373,7 @@ fn transition_from_attacking(
             .transition_to_higher_priority_states::<Attacking>(
                 entity,
                 Attacking::PRIORITY,
-                &mut transition_commands,
+                &mut commands,
             );
 
         // If our current state was removed, don't continue processing this fighter
@@ -403,18 +384,14 @@ fn transition_from_attacking(
         // If we're done flopping
         if flopping.is_finished {
             // Go back to idle
-            transition_commands
-                .commands()
-                .entity(entity)
-                .remove::<Attacking>()
-                .insert(Idling);
+            commands.entity(entity).remove::<Attacking>().insert(Idling);
         }
     }
 }
 
 // Initiate any transitions from the knocked back state
 fn transition_from_knocked_back(
-    mut transition_commands: CustomCommands<TransitionCmds>,
+    mut commands: Commands,
     mut fighters: Query<(Entity, &mut StateTransitionIntents, &KnockedBack)>,
 ) {
     'entity: for (entity, mut transition_intents, knocked_back) in &mut fighters {
@@ -423,7 +400,7 @@ fn transition_from_knocked_back(
             .transition_to_higher_priority_states::<KnockedBack>(
                 entity,
                 KnockedBack::PRIORITY,
-                &mut transition_commands,
+                &mut commands,
             );
 
         // If our current state was removed, don't continue processing this fighter
@@ -433,8 +410,7 @@ fn transition_from_knocked_back(
 
         // Transition to idle when finished
         if knocked_back.timer.finished() {
-            transition_commands
-                .commands()
+            commands
                 .entity(entity)
                 .remove::<KnockedBack>()
                 .insert(Idling);

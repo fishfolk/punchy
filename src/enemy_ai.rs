@@ -5,12 +5,9 @@ use rand::{prelude::SliceRandom, Rng};
 
 use crate::{
     animation::Facing,
-    commands::CustomCommands,
     consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
     enemy::{Enemy, TripPointX},
-    fighter_state::{
-        Attacking, Idling, Moving, StateTransition, StateTransitionIntents, TransitionCmds,
-    },
+    fighter_state::{Attacking, Idling, Moving, StateTransition, StateTransitionIntents},
     player::Player,
     Stats,
 };
@@ -89,10 +86,8 @@ pub fn emit_enemy_intents(
         // All enemies that are either moving or idling
         (With<Enemy>, Or<(With<Idling>, With<Moving>)>),
     >,
-    mut transition_commands: CustomCommands<TransitionCmds>,
+    mut commands: Commands,
 ) {
-    let mut commands = transition_commands.commands();
-
     for (entity, transform, stats, target, mut facing, mut intents) in &mut query {
         let position = transform.translation.truncate();
         let velocity = (target.position - position).normalize() * stats.movement_speed;
