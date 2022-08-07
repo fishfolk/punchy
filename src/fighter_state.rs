@@ -237,6 +237,8 @@ impl Grabbing {
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct Attacking {
+    /// The initial y-height of the figther when starting the attack
+    pub start_y: f32,
     pub has_started: bool,
     pub is_finished: bool,
 }
@@ -469,6 +471,7 @@ fn attacking(
     mut fighters: Query<(
         Entity,
         &mut Animation,
+        &mut Transform,
         &mut LinearVelocity,
         &Facing,
         &Stats,
@@ -482,6 +485,7 @@ fn attacking(
     for (
         entity,
         mut animation,
+        mut transform,
         mut velocity,
         facing,
         stats,
@@ -501,6 +505,7 @@ fn attacking(
         // Start the attack
         if !attacking.has_started {
             attacking.has_started = true;
+            attacking.start_y = transform.translation.y;
 
             // Start the attack  from the beginning
             animation.play(Attacking::ANIMATION, false);
@@ -571,8 +576,13 @@ fn attacking(
             }
         }
 
-        // If the animation is done
         if animation.is_finished() {
+            // Stop moving
+            **velocity = Vec2::ZERO;
+
+            // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
+            transform.translation.y = attacking.start_y;
+
             // Set flopping to finished
             attacking.is_finished = true;
         }
