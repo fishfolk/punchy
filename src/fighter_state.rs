@@ -10,7 +10,6 @@ use crate::{
     attack::{Attack, AttackFrames},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
-    commands::DynamicEntityCommandsExt,
     consts,
     damage::{DamageEvent, Health},
     enemy::Enemy,
@@ -115,13 +114,15 @@ impl StateTransition {
     ///
     /// If a transition was additive, it means the current state will still be active.
     pub fn apply<CurrentState: Component>(self, entity: Entity, commands: &mut Commands) -> bool {
-        let mut entity_cmds = commands.entity(entity);
-
         if !self.is_additive {
-            entity_cmds.remove::<CurrentState>();
+            commands.entity(entity).remove::<CurrentState>();
         }
 
-        entity_cmds.insert_dynamic(self.reflect_component, self.data);
+        commands.add(move |world: &mut World| {
+            // Insert the component stored in this state transition onto the entity
+            self.reflect_component
+                .insert(world, entity, self.data.as_reflect());
+        });
 
         self.is_additive
     }
