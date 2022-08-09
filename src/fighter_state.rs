@@ -169,14 +169,6 @@ impl StateTransitionIntents {
     }
 }
 
-/// Component on fighters containing the action intent queue.
-///
-/// Actions are things that the fighter should try to do that doesn't represent a state change. The
-/// current fighter state must choose to act upon an action intent for it to be effect, and it will
-/// otherwise be ignored.q
-#[derive(Component, Default, Deref, DerefMut)]
-pub struct ActionIntents(VecDeque<Box<dyn Reflect>>);
-
 //
 // Fighter state components
 //
