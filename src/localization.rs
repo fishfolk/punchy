@@ -1,5 +1,10 @@
+use std::borrow::Borrow;
+
 use bevy::{prelude::*, utils::HashMap};
-use bevy_fluent::{BundleAsset, FluentPlugin, Locale, Localization};
+use bevy_fluent::{
+    exts::fluent::content::Request, BundleAsset, Content, FluentPlugin, Locale, Localization,
+};
+use fluent::FluentArgs;
 
 /// Plugin for initializing and loading the [`Localization`] resource.
 pub struct LocalizationPlugin;
@@ -11,6 +16,23 @@ impl Plugin for LocalizationPlugin {
             .insert_resource(Localization::new());
 
         app.add_system(load_locales);
+    }
+}
+
+/// Extension trait to reduce boilerplate when getting values from a [`Localization`].
+pub trait LocalizationExt<'a, T: Into<Request<'a, U>>, U: Borrow<FluentArgs<'a>>> {
+    /// Request message content and get an empty string if it doesn't exist.
+    fn get(&self, request: T) -> String;
+}
+
+impl<'a, T, U> LocalizationExt<'a, T, U> for Localization
+where
+    T: Copy + Into<Request<'a, U>>,
+    U: Borrow<FluentArgs<'a>>,
+{
+    /// Request message content and get an empty string if it doesn't exist.
+    fn get(&self, request: T) -> String {
+        self.content(request).unwrap_or_default()
     }
 }
 

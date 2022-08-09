@@ -4,7 +4,8 @@ use bevy_fluent::Localization;
 use iyes_loopless::state::NextState;
 
 use crate::{
-    metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta},
+    localization::LocalizationExt,
+    metadata::{ButtonStyle, FontStyle, GameMeta},
     utils::ResetController,
     GameState,
 };

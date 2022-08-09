@@ -1,7 +1,4 @@
-use std::borrow::Borrow;
-
-use bevy_fluent::{exts::fluent::content::Request, BundleAsset, Content, Localization};
-use fluent::FluentArgs;
+use bevy_fluent::BundleAsset;
 use unic_langid::LanguageIdentifier;
 
 use super::*;
@@ -21,21 +18,4 @@ pub struct TranslationsMeta {
     /// The handles to the locale bundle assets
     #[serde(skip)]
     pub locale_handles: Vec<Handle<BundleAsset>>,
-}
-
-/// Extension trait to reduce boilerplate when getting values from a [`Localization`].
-pub trait LocalizationExt<'a, T: Into<Request<'a, U>>, U: Borrow<FluentArgs<'a>>> {
-    /// Request message content and get an empty string if it doesn't exist.
-    fn get(&self, request: T) -> String;
-}
-
-impl<'a, T, U> LocalizationExt<'a, T, U> for Localization
-where
-    T: Copy + Into<Request<'a, U>>,
-    U: Borrow<FluentArgs<'a>>,
-{
-    /// Request message content and get an empty string if it doesn't exist.
-    fn get(&self, request: T) -> String {
-        self.content(request).unwrap_or_default()
-    }
 }
