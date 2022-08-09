@@ -434,7 +434,8 @@ dependencies = [
 [[package]]
 name = "bevy_fluent"
 version = "0.4.0"
-source = "git+https://github.com/kgv/bevy_fluent.git#108e0430343ec90797d16e381dae0d1e08379d1f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97073140587e1d731a583695c64b3a4410ba5edf9b3f79aae56ab63d0aab0384"
 dependencies = [
  "anyhow",
  "bevy",
