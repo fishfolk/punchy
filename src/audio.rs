@@ -3,12 +3,13 @@
 
 use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::{AudioChannel, AudioSource};
+use iyes_loopless::prelude::*;
 
 use crate::{
     animation::Animation,
     config::ENGINE_CONFIG,
     metadata::{GameMeta, LevelMeta},
-    state::State,
+    GameState,
 };
 
 /// For readability.
@@ -26,39 +27,49 @@ pub fn set_audio_channels_volume(
     effects_channel.set_volume(0.5);
 }
 
+pub struct AudioPlugin;
+
+impl Plugin for AudioPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugin(bevy_kira_audio::AudioPlugin)
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                animation_audio_playback.run_in_state(GameState::InGame),
+            );
+    }
+}
+
 /// Add this to a fighter, when want to play sound effects attached to certain animation indexes.
 #[derive(Component)]
-pub struct FighterStateEffectsPlayback {
-    pub state: State,
+pub struct AnimationAudioPlayback {
+    pub animation_name: String,
     pub effects: HashMap<usize, Handle<AudioSource>>,
     pub last_played: Option<usize>,
 }
 
-impl FighterStateEffectsPlayback {
-    pub fn new(state: State, effects: HashMap<usize, Handle<AudioSource>>) -> Self {
+impl AnimationAudioPlayback {
+    pub fn new(animation_name: String, effects: HashMap<usize, Handle<AudioSource>>) -> Self {
         Self {
-            state,
+            animation_name,
             effects,
             last_played: None,
         }
     }
 }
 
-pub fn fighter_sound_effect(
+pub fn animation_audio_playback(
     mut commands: Commands,
-    mut query: Query<(Entity, &State, &Animation, &mut FighterStateEffectsPlayback)>,
+    mut query: Query<(Entity, &Animation, &mut AnimationAudioPlayback)>,
     effects_channel: Res<AudioChannel<EffectsChannel>>,
 ) {
-    for (entity, fighter_state, animation, mut state_effects) in query.iter_mut() {
+    for (entity, animation, mut state_effects) in query.iter_mut() {
         // The safest way to remove the sound component is on the next state, because the component
         // can be remove only at the last frame of animation, which in theory, may be skipped if
         // there is an unexpected lag.
         // Alternatively, we could just not care, since subsequent states+effects will overwrite
         // the component.
-        if *fighter_state != state_effects.state {
-            commands
-                .entity(entity)
-                .remove::<FighterStateEffectsPlayback>();
+        if animation.current_animation.as_ref() != Some(&state_effects.animation_name) {
+            commands.entity(entity).remove::<AnimationAudioPlayback>();
 
             continue;
         }

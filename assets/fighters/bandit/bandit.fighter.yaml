@@ -1,8 +1,8 @@
 name: Bandit
 
 stats:
-  health: 150
-  damage: 20
+  max_health: 150
+  damage: 4
   movement_speed: 150
 
 hud:

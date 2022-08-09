@@ -5,7 +5,7 @@ use serde::Deserialize;
 pub enum PlayerAction {
     Move,
     // Attacks
-    FlopAttack,
+    Attack,
     Throw,
     Shoot,
 }

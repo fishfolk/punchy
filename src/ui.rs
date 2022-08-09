@@ -25,7 +25,14 @@ impl Plugin for UIPlugin {
             .add_enter_system(GameState::MainMenu, audio::play_menu_music)
             .add_exit_system(GameState::MainMenu, main_menu::despawn_main_menu_background)
             .add_exit_system(GameState::MainMenu, audio::stop_menu_music)
-            .add_system(hud::render_hud.run_in_state(GameState::InGame))
+            .add_system(unpause.run_in_state(GameState::Paused))
+            .add_system_set(
+                ConditionSet::new()
+                    .run_in_state(GameState::InGame)
+                    .with_system(hud::render_hud)
+                    .with_system(pause)
+                    .into(),
+            )
             .add_system(update_egui_fonts)
             .add_system(update_ui_scale.run_if_resource_exists::<GameMeta>())
             .add_system_set(
@@ -40,6 +47,22 @@ impl Plugin for UIPlugin {
                     .with_system(main_menu::main_menu_system)
                     .into(),
             );
+    }
+}
+
+/// Transition game to pause state
+fn pause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
+    let input = input.single();
+    if input.just_pressed(MenuAction::Pause) {
+        commands.insert_resource(NextState(GameState::Paused));
+    }
+}
+
+// Transition game out of paused state
+fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
+    let input = input.single();
+    if input.just_pressed(MenuAction::Pause) {
+        commands.insert_resource(NextState(GameState::InGame));
     }
 }
 

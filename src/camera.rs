@@ -1,7 +1,34 @@
-use bevy::prelude::{Camera, EventWriter, Query, Res, Transform, With, Without};
+use bevy::prelude::*;
 use bevy_parallax::ParallaxMoveEvent;
+use iyes_loopless::prelude::*;
 
-use crate::{consts, metadata::GameMeta, Player};
+use crate::{consts, metadata::GameMeta, movement::VelocitySystems, GameState, Player};
+
+pub struct CameraPlugin;
+
+impl Plugin for CameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system_set_to_stage(
+            CoreStage::PostUpdate,
+            ConditionSet::new()
+                .run_in_state(GameState::InGame)
+                .after(VelocitySystems)
+                .with_system(camera_follow_player)
+                .with_system(y_sort)
+                .into(),
+        );
+    }
+}
+
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
+#[derive(Component, Default)]
+pub struct YSort(f32);
+
+pub fn y_sort(mut query: Query<(&mut Transform, &YSort)>) {
+    for (mut transform, ysort) in query.iter_mut() {
+        transform.translation.z = ysort.0 - transform.translation.y;
+    }
+}
 
 /// Moves the camera according to the RIGHT_BOUNDARY_DISTANCE. Note that this does not enforce
 /// limitations of any kind - that's up to the players movement logic (e.g. max distance).

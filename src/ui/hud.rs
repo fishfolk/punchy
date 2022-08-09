@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext};
 
 use crate::{
+    damage::Health,
     metadata::{FighterMeta, GameMeta},
     player::PlayerIndex,
     ui::widgets::{bordered_frame::BorderedFrame, progress_bar::ProgressBar, EguiUIExt},
@@ -12,7 +13,7 @@ use crate::{
 
 pub fn render_hud(
     mut egui_context: ResMut<EguiContext>,
-    players: Query<(&PlayerIndex, &Stats, &Handle<FighterMeta>), With<Player>>,
+    players: Query<(&PlayerIndex, &Stats, &Health, &Handle<FighterMeta>), With<Player>>,
     game: Res<GameMeta>,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
@@ -28,16 +29,16 @@ pub fn render_hud(
 
     // Collect player info
     let mut players = players.iter().collect::<Vec<_>>();
-    players.sort_by_key(|(player_i, _, _)| player_i.0);
+    players.sort_by_key(|(player_i, _, _, _)| player_i.0);
 
     let player_infos = players
         .into_iter()
-        .filter_map(|(_, stats, fighter_handle)| {
+        .filter_map(|(_, stats, health, fighter_handle)| {
             fighter_assets.get(fighter_handle).map(|fighter| {
                 let portrait_size = fighter.hud.portrait.image_size;
                 PlayerInfo {
                     name: fighter.name.clone(),
-                    life: stats.health as f32 / fighter.stats.health as f32,
+                    life: **health as f32 / stats.max_health as f32,
                     portrait_texture_id: egui_context
                         .add_image(fighter.hud.portrait.image_handle.clone_weak()),
                     portrait_size: egui::Vec2::new(portrait_size.x, portrait_size.y),

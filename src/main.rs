@@ -3,20 +3,16 @@
 #![allow(clippy::too_many_arguments)]
 
 use bevy::{
-    asset::AssetServerSettings, ecs::bundle::Bundle, log::LogSettings, prelude::*,
-    render::texture::ImageSettings,
+    asset::AssetServerSettings, log::LogSettings, prelude::*, render::texture::ImageSettings,
 };
-use bevy_kira_audio::{AudioApp, AudioPlugin};
+use bevy_kira_audio::AudioApp;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
-use consts::ENEMY_TARGET_MAX_OFFSET;
-use consts::{ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE};
-use enemy::*;
+use fighter::Stats;
 use input::MenuAction;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use player::*;
-use rand::{seq::SliceRandom, Rng};
 
 #[cfg(feature = "debug")]
 use bevy_inspector_egui::{RegisterInspectable, WorldInspectorPlugin};
@@ -31,66 +27,41 @@ mod assets;
 mod attack;
 mod audio;
 mod camera;
-mod collisions;
+mod collision;
 mod config;
 mod consts;
+mod damage;
 mod enemy;
+mod enemy_ai;
 mod fighter;
+mod fighter_state;
 mod input;
 mod item;
+mod lifetime;
 mod loading;
 mod localization;
 mod metadata;
 mod movement;
 mod platform;
 mod player;
-mod state;
 mod ui;
 mod utils;
-mod y_sort;
 
 use animation::*;
 use attack::AttackPlugin;
 use audio::*;
 use camera::*;
-use collisions::*;
 use metadata::GameMeta;
-use movement::*;
-use serde::Deserialize;
-use state::{State, StatePlugin};
 use ui::UIPlugin;
 use utils::ResetController;
-use y_sort::*;
 
 use crate::{
+    damage::DamagePlugin,
+    fighter_state::FighterStatePlugin,
     input::PlayerAction,
-    item::{pick_items, use_health_item},
+    lifetime::LifetimePlugin,
+    movement::{LeftMovementBoundary, MovementPlugin},
 };
-
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deserialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Stats {
-    pub health: i32,
-    pub damage: i32,
-    pub movement_speed: f32,
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Stats {
-            health: 100,
-            damage: 35,
-            movement_speed: 150.,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StageLabel)]
-enum GameStage {
-    Animation,
-    HotReload,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GameState {
@@ -102,49 +73,6 @@ enum GameState {
     Paused,
     //Editor,
 }
-
-#[derive(Component)]
-pub struct DespawnMarker;
-
-#[derive(Bundle, Default)]
-struct CharacterBundle {
-    state: State,
-    stats: Stats,
-    ysort: YSort,
-}
-
-#[derive(Bundle)]
-struct AnimatedSpriteSheetBundle {
-    #[bundle]
-    sprite_sheet: SpriteSheetBundle,
-    animation: Animation,
-}
-
-#[derive(Bundle)]
-struct PhysicsBundle {
-    collider: Collider,
-    sensor: Sensor,
-    active_events: ActiveEvents,
-    active_collision_types: ActiveCollisionTypes,
-    collision_groups: CollisionGroups,
-}
-impl Default for PhysicsBundle {
-    fn default() -> Self {
-        PhysicsBundle {
-            collider: (Collider::cuboid(
-                consts::PLAYER_SPRITE_WIDTH / 8.,
-                consts::PLAYER_HITBOX_HEIGHT / 8.,
-            )),
-            sensor: Sensor,
-            active_events: ActiveEvents::COLLISION_EVENTS,
-            active_collision_types: ActiveCollisionTypes::default()
-                | ActiveCollisionTypes::STATIC_STATIC,
-            collision_groups: CollisionGroups::default(),
-        }
-    }
-}
-
-pub struct ArrivedEvent(Entity);
 
 fn main() {
     // Load engine config. This will parse CLI arguments or web query string so we want to do it
@@ -185,12 +113,6 @@ fn main() {
 
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
-        .add_stage_after(
-            CoreStage::Update,
-            GameStage::Animation,
-            SystemStage::parallel(),
-        )
-        .add_event::<ArrivedEvent>()
         .add_loopless_state(GameState::LoadingStorage)
         .add_plugin(platform::PlatformPlugin)
         .add_plugin(localization::LocalizationPlugin)
@@ -200,10 +122,14 @@ fn main() {
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
         .add_plugin(AnimationPlugin)
-        .add_plugin(AudioPlugin)
-        .add_plugin(StatePlugin)
         .add_plugin(ParallaxPlugin)
         .add_plugin(UIPlugin)
+        .add_plugin(FighterStatePlugin)
+        .add_plugin(MovementPlugin)
+        .add_plugin(AudioPlugin)
+        .add_plugin(DamagePlugin)
+        .add_plugin(LifetimePlugin)
+        .add_plugin(CameraPlugin)
         .add_audio_channel::<MusicChannel>()
         .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
@@ -212,45 +138,13 @@ fn main() {
         .add_startup_system(set_audio_channels_volume)
         .add_enter_system(GameState::InGame, play_level_music)
         .add_exit_system(GameState::InGame, stop_level_music)
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(player_controller)
-                .with_system(pick_items)
-                .with_system(use_health_item)
-                .with_system(y_sort)
-                .with_system(attack_fighter_collision)
-                .with_system(kill_entities)
-                .with_system(knockback_system)
-                .with_system(move_direction_system)
-                .with_system(pause)
-                .into(),
-        )
-        .add_system(
-            set_target_near_player
-                .run_in_state(GameState::InGame)
-                .label("set_target_near_player"),
-        )
-        .add_system(
-            move_to_target
-                .run_in_state(GameState::InGame)
-                .after("set_target_near_player")
-                .label("move_to_target"),
-        )
-        .add_system(unpause.run_in_state(GameState::Paused))
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(move_in_arc_system)
-                .with_system(rotate_system)
-                .with_system(camera_follow_player)
-                .with_system(update_left_movement_boundary)
-                .with_system(fighter_sound_effect)
                 .with_system(game_over_on_players_death)
                 .into(),
-        )
-        .add_system_to_stage(CoreStage::Last, despawn_entities);
+        );
 
     // Add debug plugins
     #[cfg(feature = "debug")]
@@ -258,10 +152,9 @@ fn main() {
         .add_plugin(InspectableRapierPlugin)
         .add_plugin(WorldInspectorPlugin::new())
         .register_inspectable::<Stats>()
-        .register_inspectable::<State>()
-        .register_inspectable::<MoveInDirection>()
-        .register_inspectable::<MoveInArc>()
-        .register_inspectable::<Rotate>()
+        .register_inspectable::<crate::movement::LinearVelocity>()
+        .register_inspectable::<crate::movement::AngularVelocity>()
+        // .register_inspectable::<MoveInArc>()
         .register_inspectable::<attack::Attack>()
         .register_inspectable::<YSort>()
         .register_inspectable::<Facing>();
@@ -286,44 +179,7 @@ fn main() {
     app.run();
 }
 
-/// Transition game to pause state
-fn pause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
-    let input = input.single();
-    if input.just_pressed(MenuAction::Pause) {
-        commands.insert_resource(NextState(GameState::Paused));
-    }
-}
-
-// Transition game out of paused state
-fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
-    let input = input.single();
-    if input.just_pressed(MenuAction::Pause) {
-        commands.insert_resource(NextState(GameState::InGame));
-    }
-}
-
-fn kill_entities(
-    mut commands: Commands,
-    mut query: Query<(Entity, &Stats, &Animation, &mut State)>,
-) {
-    for (entity, stats, animation, mut state) in query.iter_mut() {
-        if stats.health <= 0 {
-            state.set(State::Dying);
-        }
-
-        if *state == State::Dying && animation.is_finished() {
-            commands.entity(entity).insert(DespawnMarker);
-            // commands.entity(entity).despawn_recursive();
-        }
-    }
-}
-
-fn despawn_entities(mut commands: Commands, query: Query<Entity, With<DespawnMarker>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
-    }
-}
-
+/// Transition back to main menu and reset world when all players have died
 fn game_over_on_players_death(
     mut commands: Commands,
     query: Query<(), With<Player>>,
@@ -333,48 +189,5 @@ fn game_over_on_players_death(
         commands.insert_resource(NextState(GameState::MainMenu));
 
         reset_controller.reset_world();
-    }
-}
-
-//for enemys without current target, pick a new spot near the player as target
-fn set_target_near_player(
-    mut commands: Commands,
-    mut enemies_query: Query<(Entity, &State, &mut TripPointX), (With<Enemy>, Without<Target>)>,
-    player_query: Query<&Transform, With<Player>>,
-) {
-    let mut rng = rand::thread_rng();
-    let p_transforms = player_query.iter().collect::<Vec<_>>();
-    let max_player_x = p_transforms
-        .iter()
-        .map(|transform| transform.translation.x)
-        .max_by(f32::total_cmp);
-
-    if let Some(max_player_x) = max_player_x {
-        for (e_entity, e_state, mut e_trip_point_x) in enemies_query.iter_mut() {
-            if *e_state == State::Idle {
-                if let Some(p_transform) = p_transforms.choose(&mut rng) {
-                    if max_player_x > e_trip_point_x.0 {
-                        e_trip_point_x.0 = f32::MIN;
-
-                        let x_offset =
-                            rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
-                        let y_offset =
-                            rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
-
-                        let attack_distance =
-                            rng.gen_range(ENEMY_MIN_ATTACK_DISTANCE..ENEMY_MAX_ATTACK_DISTANCE);
-
-                        commands.entity(e_entity).insert(Target {
-                            position: Vec2::new(
-                                p_transform.translation.x + x_offset,
-                                (p_transform.translation.y + y_offset)
-                                    .clamp(consts::MIN_Y, consts::MAX_Y),
-                            ),
-                            attack_distance,
-                        });
-                    }
-                }
-            }
-        }
     }
 }

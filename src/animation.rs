@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use crate::{state::State, GameStage, GameState};
+use crate::GameState;
 use bevy::{
-    prelude::{App, Changed, Component, Plugin, Query, Res},
+    prelude::*,
     sprite::TextureAtlasSprite,
     time::{Time, Timer},
     utils::HashMap,
@@ -15,15 +15,22 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set_to_stage(
-            GameStage::Animation,
+            CoreStage::Last,
             ConditionSet::new()
                 .run_in_state(GameState::InGame)
-                .with_system(animate_on_state_changed)
                 .with_system(animation_flipping)
                 .with_system(animation_cycling)
                 .into(),
         );
     }
+}
+
+/// Bundle for animated sprite sheets
+#[derive(Bundle)]
+pub struct AnimatedSpriteSheetBundle {
+    #[bundle]
+    pub sprite_sheet: SpriteSheetBundle,
+    pub animation: Animation,
 }
 
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
@@ -36,10 +43,6 @@ pub enum Facing {
 impl Facing {
     pub fn is_left(&self) -> bool {
         self == &Facing::Left
-    }
-
-    pub fn set(&mut self, facing: Facing) {
-        *self = facing;
     }
 }
 
@@ -95,22 +98,32 @@ impl<'de> serde::de::Visitor<'de> for RangeVisitor {
 
 #[derive(Component)]
 pub struct Animation {
-    pub animations: HashMap<State, Clip>,
+    pub animations: HashMap<String, Clip>,
     pub current_frame: usize,
-    current_state: Option<State>,
+    pub current_animation: Option<String>,
     pub timer: Timer,
     pub played_once: bool,
 }
 
 impl Animation {
-    pub fn new(fps: f32, animations: HashMap<State, Clip>) -> Self {
+    pub fn new(fps: f32, animations: HashMap<String, Clip>) -> Self {
         Self {
             animations,
             current_frame: 0,
-            current_state: None,
+            current_animation: None,
             timer: Timer::from_seconds(fps, false),
             played_once: false,
         }
+    }
+
+    /// Start playing a new animation
+    pub fn play(&mut self, name: &str, repeating: bool) {
+        self.current_animation = Some(name.to_owned());
+        self.current_frame = 0;
+        self.timer.reset();
+        self.timer.unpause();
+        self.timer.set_repeating(repeating);
+        self.played_once = false;
     }
 
     pub fn is_finished(&self) -> bool {
@@ -118,8 +131,8 @@ impl Animation {
     }
 
     pub fn is_repeating(&self) -> bool {
-        if let Some(state) = self.current_state {
-            if let Some(clip) = self.animations.get(&state) {
+        if let Some(animation) = &self.current_animation {
+            if let Some(clip) = self.animations.get(animation) {
                 return clip.repeat;
             }
         }
@@ -138,8 +151,8 @@ impl Animation {
     }
 
     pub fn get_current_indices(&self) -> Option<&Range<usize>> {
-        if let Some(state) = self.current_state {
-            match self.animations.get(&state) {
+        if let Some(animation) = &self.current_animation {
+            match self.animations.get(animation) {
                 Some(clip) => return Some(&clip.frames),
                 None => return None,
             }
@@ -157,22 +170,11 @@ impl Animation {
     }
 }
 
-fn animate_on_state_changed(mut query: Query<(&mut Animation, &State), Changed<State>>) {
-    for (mut animation, state) in query.iter_mut() {
-        if animation.current_state != Some(*state) {
-            animation.played_once = false;
-            animation.current_frame = 0;
-            animation.current_state = Some(*state);
-            animation.timer.reset();
-        }
-    }
-}
-
 fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>, time: Res<Time>) {
     //TODO: Add a tick method on Animation
     for (mut texture_atlas_sprite, mut animation) in query.iter_mut() {
         if animation.is_finished() && !animation.is_repeating() {
-            return;
+            continue;
         }
 
         animation.timer.tick(time.delta());

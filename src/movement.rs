@@ -1,27 +1,122 @@
 use bevy::{
-    ecs::system::SystemParam,
-    math::{Quat, Vec2, Vec3},
-    prelude::{
-        Commands, Component, Deref, DerefMut, Entity, EventWriter, Query, Res, ResMut, Transform,
-        With,
-    },
-    time::{Time, Timer},
+    math::{Quat, Vec2},
+    prelude::*,
+    time::Time,
 };
-use leafwing_input_manager::prelude::ActionState;
+use iyes_loopless::prelude::*;
 
 use crate::{
-    animation::Facing,
     consts::{self, LEFT_BOUNDARY_MAX_DISTANCE},
     enemy::SpawnLocationX,
-    input::PlayerAction,
     metadata::{GameMeta, LevelMeta},
-    state::State,
-    ArrivedEvent, DespawnMarker, Player, Stats,
+    GameState, Player,
 };
 
+/// Plugin handling movement and rotation through velocities and torques.
+pub struct MovementPlugin;
+
+#[derive(Clone, SystemLabel)]
+pub struct ForceSystems;
+
+#[derive(Clone, SystemLabel)]
+pub struct VelocitySystems;
+
+impl Plugin for MovementPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            // Add systems that modify velocity based on forces
+            .add_system_set_to_stage(
+                CoreStage::PostUpdate,
+                ConditionSet::new()
+                    .label(ForceSystems)
+                    .run_in_state(GameState::InGame)
+                    .with_system(force_system)
+                    .with_system(torque_system)
+                    .into(),
+            )
+            // Add systems that modify translation and rotation based on velocity
+            .add_system_set_to_stage(
+                CoreStage::PostUpdate,
+                ConditionSet::new()
+                    .label(VelocitySystems)
+                    .after(ForceSystems)
+                    .run_in_state(GameState::InGame)
+                    .with_system(
+                        // Here we add a chain of systems that act as constraints on movements, ending
+                        // the chain with the velocity system itself which applies the velocities to the
+                        // entities.
+                        update_left_movement_boundary
+                            .chain(constrain_player_movement)
+                            .chain(velocity_system),
+                    )
+                    .with_system(angular_velocity_system)
+                    .into(),
+            );
+    }
+}
+
+/// An entity's linear velocity.
+///
+/// This is similar to the velocity you would set in a physics simulation, but in our case we use a
+/// simple constraints system instead of actual physics simulation.
 #[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut)]
-pub struct MoveInDirection(pub Vec2);
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+pub struct LinearVelocity(pub Vec2);
+
+/// System that updates translations based on entity velocities.
+pub fn velocity_system(mut query: Query<(&mut Transform, &LinearVelocity)>, time: Res<Time>) {
+    for (mut transform, dir) in &mut query.iter_mut() {
+        transform.translation += dir.0.extend(0.) * time.delta_seconds();
+    }
+}
+
+/// An entity's angular velocity.
+///
+/// A positive value means a clockwise rotation and a negative value means couter-clockwise.
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
+#[derive(Component, Deref, DerefMut, Default)]
+pub struct AngularVelocity(pub f32);
+
+impl AngularVelocity {
+    #[allow(unused)] // TODO: Remove when used
+    pub fn with_clockwise(r: f32, clockwise: bool) -> Self {
+        AngularVelocity(r * if clockwise { 0.0 } else { -1.0 })
+    }
+}
+
+/// System that applies rotations based on entity torques.
+pub fn angular_velocity_system(
+    mut query: Query<(&mut Transform, &AngularVelocity)>,
+    time: Res<Time>,
+) {
+    for (mut transform, torque) in &mut query.iter_mut() {
+        transform.rotation *= Quat::from_rotation_z(**torque * time.delta_seconds());
+    }
+}
+
+/// A force that while present continually modified an entity's linear velocity.
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+pub struct Force(pub Vec2);
+
+// Applies forces to linear velocities
+pub fn force_system(mut query: Query<(&mut LinearVelocity, &Force)>, time: Res<Time>) {
+    for (mut velocity, force) in &mut query.iter_mut() {
+        **velocity += **force * time.delta_seconds();
+    }
+}
+
+/// A force that while present continually modified an entity's angular velocity
+#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+pub struct Torque(pub f32);
+
+// Applies torques to angular velocities
+pub fn torque_system(mut query: Query<(&mut AngularVelocity, &Torque)>, time: Res<Time>) {
+    for (mut velocity, torque) in &mut query.iter_mut() {
+        **velocity += **torque * time.delta_seconds();
+    }
+}
 
 // (Moving) bondary before which, the players can't go back.
 #[derive(Component)]
@@ -33,261 +128,7 @@ impl Default for LeftMovementBoundary {
     }
 }
 
-#[derive(Component)]
-pub struct Knockback {
-    pub direction: Vec2,
-    pub duration: Timer,
-}
-
-pub fn knockback_system(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut Transform, &mut Knockback, Option<&Player>)>,
-    player_movement_clamper: PlayerMovementClamper,
-    time: Res<Time>,
-) {
-    let mut all_knockbacks = query.iter_mut().collect::<Vec<_>>();
-
-    // Separate the finished knockbacks, and despawn them.
-
-    let (finished_knockbacks, mut current_knockbacks): (Vec<_>, Vec<_>) = all_knockbacks
-        .iter_mut()
-        .partition(|(_, _, knockback, _)| knockback.duration.finished());
-
-    for (entity, _, _, _) in &finished_knockbacks {
-        commands.entity(*entity).remove::<Knockback>();
-    }
-
-    // Tick the timer for the current knockbacks.
-
-    for (_, _, knockback, _) in current_knockbacks.iter_mut() {
-        knockback.duration.tick(time.delta());
-    }
-
-    // Separate the enemy knocbacks, and apply them, unclamped.
-
-    let (mut enemy_knockbacks, mut player_knockbacks): (Vec<_>, Vec<_>) = current_knockbacks
-        .iter_mut()
-        .partition(|(_, _, _, player)| player.is_none());
-
-    for (_, transform, knockback, _) in enemy_knockbacks.iter_mut() {
-        transform.translation.x += knockback.direction.x * time.delta_seconds();
-        transform.translation.y += knockback.direction.y * time.delta_seconds();
-    }
-
-    // Extract the players movement data, and apply the knockbacks, clamped.
-
-    let player_movements = player_knockbacks
-        .iter()
-        .map(|(_, transform, knockback, _)| {
-            (
-                transform.translation,
-                Some(knockback.direction * time.delta_seconds()),
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let player_dirs = player_movement_clamper.clamp(player_movements);
-
-    for ((_, transform, _, _), player_dir) in player_knockbacks.iter_mut().zip(player_dirs) {
-        transform.translation += player_dir.unwrap().extend(0.);
-    }
-}
-
-pub fn player_controller(
-    mut query: Query<
-        (
-            &mut State,
-            &Stats,
-            &mut Transform,
-            &mut Facing,
-            &ActionState<PlayerAction>,
-        ),
-        With<Player>,
-    >,
-    player_movement_clamper: PlayerMovementClamper,
-    time: Res<Time>,
-) {
-    // Compute the new direction vectors; can be None if the state is not (idle or running).
-    //
-    let player_movements = query
-        .iter()
-        .map(|(state, stats, transform, _, input)| {
-            if *state != State::Idle && *state != State::Running {
-                (transform.translation, None)
-            } else {
-                let mut dir = if input.pressed(PlayerAction::Move) {
-                    input.axis_pair(PlayerAction::Move).unwrap().xy()
-                } else {
-                    Vec2::ZERO
-                };
-
-                // Apply speed
-                dir = dir * stats.movement_speed * time.delta_seconds();
-
-                //Move the player
-                (transform.translation, Some(dir))
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let player_dirs = player_movement_clamper.clamp(player_movements);
-
-    for ((mut state, _, mut transform, mut facing, _), dir) in
-        query.iter_mut().zip(player_dirs.iter())
-    {
-        if let Some(dir) = dir {
-            transform.translation.x += dir.x;
-            transform.translation.y += dir.y;
-
-            //Set the player state and direction
-            if dir.x < 0. {
-                facing.set(Facing::Left);
-            } else if dir.x > 0. {
-                facing.set(Facing::Right);
-            }
-
-            if dir == &Vec2::ZERO {
-                state.set(State::Idle);
-            } else {
-                state.set(State::Running);
-            }
-        }
-    }
-}
-
-pub fn move_direction_system(
-    mut query: Query<(&mut Transform, &MoveInDirection)>,
-    time: Res<Time>,
-) {
-    for (mut transform, dir) in &mut query.iter_mut() {
-        transform.translation += dir.0.extend(0.) * time.delta_seconds();
-    }
-}
-
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component)]
-pub struct MoveInArc {
-    pub radius: Vec2,
-    pub speed: f32,
-    pub angle: f32,
-    pub end_angle: f32,
-    pub inverse_direction: bool,
-    pub origin: Vec2,
-}
-
-pub fn move_in_arc_system(
-    mut query: Query<(&mut Transform, &mut MoveInArc, Entity)>,
-    time: Res<Time>,
-    mut commands: Commands,
-) {
-    for (mut transform, mut arc, entity) in &mut query.iter_mut() {
-        if arc.inverse_direction {
-            arc.angle += time.delta_seconds() * arc.speed;
-
-            if arc.angle >= arc.end_angle {
-                //TODO: Choose between removing the entity or the component
-                // commands.entity(entity).despawn();
-                commands.entity(entity).insert(DespawnMarker);
-                // commands.entity(entity).remove::<MoveInArc>();
-            }
-        } else {
-            arc.angle -= time.delta_seconds() * arc.speed;
-            if arc.angle <= arc.end_angle {
-                // commands.entity(entity).despawn();
-                commands.entity(entity).insert(DespawnMarker);
-                // commands.entity(entity).remove::<MoveInArc>();
-            }
-        }
-
-        let dir = Vec2::new(
-            arc.angle.to_radians().cos(),
-            arc.angle.to_radians().sin(),
-        )
-        // .normalize()
-            * arc.radius;
-
-        transform.translation.x = arc.origin.x + dir.x;
-        transform.translation.y = arc.origin.y + dir.y;
-    }
-}
-
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component)]
-pub struct Rotate {
-    pub speed: f32,
-    pub to_right: bool,
-}
-
-pub fn rotate_system(mut query: Query<(&mut Transform, &Rotate)>, time: Res<Time>) {
-    for (mut transform, rotate) in &mut query.iter_mut() {
-        let rotation_factor = match rotate.to_right {
-            true => -1.,
-            false => 1.,
-        };
-
-        transform.rotation *=
-            Quat::from_rotation_z(rotation_factor * rotate.speed * time.delta_seconds());
-    }
-}
-
-/// Target belonging to an enemy (therefore, the player).
-/// The attack distance is for randomization purposes, and it's the distance that triggers the
-/// attack. More precisely, it's the max distance - if the enemy finds itself at a smaller
-/// distance, it will attack.
-#[derive(Component)]
-pub struct Target {
-    pub position: Vec2,
-    pub attack_distance: f32,
-}
-
-pub fn move_to_target(
-    mut query: Query<(
-        Entity,
-        &mut Transform,
-        &Stats,
-        &Target,
-        &mut State,
-        &mut Facing,
-    )>,
-    mut commands: Commands,
-    time: Res<Time>,
-    mut event_writer: EventWriter<ArrivedEvent>,
-) {
-    for (entity, mut transform, stats, target, mut state, mut facing) in query.iter_mut() {
-        if *state == State::Idle || *state == State::Running {
-            let translation_old = transform.translation;
-            transform.translation += (target.position.extend(0.) - translation_old).normalize()
-                * stats.movement_speed
-                * time.delta_seconds();
-
-            let target_distance = transform.translation.truncate().distance(target.position);
-
-            if target_distance <= target.attack_distance {
-                // Note that the target includes an offset, so this can still not point to the
-                // player.
-
-                *facing = if target.position.x > transform.translation.x {
-                    Facing::Right
-                } else {
-                    Facing::Left
-                };
-
-                commands.entity(entity).remove::<Target>();
-                *state = State::Idle;
-                event_writer.send(ArrivedEvent(entity))
-            } else {
-                *facing = if transform.translation.x > translation_old.x {
-                    Facing::Right
-                } else {
-                    Facing::Left
-                };
-
-                *state = State::Running;
-            }
-        }
-    }
-}
-
+/// Updates player left movement boundary
 pub fn update_left_movement_boundary(
     query: Query<&Transform, With<Player>>,
     mut boundary: ResMut<LeftMovementBoundary>,
@@ -305,110 +146,86 @@ pub fn update_left_movement_boundary(
     }
 }
 
-#[derive(SystemParam)]
-pub struct PlayerMovementClamper<'w, 's> {
-    enemy_spawn_locations_query: Query<'w, 's, &'static SpawnLocationX>,
-    level_meta: Res<'w, LevelMeta>,
-    game_meta: Res<'w, GameMeta>,
-    left_movement_boundary: Res<'w, LeftMovementBoundary>,
-}
+/// Constrains player movement based on multiple factors
+fn constrain_player_movement(
+    enemy_spawn_locations_query: Query<&'static SpawnLocationX>,
+    level_meta: Res<LevelMeta>,
+    game_meta: Res<GameMeta>,
+    left_movement_boundary: Res<LeftMovementBoundary>,
+    mut players: Query<(&Transform, &mut LinearVelocity), With<Player>>,
+    time: Res<Time>,
+) {
+    let dt = time.delta_seconds();
 
-impl<'w, 's> PlayerMovementClamper<'w, 's> {
-    /// Returns the direction vectors, with X/Y clamping.
-    ///
-    /// Not a system, but a utility method!.
-    ///
-    /// player_movements: array of (location, direction vector).
-    /// enemy_spawn_location_query: spawn locations of _alive_ enemies.
-    ///
-    /// WATCH OUT! All players must be included, even if they don't move, in which case, pass
-    /// None as direction. This is because clamping is based on the position of _all_ the
-    /// players.
-    /// It's possible to pass an empty array; this can happen if the system doesn't guard the case
-    /// where all the players are dead; an empty array will be returned.
-    pub fn clamp(&self, mut player_movements: Vec<(Vec3, Option<Vec2>)>) -> Vec<Option<Vec2>> {
-        // In the first pass, we check the camera stop points. If a player is moving across a stop
-        // point, all the enemies up to that point must have been defeated, in order to move.
+    // Collect player positions and velocities
+    let mut player_velocities = players
+        .iter_mut()
+        .map(|(transform, vel)| (transform.translation, vel))
+        .collect::<Vec<_>>();
 
-        let current_stop_point = self.level_meta.stop_points.iter().find(|point_x| {
-            player_movements.iter().any(|(location, dir)| {
-                if let Some(dir) = dir {
-                    location.x < **point_x && **point_x <= location.x + dir.x
-                } else {
-                    false
-                }
-            })
-        });
+    // Identify the current stop point
+    let current_stop_point = level_meta.stop_points.iter().find(|point_x| {
+        player_velocities
+            .iter()
+            .any(|(location, dir)| location.x < **point_x && **point_x <= location.x + dir.x)
+    });
 
-        if let Some(current_stop_point) = current_stop_point {
-            let any_enemy_behind_stop_point = self
-                .enemy_spawn_locations_query
-                .iter()
-                .any(|SpawnLocationX(spawn_x)| spawn_x <= current_stop_point);
+    // If there is a current stop point
+    if let Some(current_stop_point) = current_stop_point {
+        let any_enemy_behind_stop_point = enemy_spawn_locations_query
+            .iter()
+            .any(|SpawnLocationX(spawn_x)| spawn_x <= current_stop_point);
 
-            if any_enemy_behind_stop_point {
-                for (location, movement) in player_movements.iter_mut() {
-                    if let Some(movement) = movement.as_mut() {
-                        // Can be simplified, but it's harder to understand.
-                        if location.x + movement.x > *current_stop_point {
-                            movement.x = 0.;
-                        }
-                    }
+        // Prevent movement beyond the stop point if there are enemies not yet defeated behind the
+        // stop point.
+        if any_enemy_behind_stop_point {
+            for (location, velocity) in player_velocities.iter_mut() {
+                // Can be simplified, but it's harder to understand.
+                if location.x + velocity.x * dt > *current_stop_point {
+                    velocity.x = 0.;
                 }
             }
         }
-
-        // Then, we perform the absolute clamping (screen top/left/bottom), and we collect the data
-        // required for the relative clamping.
-
-        let mut min_new_player_x = f32::MAX;
-
-        let player_movements = player_movements
-            .iter()
-            .map(|(location, movement)| {
-                let new_movement = movement.map(|mut movement| {
-                    let new_x = location.x + movement.x;
-
-                    if new_x < self.left_movement_boundary.0 {
-                        movement.x = 0.;
-                    }
-
-                    //Restrict player to the ground
-                    let new_y = location.y + movement.y + consts::GROUND_OFFSET;
-
-                    if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
-                        movement.y = 0.;
-                    }
-
-                    (movement, new_x)
-                });
-
-                if let Some((_, new_x)) = new_movement {
-                    min_new_player_x = min_new_player_x.min(new_x);
-                } else {
-                    min_new_player_x = min_new_player_x.min(location.x);
-                }
-
-                (location, new_movement)
-            })
-            .collect::<Vec<_>>();
-
-        // Then, we perform the clamping of the players relative to each other.
-
-        let max_players_x_distance =
-            LEFT_BOUNDARY_MAX_DISTANCE + self.game_meta.camera_move_right_boundary;
-
-        player_movements
-            .iter()
-            .map(|(_, player_movement)| {
-                player_movement.map(|(player_dir, new_player_x)| {
-                    if new_player_x > min_new_player_x + max_players_x_distance {
-                        Vec2::ZERO
-                    } else {
-                        player_dir
-                    }
-                })
-            })
-            .collect::<Vec<_>>()
     }
+
+    // Then, we perform the absolute clamping (screen top/left/bottom), and we collect the data
+    // required for the relative clamping.
+
+    let mut min_new_player_x = f32::MAX;
+
+    #[allow(clippy::needless_collect)] // False alarm
+    let velocities = player_velocities
+        .into_iter()
+        .map(|(location, mut velocity)| {
+            let new_x = location.x + velocity.x * dt;
+
+            if new_x < left_movement_boundary.0 {
+                velocity.x = 0.;
+            }
+
+            //Restrict player to the ground
+            let new_y = location.y + velocity.y * dt + consts::GROUND_OFFSET;
+
+            if new_y >= consts::MAX_Y || new_y <= consts::MIN_Y {
+                velocity.y = 0.;
+            }
+
+            let new_velocity = (velocity, new_x);
+
+            min_new_player_x = min_new_player_x.min(new_x);
+
+            (location, new_velocity)
+        })
+        .collect::<Vec<_>>();
+
+    // Then, we perform the clamping of the players relative to each other.
+    let max_players_x_distance = LEFT_BOUNDARY_MAX_DISTANCE + game_meta.camera_move_right_boundary;
+
+    velocities
+        .into_iter()
+        .for_each(|(_, (mut velocity, new_player_x))| {
+            if new_player_x > min_new_player_x + max_players_x_distance {
+                **velocity = Vec2::ZERO
+            }
+        });
 }

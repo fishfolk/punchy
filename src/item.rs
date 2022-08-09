@@ -1,33 +1,25 @@
-use std::collections::HashSet;
-
-use bevy::{
-    ecs::system::EntityCommands,
-    hierarchy::{BuildChildren, Children},
-    math::Vec3,
-    prelude::{Assets, Bundle, Commands, Component, Entity, Handle, Query, Res, Transform, With},
-    transform::TransformBundle,
-};
-use leafwing_input_manager::prelude::ActionState;
+use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy_rapier2d::prelude::*;
 
 use crate::{
-    consts::{self, ITEM_HEALTH_NAME, ITEM_LAYER, PICK_ITEM_RADIUS},
-    input::PlayerAction,
-    metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
-    player::Player,
-    state::State,
-    Stats,
+    animation::Facing,
+    attack::Attack,
+    collision::BodyLayers,
+    consts,
+    lifetime::Lifetime,
+    metadata::{ItemMeta, ItemSpawnMeta},
+    movement::{AngularVelocity, Force, LinearVelocity},
 };
 
 #[derive(Component)]
 pub struct Item;
 
-/// Represents an item, that is either on the map (waiting to be picked up), or carried.
-/// If an item is on the map, it has a TransformBundle; if it's carried, it doesn't, and it's the
-/// child entity of a Player.
+/// Represents an item, that is either on the map.
 #[derive(Bundle)]
 pub struct ItemBundle {
     item: Item,
     item_meta_handle: Handle<ItemMeta>,
+    name: Name,
 }
 
 impl ItemBundle {
@@ -35,11 +27,13 @@ impl ItemBundle {
         Self {
             item: Item,
             item_meta_handle: item_spawn_meta.item_handle.clone(),
+            // TODO: Actually include the item's name at some point
+            name: Name::new("Map Item"),
         }
     }
 
     pub fn spawn(mut commands: EntityCommands, item_spawn_meta: &ItemSpawnMeta) {
-        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, ITEM_LAYER);
+        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
         let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
             item_spawn_meta.location + ground_offset,
         ));
@@ -48,79 +42,55 @@ impl ItemBundle {
     }
 }
 
-pub fn pick_items(
-    mut commands: Commands,
-    player_query: Query<(Entity, &Transform, &State, &ActionState<PlayerAction>), With<Player>>,
-    items_query: Query<(Entity, &Transform), With<Item>>,
-) {
-    // We need to track the picked items, otherwise, in theory, two players could pick the same item.
-    let mut picked_item_ids = HashSet::new();
-
-    for (player_id, player_transform, player_state, input) in player_query.iter() {
-        if *player_state != State::Idle && *player_state != State::Running {
-            continue;
-        }
-
-        if input.just_pressed(PlayerAction::Throw) {
-            // If several items are at pick distance, an arbitrary one is picked.
-            for (item_id, item_transform) in items_query.iter() {
-                if !picked_item_ids.contains(&item_id) {
-                    let player_item_distance = player_transform
-                        .translation
-                        .truncate()
-                        .distance(item_transform.translation.truncate());
-
-                    if player_item_distance <= PICK_ITEM_RADIUS {
-                        commands.entity(item_id).remove_bundle::<TransformBundle>();
-                        commands.entity(player_id).add_child(item_id);
-                        picked_item_ids.insert(item_id);
-                        break;
-                    }
-                }
-            }
-        }
-    }
+#[derive(Bundle)]
+pub struct Projectile {
+    #[bundle]
+    sprite_bundle: SpriteBundle,
+    velocity: LinearVelocity,
+    angular_velocity: AngularVelocity,
+    force: Force,
+    collider: Collider,
+    sensor: Sensor,
+    events: ActiveEvents,
+    collision_types: ActiveCollisionTypes,
+    collision_groups: CollisionGroups,
+    attack: Attack,
+    lifetime: Lifetime,
 }
 
-/// Utility method, not system!
-pub fn item_carried_by_player(
-    children: &Children,
-    item_name: &str,
-    items_meta_query: &Query<&Handle<ItemMeta>>,
-    items_meta: &Assets<ItemMeta>,
-) -> Option<Entity> {
-    for child_id in children.iter() {
-        if let Ok(item_meta_handle) = items_meta_query.get(*child_id) {
-            if let Some(item_meta) = items_meta.get(item_meta_handle) {
-                if item_meta.name == item_name {
-                    return Some(*child_id);
-                }
-            }
-        }
-    }
+impl Projectile {
+    pub fn from_thrown_item(translation: Vec3, item: &ItemMeta, facing: &Facing) -> Self {
+        let direction_mul = if facing.is_left() {
+            Vec2::new(-1.0, 1.0)
+        } else {
+            Vec2::ONE
+        };
 
-    None
-}
-
-pub fn use_health_item(
-    mut player_query: Query<(&Children, &mut Stats, &Handle<FighterMeta>), With<Player>>,
-    items_meta_query: Query<&Handle<ItemMeta>>,
-    items_meta: Res<Assets<ItemMeta>>,
-    mut commands: Commands,
-    fighter_assets: Res<Assets<FighterMeta>>,
-) {
-    for (player_children, mut stats, player_meta) in player_query.iter_mut() {
-        let health_item = item_carried_by_player(
-            player_children,
-            ITEM_HEALTH_NAME,
-            &items_meta_query,
-            &items_meta,
-        );
-
-        if let Some(health_id) = health_item {
-            let player_meta = fighter_assets.get(player_meta).unwrap();
-            stats.health = player_meta.stats.health;
-            commands.entity(health_id).despawn();
+        Self {
+            sprite_bundle: SpriteBundle {
+                texture: item.image.image_handle.clone(),
+                transform: Transform::from_xyz(translation.x, translation.y, consts::PROJECTILE_Z),
+                ..default()
+            },
+            attack: Attack {
+                damage: match item.kind {
+                    crate::metadata::ItemKind::Throwable { damage } => damage,
+                    crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
+                },
+                velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
+            },
+            velocity: LinearVelocity(consts::THROW_ITEM_SPEED * direction_mul),
+            // Gravity
+            force: Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+            angular_velocity: AngularVelocity(consts::THROW_ITEM_ROTATION_SPEED * direction_mul.x),
+            collider: Collider::cuboid(consts::ITEM_WIDTH / 2., consts::ITEM_HEIGHT / 2.),
+            sensor: Sensor,
+            events: ActiveEvents::COLLISION_EVENTS,
+            collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+            //TODO: define collision layer based on the fighter shooting projectile, load for asset
+            //files of fighter which "team" they are on
+            collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
+            lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
         }
     }
 }

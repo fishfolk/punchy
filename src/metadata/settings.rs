@@ -37,7 +37,7 @@ impl PlayerControlMethods {
 
         let mut add_controls = |ctrls: &PlayerControls| {
             input_map.insert(ctrls.movement.clone(), PlayerAction::Move);
-            input_map.insert(ctrls.flop_attack, PlayerAction::FlopAttack);
+            input_map.insert(ctrls.flop_attack, PlayerAction::Attack);
             input_map.insert(ctrls.shoot, PlayerAction::Shoot);
             input_map.insert(ctrls.throw, PlayerAction::Throw);
         };
