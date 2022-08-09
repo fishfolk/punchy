@@ -9,7 +9,8 @@ use leafwing_input_manager::{
 use crate::{
     config::ENGINE_CONFIG,
     input::MenuAction,
-    metadata::{localization::LocalizationExt, ButtonStyle, FontStyle, GameMeta, Settings},
+    localization::LocalizationExt,
+    metadata::{ButtonStyle, FontStyle, GameMeta, Settings},
     platform::Storage,
     GameState,
 };
