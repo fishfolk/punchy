@@ -311,6 +311,10 @@ fn collect_player_actions(
 }
 
 /// Look for attacks that have contacted a figher and knock them back
+///
+/// TODO: Not all attacks will have knockback. Maybe we should replace `damage_velocity` with
+/// `damage_impulse` including the knockback time so that it can be ignored by this system if it's
+/// velocity or time is zero.
 fn collect_attack_knockbacks(
     mut fighters: Query<&mut StateTransitionIntents, With<Handle<FighterMeta>>>,
     mut damage_events: EventReader<DamageEvent>,
