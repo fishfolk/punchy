@@ -99,7 +99,7 @@ pub fn angular_velocity_system(
 #[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
 pub struct Force(pub Vec2);
 
-// Aplies forces to linear velocities
+// Applies forces to linear velocities
 pub fn force_system(mut query: Query<(&mut LinearVelocity, &Force)>, time: Res<Time>) {
     for (mut velocity, force) in &mut query.iter_mut() {
         **velocity += **force * time.delta_seconds();
@@ -111,7 +111,7 @@ pub fn force_system(mut query: Query<(&mut LinearVelocity, &Force)>, time: Res<T
 #[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
 pub struct Torque(pub f32);
 
-// Aplies torques to angular velocities
+// Applies torques to angular velocities
 pub fn torque_system(mut query: Query<(&mut AngularVelocity, &Torque)>, time: Res<Time>) {
     for (mut velocity, torque) in &mut query.iter_mut() {
         **velocity += **torque * time.delta_seconds();
@@ -163,7 +163,7 @@ fn constrain_player_movement(
         .map(|(transform, vel)| (transform.translation, vel))
         .collect::<Vec<_>>();
 
-    // Identify the current stop poing
+    // Identify the current stop point
     let current_stop_point = level_meta.stop_points.iter().find(|point_x| {
         player_velocities
             .iter()

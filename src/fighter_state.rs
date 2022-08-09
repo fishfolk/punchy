@@ -703,7 +703,8 @@ fn throwing(
             }
         }
 
-        // Throwing is an "instant" state, that is removed at the end of every frame
+        // Throwing is an "instant" state, that is removed at the end of every frame. Eventually it
+        // will not be and will play a fighter animation.
         commands.entity(entity).remove::<Throwing>();
     }
 }
@@ -742,7 +743,8 @@ fn grabbing(
             }
         }
 
-        // Throwing is an "instant" state, that is removed at the end of every frame
+        // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
+        // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
     }
 }

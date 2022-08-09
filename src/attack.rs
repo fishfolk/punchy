@@ -77,11 +77,11 @@ fn activate_hitbox(
 /// Deactivate collisions for entities with [`AttackFrames`]
 fn deactivate_hitbox(
     query: Query<(Entity, &AttackFrames, &Parent), (With<Attack>, With<Collider>)>,
-    fighter_query: Query<&Animation>,
+    animated_query: Query<&Animation>,
     mut commands: Commands,
 ) {
     for (entity, attack_frames, parent) in query.iter() {
-        if let Ok(animation) = fighter_query.get(**parent) {
+        if let Ok(animation) = animated_query.get(**parent) {
             if animation.current_frame >= attack_frames.recovery {
                 commands.entity(entity).despawn_recursive();
             }
