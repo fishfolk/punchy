@@ -69,7 +69,6 @@ pub fn set_target_near_player(
     }
 }
 
-
 /// Chooses which player is closer
 pub fn choose_player(p_transforms: &Vec<&Transform>, e_transform: &Transform) -> Option<Transform> {
     if !p_transforms.is_empty() {
