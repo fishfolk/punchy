@@ -7,7 +7,7 @@ use crate::{
     animation::Facing,
     consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
     enemy::{Enemy, TripPointX},
-    fighter_state::{Idling, Moving, StateTransition, StateTransitionIntents, Punching},
+    fighter_state::{Idling, Moving, Punching, StateTransition, StateTransitionIntents},
     player::Player,
     Stats,
 };
