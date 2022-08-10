@@ -490,9 +490,9 @@ fn boss_attack(
                         .insert(Attack { damage: 30 })
                         .insert(AttackFrames {
                             //TODO: Check if this is correct
-                            startup: 6,
-                            active: 4,
-                            recovery: 5,
+                            startup: 5,
+                            active: 9,
+                            recovery: 14,
                         })
                         .id();
 
