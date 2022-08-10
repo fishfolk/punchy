@@ -12,7 +12,7 @@ hud:
 
 spritesheet:
   image: [BigBass.png]
-  tile_size: [192, 253]
+  tile_size: [156, 176]
   columns: 15
   rows: 3
 
@@ -34,7 +34,7 @@ spritesheet:
       frames: [0, 3]
       repeat: false
     attacking:
-      frames: [16, 23]
+      frames: [30, 44]
 
 audio:
   effects:
