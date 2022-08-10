@@ -29,5 +29,5 @@ move-left = Move Left
 move-right = Move Right
 flop-attack = Flop Attack
 shoot = Shoot
-throw = Throw
+throwgrab = Throw/Grab
 bind-input = Press an input or press Escape to cancel.
