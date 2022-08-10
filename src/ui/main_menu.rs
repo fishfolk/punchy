@@ -459,7 +459,7 @@ fn controls_settings_ui(
             ],
         ),
         (
-            &params.localization.get("throw"),
+            &params.localization.get("throwgrab"),
             [
                 &mut controls.keyboard1.throw,
                 &mut controls.keyboard2.throw,
