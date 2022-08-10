@@ -7,7 +7,7 @@ use crate::{
     animation::Facing,
     consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
     enemy::{Enemy, TripPointX},
-    fighter_state::{Attacking, Idling, Moving, StateTransition, StateTransitionIntents},
+    fighter_state::{Idling, Moving, StateTransition, StateTransitionIntents, Punching},
     player::Player,
     Stats,
 };
@@ -135,8 +135,8 @@ pub fn emit_enemy_intents(
 
             // And attack!
             intents.push_back(StateTransition::new(
-                Attacking::default(),
-                Attacking::PRIORITY,
+                Punching::default(),
+                Punching::PRIORITY,
                 false,
             ));
 

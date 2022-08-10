@@ -11,7 +11,7 @@ use bevy_parallax::{LayerData, ParallaxResource};
 use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
 
-use crate::{animation::Clip, assets::EguiFont, fighter::Stats};
+use crate::{animation::Clip, assets::EguiFont, attack::AttackFrames, fighter::Stats};
 
 pub mod settings;
 pub use settings::*;
@@ -91,6 +91,18 @@ pub struct FighterMeta {
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
     pub audio: AudioMeta,
+    //this will need to change to support multiple attacks per fighter
+    pub attack: AttackMeta,
+}
+
+#[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
+#[serde(deny_unknown_fields)]
+#[uuid = "45a912f4-ea5c-4eba-9ba9-f1a726140f28"]
+pub struct AttackMeta {
+    pub name: String,
+    pub frames: AttackFrames,
+    pub hitbox: Vec2,
+    pub hitbox_offset: Vec2,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]

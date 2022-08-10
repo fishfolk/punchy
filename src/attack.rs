@@ -2,10 +2,12 @@ use bevy::{hierarchy::DespawnRecursiveExt, math::Vec2, prelude::*, reflect::Refl
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
+use serde::Deserialize;
+
 use crate::{
     animation::Animation,
-    consts::{ATTACK_HEIGHT, ATTACK_WIDTH},
     damage::{DamageEvent, Damageable, Health},
+    metadata::FighterMeta,
     GameState,
 };
 
@@ -42,28 +44,31 @@ pub struct Attack {
 ///
 /// Must be added to an entity that is a child of an entity with an [`Animation`] and an [`Attack`]
 /// and will be used to spawn a collider for that attack during the `active` frames.
-#[derive(Component)]
+/// Each field is an index refering to an animation frame
+#[derive(Component, Debug, Clone, Copy, Deserialize)]
 pub struct AttackFrames {
     pub startup: usize,
     pub active: usize,
     pub recovery: usize,
 }
 
-/// Activate collisions for entities with [`AttackFrames`]
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
-    animated_query: Query<&Animation>,
+    fighter_query: Query<(&Animation, &Handle<FighterMeta>)>,
     mut commands: Commands,
+    fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for (entity, attack_frames, parent) in attack_query.iter() {
-        if let Ok(animation) = animated_query.get(**parent) {
+        if let Ok((animation, fighter_meta)) = fighter_query.get(**parent) {
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
-                //TODO: insert Collider based on size and transform offset in attack asset
-                commands
-                    .entity(entity)
-                    .insert(Collider::cuboid(ATTACK_WIDTH * 0.8, ATTACK_HEIGHT * 0.8));
+                if let Some(fighter_data) = fighter_assets.get(fighter_meta) {
+                    commands.entity(entity).insert(Collider::cuboid(
+                        fighter_data.attack.hitbox.x,
+                        fighter_data.attack.hitbox.y,
+                    ));
+                }
             }
         }
     }

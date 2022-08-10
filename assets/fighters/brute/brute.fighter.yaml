@@ -36,5 +36,14 @@ spritesheet:
     attacking:
       frames: [16, 23]
 
+attack:
+  name: "punch"
+  frames:
+    startup: 2
+    active: 3
+    recovery: 7
+  hitbox: [12, 12]
+  hitbox_offset: [24, 0]
+
 audio:
   effects: {}

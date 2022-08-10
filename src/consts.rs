@@ -22,8 +22,7 @@ pub const CAMERA_SPEED: f32 = 0.8;
 pub const MAX_Y: f32 = (GROUND_HEIGHT / 2.) + GROUND_Y;
 pub const MIN_Y: f32 = -(GROUND_HEIGHT / 2.) + GROUND_Y;
 
-pub const ATTACK_WIDTH: f32 = 16.;
-pub const ATTACK_HEIGHT: f32 = 16.;
+//TODO: remove in favor of loading attack velocity from YAML
 pub const ATTACK_VELOCITY: f32 = 250.0;
 
 pub const ITEM_LAYER: f32 = 100.;
