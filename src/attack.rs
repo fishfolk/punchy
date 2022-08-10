@@ -464,16 +464,12 @@ fn enemy_attack(
 }
 
 fn boss_attack(
-    mut query: Query<
-        (Entity, &mut State, &Handle<FighterMeta>),
-        (With<Enemy>, With<Target>, With<Boss>),
-    >,
+    mut query: Query<(Entity, &mut State), (With<Enemy>, With<Target>, With<Boss>)>,
     mut event_reader: EventReader<ArrivedEvent>,
-
     mut commands: Commands,
 ) {
     for event in event_reader.iter() {
-        if let Ok((entity, mut state, fighter_handle)) = query.get_mut(event.0) {
+        if let Ok((entity, mut state)) = query.get_mut(event.0) {
             if *state != State::Attacking {
                 if rand::random() && *state != State::Waiting {
                     state.set(State::Waiting);
@@ -494,9 +490,9 @@ fn boss_attack(
                         .insert(Attack { damage: 30 })
                         .insert(AttackFrames {
                             //TODO: Check if this is correct
-                            startup: 1,
-                            active: 2,
-                            recovery: 3,
+                            startup: 6,
+                            active: 4,
+                            recovery: 5,
                         })
                         .id();
 
@@ -508,11 +504,11 @@ fn boss_attack(
 }
 
 fn boss_jump_attack(
-    mut query: Query<(&mut State, &Facing, &Animation, &mut Transform)>,
+    mut query: Query<(&State, &Facing, &Animation, &mut Transform)>,
     time: Res<Time>,
     mut start_y: Local<Option<f32>>,
 ) {
-    for (mut state, facing, animation, mut transform) in query.iter_mut() {
+    for (state, facing, animation, mut transform) in query.iter_mut() {
         if *state == State::Attacking {
             let mut movement = Vec2::ZERO;
 
