@@ -1,7 +1,7 @@
 //! Enemy fighter AI
 
 use bevy::prelude::*;
-use rand::{prelude::SliceRandom, Rng};
+use rand::Rng;
 
 use crate::{
     animation::Facing,
@@ -31,7 +31,7 @@ pub struct EnemyTarget {
 pub fn set_target_near_player(
     mut commands: Commands,
     mut enemies_query: Query<
-        (Entity, &mut TripPointX),
+        (Entity, &mut TripPointX, &Transform),
         (With<Enemy>, With<Idling>, Without<EnemyTarget>),
     >,
     player_query: Query<&Transform, With<Player>>,
@@ -44,8 +44,8 @@ pub fn set_target_near_player(
         .max_by(f32::total_cmp);
 
     if let Some(max_player_x) = max_player_x {
-        for (e_entity, mut e_trip_point_x) in enemies_query.iter_mut() {
-            if let Some(p_transform) = p_transforms.choose(&mut rng) {
+        for (e_entity, mut e_trip_point_x, e_transform) in enemies_query.iter_mut() {
+            if let Some(p_transform) = choose_player(&p_transforms, e_transform) {
                 if max_player_x > e_trip_point_x.0 {
                     e_trip_point_x.0 = f32::MIN;
 
@@ -67,6 +67,32 @@ pub fn set_target_near_player(
             }
         }
     }
+}
+
+/// Chooses which player is closer
+pub fn choose_player(p_transforms: &Vec<&Transform>, e_transform: &Transform) -> Option<Transform> {
+    if !p_transforms.is_empty() {
+        let mut closer = (p_transforms[0], dist(p_transforms[0], e_transform));
+
+        for transform in p_transforms.iter().skip(1) {
+            let dist = dist(transform, e_transform);
+
+            if dist < closer.1 {
+                closer.0 = transform;
+                closer.1 = dist;
+            }
+        }
+
+        Some(*closer.0)
+    } else {
+        None
+    }
+}
+
+pub fn dist(transform1: &Transform, transform2: &Transform) -> f32 {
+    ((transform1.translation.x - transform2.translation.x).powi(2)
+        + (transform1.translation.y - transform2.translation.y).powi(2))
+    .sqrt()
 }
 
 /// Controls enemy AI fighters
