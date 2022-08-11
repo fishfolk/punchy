@@ -55,7 +55,9 @@ impl Plugin for FighterStatePlugin {
                     .after(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
                     .with_system(transition_from_idle)
-                    .with_system(transition_from_attacking)
+                    .with_system(transition_from_flopping)
+                    .with_system(transition_from_punching)
+                    .with_system(transition_from_ground_slam)
                     .with_system(transition_from_knocked_back)
                     .into(),
             )
@@ -65,8 +67,9 @@ impl Plugin for FighterStatePlugin {
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
                     .with_system(idling)
-                    .with_system(attacking)
-                    .with_system(boss_attacking)
+                    .with_system(flopping)
+                    .with_system(punching)
+                    .with_system(ground_slam)
                     .with_system(moving)
                     .with_system(throwing)
                     .with_system(grabbing)
@@ -211,13 +214,41 @@ impl Grabbing {
 /// Component indicating the player is flopping
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-pub struct Attacking {
+pub struct Flopping {
     /// The initial y-height of the figther when starting the attack
     pub start_y: f32,
     pub has_started: bool,
     pub is_finished: bool,
 }
-impl Attacking {
+impl Flopping {
+    pub const PRIORITY: i32 = 30;
+    //TODO: return to change assets and this to "flopping"
+    pub const ANIMATION: &'static str = "attacking";
+}
+
+/// Component indicating the player is punching
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct GroundSlam {
+    /// The initial y-height of the figther when starting the attack
+    pub start_y: f32,
+    pub has_started: bool,
+    pub is_finished: bool,
+}
+impl GroundSlam {
+    pub const PRIORITY: i32 = 30;
+    //TODO: return to change assets and this to "flopping"
+    pub const ANIMATION: &'static str = "attacking";
+}
+
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+
+pub struct Punching {
+    pub has_started: bool,
+    pub is_finished: bool,
+}
+impl Punching {
     pub const PRIORITY: i32 = 30;
     pub const ANIMATION: &'static str = "attacking";
 }
@@ -262,14 +293,14 @@ fn collect_player_actions(
 ) {
     for (action_state, mut transition_intents, inventory, stats) in &mut players {
         // Trigger attacks
+        //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) {
             transition_intents.push_back(StateTransition::new(
-                Attacking::default(),
-                Attacking::PRIORITY,
+                Punching::default(),
+                Punching::PRIORITY,
                 false,
             ));
         }
-
         // Trigger grab/throw
         if action_state.just_pressed(PlayerAction::Throw) {
             if inventory.is_some() {
@@ -318,6 +349,7 @@ fn collect_attack_knockbacks(
             // Trigger knock back
             transition_intents.push_back(StateTransition::new(
                 KnockedBack {
+                    //Knockback velocity feels strange right now
                     velocity: event.damage_velocity,
                     timer: Timer::from_seconds(0.18, false),
                 },
@@ -361,16 +393,16 @@ fn transition_from_idle(
 }
 
 // Initiate any transitions from the flopping state
-fn transition_from_attacking(
+fn transition_from_flopping(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Attacking)>,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
 ) {
     'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
         // Transition to any higher priority states
         let current_state_removed = transition_intents
-            .transition_to_higher_priority_states::<Attacking>(
+            .transition_to_higher_priority_states::<Flopping>(
                 entity,
-                Attacking::PRIORITY,
+                Flopping::PRIORITY,
                 &mut commands,
             );
 
@@ -382,7 +414,62 @@ fn transition_from_attacking(
         // If we're done flopping
         if flopping.is_finished {
             // Go back to idle
-            commands.entity(entity).remove::<Attacking>().insert(Idling);
+            commands.entity(entity).remove::<Flopping>().insert(Idling);
+        }
+    }
+}
+
+fn transition_from_punching(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Punching)>,
+) {
+    'entity: for (entity, mut transition_intents, punching) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<Punching>(
+                entity,
+                Punching::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done attacking
+        if punching.is_finished {
+            // Go back to idle
+            commands.entity(entity).remove::<Punching>().insert(Idling);
+        }
+    }
+}
+
+fn transition_from_ground_slam(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
+) {
+    'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<GroundSlam>(
+                entity,
+                GroundSlam::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done flopping
+        if flopping.is_finished {
+            // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<GroundSlam>()
+                .insert(Idling);
         }
     }
 }
@@ -440,23 +527,20 @@ fn idling(mut fighters: Query<(&mut Animation, &mut LinearVelocity), With<Idling
 /// > jumping "punch". In the future there will be different attacks, which will each have their own
 /// > state system, and we will trigger different attack states for different players and enemies,
 /// > based on the attacks available to that fighter.
-fn attacking(
+fn flopping(
     mut commands: Commands,
-    mut fighters: Query<
-        (
-            Entity,
-            &mut Animation,
-            &mut Transform,
-            &mut LinearVelocity,
-            &Facing,
-            &Stats,
-            &Handle<FighterMeta>,
-            &mut Attacking,
-            Option<&Player>,
-            Option<&Enemy>,
-        ),
-        Without<Boss>,
-    >,
+    mut fighters: Query<(
+        Entity,
+        &mut Animation,
+        &mut Transform,
+        &mut LinearVelocity,
+        &Facing,
+        &Stats,
+        &Handle<FighterMeta>,
+        &mut Flopping,
+        Option<&Player>,
+        Option<&Enemy>,
+    )>,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for (
@@ -467,7 +551,7 @@ fn attacking(
         facing,
         stats,
         meta_handle,
-        mut attacking,
+        mut flopping,
         player,
         enemy,
     ) in &mut fighters
@@ -480,12 +564,12 @@ fn attacking(
         }
 
         // Start the attack
-        if !attacking.has_started {
-            attacking.has_started = true;
-            attacking.start_y = transform.translation.y;
+        if !flopping.has_started {
+            flopping.has_started = true;
+            flopping.start_y = transform.translation.y;
 
             // Start the attack  from the beginning
-            animation.play(Attacking::ANIMATION, false);
+            animation.play(Flopping::ANIMATION, false);
 
             // Spawn the attack entity
             let attack_entity = commands
@@ -524,9 +608,9 @@ fn attacking(
 
             // Play attack sound effect
             if let Some(fighter) = fighter_assets.get(meta_handle) {
-                if let Some(effects) = fighter.audio.effect_handles.get(Attacking::ANIMATION) {
+                if let Some(effects) = fighter.audio.effect_handles.get(Flopping::ANIMATION) {
                     let fx_playback = AnimationAudioPlayback::new(
-                        Attacking::ANIMATION.to_owned(),
+                        Flopping::ANIMATION.to_owned(),
                         effects.clone(),
                     );
                     commands.entity(entity).insert(fx_playback);
@@ -558,16 +642,113 @@ fn attacking(
             **velocity = Vec2::ZERO;
 
             // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
-            transform.translation.y = attacking.start_y;
+            transform.translation.y = flopping.start_y;
 
             // Set flopping to finished
-            attacking.is_finished = true;
+            flopping.is_finished = true;
+        }
+    }
+}
+
+fn punching(
+    mut commands: Commands,
+    mut fighters: Query<(
+        Entity,
+        &mut Animation,
+        &mut LinearVelocity,
+        &Facing,
+        &Stats,
+        &Handle<FighterMeta>,
+        &mut Punching,
+        Option<&Player>,
+        Option<&Enemy>,
+    )>,
+    fighter_assets: Res<Assets<FighterMeta>>,
+) {
+    for (
+        entity,
+        mut animation,
+        mut velocity,
+        facing,
+        stats,
+        meta_handle,
+        mut punching,
+        player,
+        enemy,
+    ) in &mut fighters
+    {
+        let is_player = player.is_some();
+        let is_enemy = enemy.is_some();
+        if !is_player && !is_enemy {
+            // This system only knows how to attack for players and enemies
+            continue;
+        }
+
+        if !punching.has_started {
+            punching.has_started = true;
+
+            // Start the attack  from the beginning
+            animation.play(Punching::ANIMATION, false);
+
+            if let Some(fighter) = fighter_assets.get(meta_handle) {
+                let mut offset = fighter.attack.hitbox_offset;
+                if facing.is_left() {
+                    offset *= -1.0
+                }
+                let attack_frames = fighter.attack.frames;
+                // Spawn the attack entity
+                let attack_entity = commands
+                    .spawn_bundle(TransformBundle::from_transform(
+                        Transform::from_translation(offset.extend(0.0)),
+                    ))
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                    .insert(CollisionGroups::new(
+                        if is_player {
+                            BodyLayers::PLAYER_ATTACK
+                        } else {
+                            BodyLayers::ENEMY_ATTACK
+                        },
+                        if is_player {
+                            BodyLayers::ENEMY
+                        } else {
+                            BodyLayers::PLAYER
+                        },
+                    ))
+                    .insert(Attack {
+                        damage: stats.damage,
+                        velocity: if facing.is_left() {
+                            Vec2::NEG_X
+                        } else {
+                            Vec2::X
+                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                    })
+                    .insert(attack_frames)
+                    .id();
+                commands.entity(entity).push_children(&[attack_entity]);
+
+                // Play attack sound effect
+                if let Some(effects) = fighter.audio.effect_handles.get(Punching::ANIMATION) {
+                    let fx_playback = AnimationAudioPlayback::new(
+                        Punching::ANIMATION.to_owned(),
+                        effects.clone(),
+                    );
+                    commands.entity(entity).insert(fx_playback);
+                }
+            }
+        }
+
+        **velocity = Vec2::ZERO;
+
+        if animation.is_finished() {
+            punching.is_finished = true;
         }
     }
 }
 
 /// The attacking state used for bosses
-fn boss_attacking(
+fn ground_slam(
     mut commands: Commands,
     mut fighters: Query<
         (
@@ -578,7 +759,7 @@ fn boss_attacking(
             &Facing,
             &Stats,
             &Handle<FighterMeta>,
-            &mut Attacking,
+            &mut GroundSlam,
         ),
         With<Boss>,
     >,
@@ -592,89 +773,93 @@ fn boss_attacking(
         facing,
         stats,
         meta_handle,
-        mut attacking,
+        mut ground_slam,
     ) in &mut fighters
     {
         // Start the attack
-        if !attacking.has_started {
-            attacking.has_started = true;
-            attacking.start_y = transform.translation.y;
-
-            // Start the attack  from the beginning
-            animation.play(Attacking::ANIMATION, false);
-
-            // Spawn the attack entity
-            let attack_entity = commands
-                .spawn_bundle(TransformBundle::default())
-                .insert(Sensor)
-                .insert(ActiveEvents::COLLISION_EVENTS)
-                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                .insert(CollisionGroups::new(
-                    BodyLayers::ENEMY_ATTACK,
-                    BodyLayers::PLAYER,
-                ))
-                .insert(Attack {
-                    damage: stats.damage,
-                    velocity: if facing.is_left() {
-                        Vec2::NEG_X
-                    } else {
-                        Vec2::X
-                    } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
-                })
-                // TODO: Read from figher metadata
-                .insert(AttackFrames {
-                    startup: 5,
-                    active: 9,
-                    recovery: 14,
-                })
-                .id();
-            commands.entity(entity).push_children(&[attack_entity]);
-
-            // Play attack sound effect
-            if let Some(fighter) = fighter_assets.get(meta_handle) {
-                if let Some(effects) = fighter.audio.effect_handles.get(Attacking::ANIMATION) {
-                    let fx_playback = AnimationAudioPlayback::new(
-                        Attacking::ANIMATION.to_owned(),
-                        effects.clone(),
-                    );
-                    commands.entity(entity).insert(fx_playback);
-                }
+        if let Some(fighter) = fighter_assets.get(meta_handle) {
+            let mut offset = fighter.attack.hitbox_offset;
+            if facing.is_left() {
+                offset *= -1.0
             }
-        }
+            let attack_frames = fighter.attack.frames;
+            if !ground_slam.has_started {
+                ground_slam.has_started = true;
+                ground_slam.start_y = transform.translation.y;
 
-        // Reset velocity
-        **velocity = Vec2::ZERO;
+                // Start the attack  from the beginning
+                animation.play(GroundSlam::ANIMATION, false);
 
-        if !animation.is_finished() {
-            // Do a forward jump thing
-            //TODO: Fix hacky way to get a forward jump
+                // Spawn the attack entity
+                let attack_entity = commands
+                    .spawn_bundle(TransformBundle::from_transform(
+                        Transform::from_translation(offset.extend(0.0)),
+                    ))
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                    .insert(CollisionGroups::new(
+                        BodyLayers::ENEMY_ATTACK,
+                        BodyLayers::PLAYER,
+                    ))
+                    .insert(Attack {
+                        damage: stats.damage,
+                        velocity: if facing.is_left() {
+                            Vec2::NEG_X
+                        } else {
+                            Vec2::X
+                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                    })
+                    .insert(attack_frames)
+                    .id();
+                commands.entity(entity).push_children(&[attack_entity]);
 
-            // Control x movement
-            if animation.current_frame < 3 {
-                if facing.is_left() {
-                    velocity.x -= 150.0;
-                } else {
-                    velocity.x += 150.0;
+                // Play attack sound effect
+                if let Some(fighter) = fighter_assets.get(meta_handle) {
+                    if let Some(effects) = fighter.audio.effect_handles.get(GroundSlam::ANIMATION) {
+                        let fx_playback = AnimationAudioPlayback::new(
+                            GroundSlam::ANIMATION.to_owned(),
+                            effects.clone(),
+                        );
+                        commands.entity(entity).insert(fx_playback);
+                    }
                 }
             }
 
-            // Control y movement
-            if animation.current_frame < 1 {
-                velocity.y += 270.0;
-            } else if animation.current_frame < 3 {
-                velocity.y -= 180.0;
-            }
-
-        // If the animation is finished
-        } else {
-            // Stop moving
+            // Reset velocity
             **velocity = Vec2::ZERO;
 
-            // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
-            transform.translation.y = attacking.start_y;
+            if !animation.is_finished() {
+                // Do a forward jump thing
+                //TODO: Fix hacky way to get a forward jump
 
-            // Set flopping to finished
-            attacking.is_finished = true;
+                // Control x movement
+                if animation.current_frame < attack_frames.startup {
+                    if facing.is_left() {
+                        velocity.x -= 150.0;
+                    } else {
+                        velocity.x += 150.0;
+                    }
+                }
+
+                // Control y movement
+                if animation.current_frame < attack_frames.startup {
+                    velocity.y += 270.0;
+                } else if animation.current_frame < attack_frames.active {
+                    velocity.y -= 180.0;
+                }
+
+            // If the animation is finished
+            } else {
+                // Stop moving
+                **velocity = Vec2::ZERO;
+
+                // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
+                transform.translation.y = ground_slam.start_y;
+
+                // Set flopping to finished
+                ground_slam.is_finished = true;
+            }
         }
     }
 }
@@ -758,7 +943,7 @@ fn dying(
             **velocity = Vec2::ZERO;
             animation.play(Dying::ANIMATION, false);
 
-        // When the animatino is finished, despawn the fighter
+        // When the animation is finished, despawn the fighter
         } else if animation.is_finished() {
             commands.entity(entity).despawn_recursive();
         }

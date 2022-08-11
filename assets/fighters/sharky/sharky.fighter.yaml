@@ -30,8 +30,18 @@ spritesheet:
       frames: [71, 76]
     dying:
       frames: [71, 76]
+    #spritesheet does not contain unique attack animation
     attacking:
       frames: [85, 90]
+
+attack:
+  name: "punch"
+  frames:
+    startup: 1
+    active: 2
+    recovery: 4
+  hitbox: [16, 16]
+  hitbox_offset: [24, 0]
 
 audio:
   effects:

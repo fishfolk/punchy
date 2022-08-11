@@ -36,6 +36,15 @@ spritesheet:
     attacking:
       frames: [30, 44]
 
+attack:
+  name: "ground_slam"
+  frames:
+    startup: 5
+    active: 9
+    recovery: 14
+  hitbox: [48, 48]
+  hitbox_offset: [0, 0]
+
 audio:
   effects:
     attacking:
