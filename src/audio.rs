@@ -2,7 +2,7 @@
 // Also for cleanness (named channels have evident function), we don't use the default channel.
 
 use bevy::{prelude::*, utils::HashMap};
-use bevy_kira_audio::{AudioChannel, AudioSource};
+use bevy_kira_audio::{AudioApp, AudioChannel, AudioSource};
 use iyes_loopless::prelude::*;
 
 use crate::{
@@ -32,6 +32,11 @@ pub struct AudioPlugin;
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(bevy_kira_audio::AudioPlugin)
+            .add_audio_channel::<MusicChannel>()
+            .add_audio_channel::<EffectsChannel>()
+            .add_startup_system(set_audio_channels_volume)
+            .add_enter_system(GameState::InGame, play_level_music)
+            .add_exit_system(GameState::InGame, stop_level_music)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 animation_audio_playback.run_in_state(GameState::InGame),

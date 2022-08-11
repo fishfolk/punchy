@@ -31,3 +31,8 @@ flop-attack = Flop Attack
 shoot = Shoot
 throwgrab = Throw/Grab
 bind-input = Press an input or press Escape to cancel.
+
+# Debug Tools
+debug-tools = Debug Tools
+show-collision-shapes = Show Collision Shapes
+show-world-inspector = Show World Inspector

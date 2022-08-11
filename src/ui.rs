@@ -3,11 +3,15 @@ use bevy_egui::{egui, EguiContext, EguiInput, EguiPlugin, EguiSettings};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use crate::{assets::EguiFont, audio, input::MenuAction, metadata::GameMeta, GameState};
+use crate::{
+    assets::EguiFont, audio, config::ENGINE_CONFIG, input::MenuAction, metadata::GameMeta,
+    GameState,
+};
 
 pub mod hud;
 pub mod widgets;
 
+pub mod debug_tools;
 pub mod main_menu;
 pub mod pause_menu;
 
@@ -47,6 +51,10 @@ impl Plugin for UIPlugin {
                     .with_system(main_menu::main_menu_system)
                     .into(),
             );
+
+        if ENGINE_CONFIG.debug_tools {
+            app.add_system(debug_tools::debug_tools_window);
+        }
     }
 }
 

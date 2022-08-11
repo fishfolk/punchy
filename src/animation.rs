@@ -14,14 +14,18 @@ pub struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set_to_stage(
-            CoreStage::Last,
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .with_system(animation_flipping)
-                .with_system(animation_cycling)
-                .into(),
-        );
+        app
+            // Register reflect types
+            .register_type::<Facing>()
+            // Add systems
+            .add_system_set_to_stage(
+                CoreStage::Last,
+                ConditionSet::new()
+                    .run_in_state(GameState::InGame)
+                    .with_system(animation_flipping)
+                    .with_system(animation_cycling)
+                    .into(),
+            );
     }
 }
 
@@ -33,11 +37,17 @@ pub struct AnimatedSpriteSheetBundle {
     pub animation: Animation,
 }
 
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, PartialEq, Eq, Clone)]
+#[derive(Component, PartialEq, Eq, Clone, Reflect)]
+#[reflect(Component)]
 pub enum Facing {
     Left,
     Right,
+}
+
+impl Default for Facing {
+    fn default() -> Self {
+        Self::Right
+    }
 }
 
 impl Facing {

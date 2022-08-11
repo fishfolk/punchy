@@ -8,20 +8,24 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set_to_stage(
-            CoreStage::PostUpdate,
-            ConditionSet::new()
-                .run_in_state(GameState::InGame)
-                .after(VelocitySystems)
-                .with_system(camera_follow_player)
-                .with_system(y_sort)
-                .into(),
-        );
+        app
+            // Register reflect types
+            .register_type::<YSort>()
+            // Add systems
+            .add_system_set_to_stage(
+                CoreStage::PostUpdate,
+                ConditionSet::new()
+                    .run_in_state(GameState::InGame)
+                    .after(VelocitySystems)
+                    .with_system(camera_follow_player)
+                    .with_system(y_sort)
+                    .into(),
+            );
     }
 }
 
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 pub struct YSort(f32);
 
 pub fn y_sort(mut query: Query<(&mut Transform, &YSort)>) {

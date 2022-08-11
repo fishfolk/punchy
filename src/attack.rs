@@ -1,11 +1,4 @@
-use bevy::{
-    hierarchy::DespawnRecursiveExt,
-    math::Vec2,
-    prelude::{
-        App, Commands, Component, CoreStage, Entity, EventReader, EventWriter, Parent, Plugin,
-        Query, With, Without,
-    },
-};
+use bevy::{hierarchy::DespawnRecursiveExt, math::Vec2, prelude::*, reflect::Reflect};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -21,6 +14,8 @@ pub struct AttackPlugin;
 impl Plugin for AttackPlugin {
     fn build(&self, app: &mut App) {
         app
+            // Register reflect types
+            .register_type::<Attack>()
             // Add systems
             .add_system_set(
                 ConditionSet::new()
@@ -35,8 +30,8 @@ impl Plugin for AttackPlugin {
 }
 
 /// A component representing an attack that can do damage to [`Damageable`]s with [`Health`].
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Default, Reflect)]
+#[reflect(Component)]
 pub struct Attack {
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.

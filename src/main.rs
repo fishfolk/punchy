@@ -5,7 +5,6 @@
 use bevy::{
     asset::AssetServerSettings, log::LogSettings, prelude::*, render::texture::ImageSettings,
 };
-use bevy_kira_audio::AudioApp;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use fighter::Stats;
@@ -14,9 +13,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::*;
 use player::*;
 
-#[cfg(feature = "debug")]
-use bevy_inspector_egui::{RegisterInspectable, WorldInspectorPlugin};
-#[cfg(feature = "debug")]
+use bevy_inspector_egui::{WorldInspectorParams, WorldInspectorPlugin};
 use bevy_inspector_egui_rapier::InspectableRapierPlugin;
 
 #[cfg(feature = "schedule_graph")]
@@ -56,11 +53,9 @@ use ui::UIPlugin;
 use utils::ResetController;
 
 use crate::{
-    damage::DamagePlugin,
-    fighter_state::FighterStatePlugin,
-    input::PlayerAction,
-    lifetime::LifetimePlugin,
-    movement::{LeftMovementBoundary, MovementPlugin},
+    damage::DamagePlugin, fighter_state::FighterStatePlugin, input::PlayerAction,
+    lifetime::LifetimePlugin, loading::LoadingPlugin, localization::LocalizationPlugin,
+    movement::MovementPlugin, platform::PlatformPlugin,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -114,9 +109,9 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
         .add_loopless_state(GameState::LoadingStorage)
-        .add_plugin(platform::PlatformPlugin)
-        .add_plugin(localization::LocalizationPlugin)
-        .add_plugin(loading::LoadingPlugin)
+        .add_plugin(PlatformPlugin)
+        .add_plugin(LocalizationPlugin)
+        .add_plugin(LoadingPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
@@ -130,14 +125,7 @@ fn main() {
         .add_plugin(DamagePlugin)
         .add_plugin(LifetimePlugin)
         .add_plugin(CameraPlugin)
-        .add_audio_channel::<MusicChannel>()
-        .add_audio_channel::<EffectsChannel>()
         .insert_resource(ParallaxResource::default())
-        .insert_resource(LeftMovementBoundary::default())
-        .add_system(platform::load_storage.run_in_state(GameState::LoadingStorage))
-        .add_startup_system(set_audio_channels_volume)
-        .add_enter_system(GameState::InGame, play_level_music)
-        .add_exit_system(GameState::InGame, stop_level_music)
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             ConditionSet::new()
@@ -146,18 +134,23 @@ fn main() {
                 .into(),
         );
 
-    // Add debug plugins
-    #[cfg(feature = "debug")]
-    app.add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(InspectableRapierPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
-        .register_inspectable::<Stats>()
-        .register_inspectable::<crate::movement::LinearVelocity>()
-        .register_inspectable::<crate::movement::AngularVelocity>()
-        // .register_inspectable::<MoveInArc>()
-        .register_inspectable::<attack::Attack>()
-        .register_inspectable::<YSort>()
-        .register_inspectable::<Facing>();
+    // Register reflect types that don't come from plugins
+    app.register_type::<Stats>();
+
+    // Add debug plugins if enabled
+    if engine_config.debug_tools {
+        app.add_plugin(RapierDebugRenderPlugin::default())
+            .insert_resource(DebugRenderContext {
+                enabled: false,
+                ..default()
+            })
+            .add_plugin(InspectableRapierPlugin)
+            .insert_resource(WorldInspectorParams {
+                enabled: false,
+                ..default()
+            })
+            .add_plugin(WorldInspectorPlugin::new());
+    }
 
     // Register assets and loaders
     assets::register(&mut app);

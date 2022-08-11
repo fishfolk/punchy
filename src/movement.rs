@@ -24,6 +24,13 @@ pub struct VelocitySystems;
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app
+            // Register our Reflect types
+            .register_type::<LinearVelocity>()
+            .register_type::<AngularVelocity>()
+            .register_type::<Force>()
+            .register_type::<Torque>()
+            // Init resources
+            .init_resource::<LeftMovementBoundary>()
             // Add systems that modify velocity based on forces
             .add_system_set_to_stage(
                 CoreStage::PostUpdate,
@@ -59,8 +66,8 @@ impl Plugin for MovementPlugin {
 ///
 /// This is similar to the velocity you would set in a physics simulation, but in our case we use a
 /// simple constraints system instead of actual physics simulation.
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy, Reflect)]
+#[reflect(Component)]
 pub struct LinearVelocity(pub Vec2);
 
 /// System that updates translations based on entity velocities.
@@ -73,8 +80,8 @@ pub fn velocity_system(mut query: Query<(&mut Transform, &LinearVelocity)>, time
 /// An entity's angular velocity.
 ///
 /// A positive value means a clockwise rotation and a negative value means couter-clockwise.
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut, Default)]
+#[derive(Component, Deref, DerefMut, Default, Reflect)]
+#[reflect(Component)]
 pub struct AngularVelocity(pub f32);
 
 impl AngularVelocity {
@@ -95,8 +102,8 @@ pub fn angular_velocity_system(
 }
 
 /// A force that while present continually modified an entity's linear velocity.
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy, Reflect)]
+#[reflect(Component)]
 pub struct Force(pub Vec2);
 
 // Applies forces to linear velocities
@@ -107,8 +114,8 @@ pub fn force_system(mut query: Query<(&mut LinearVelocity, &Force)>, time: Res<T
 }
 
 /// A force that while present continually modified an entity's angular velocity
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deref, DerefMut, Default, Clone, Copy)]
+#[derive(Component, Deref, DerefMut, Default, Clone, Copy, Reflect)]
+#[reflect(Component)]
 pub struct Torque(pub f32);
 
 // Applies torques to angular velocities

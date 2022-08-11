@@ -44,6 +44,7 @@ pub fn spawn_main_menu_background(
             },
             ..default()
         })
+        .insert(Name::new("Main Menu Background"))
         .insert(MainMenuBackground);
 }
 
