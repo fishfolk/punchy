@@ -30,6 +30,7 @@ spritesheet:
       frames: [71, 76]
     dying:
       frames: [71, 76]
+    #spritesheet does not contain unique attack animation
     attacking:
       frames: [85, 90]
 

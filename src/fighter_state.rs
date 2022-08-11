@@ -226,6 +226,7 @@ impl Flopping {
     pub const ANIMATION: &'static str = "attacking";
 }
 
+/// Component indicating the player is punching
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct GroundSlam {
@@ -242,7 +243,7 @@ impl GroundSlam {
 
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-//maybe change name
+
 pub struct Punching {
     pub has_started: bool,
     pub is_finished: bool,
@@ -292,17 +293,14 @@ fn collect_player_actions(
 ) {
     for (action_state, mut transition_intents, inventory, stats) in &mut players {
         // Trigger attacks
+        //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) {
-            //come back and swap this for basic attack
             transition_intents.push_back(StateTransition::new(
                 Punching::default(),
                 Punching::PRIORITY,
                 false,
             ));
         }
-
-        //come back and re add flop attack.. maybe as last hit of chain
-
         // Trigger grab/throw
         if action_state.just_pressed(PlayerAction::Throw) {
             if inventory.is_some() {
@@ -351,6 +349,7 @@ fn collect_attack_knockbacks(
             // Trigger knock back
             transition_intents.push_back(StateTransition::new(
                 KnockedBack {
+                    //Knockback velocity feels strange right now
                     velocity: event.damage_velocity,
                     timer: Timer::from_seconds(0.18, false),
                 },
@@ -624,7 +623,6 @@ fn flopping(
 
         // Do a forward jump thing
         //TODO: Fix hacky way to get a forward jump
-        //should moving and any attack that requires movement be a non exclusive state?
         if animation.current_frame < 3 {
             if facing.is_left() {
                 velocity.x -= 200.0;
