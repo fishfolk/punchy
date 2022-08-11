@@ -9,6 +9,10 @@ use crate::{
 #[derive(Component)]
 pub struct Enemy;
 
+/// Temporary marker component used to differentiate bosses from other fighters.
+#[derive(Component)]
+pub struct Boss;
+
 /// X coordinate of the level that requires to be trespassed in order for the enemies to move.
 /// For simplicy, once a given trip point is trespassed for the first time, it's set to f32::MIN.
 #[derive(Component)]

@@ -146,6 +146,8 @@ pub struct FighterSpawnMeta {
     // Set only for enemies.
     #[serde(default = "default_f32_min")]
     pub trip_point_x: f32,
+    #[serde(default)]
+    pub boss: bool,
 }
 
 fn default_f32_min() -> f32 {
