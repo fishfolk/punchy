@@ -4,8 +4,8 @@ use leafwing_input_manager::InputManagerBundle;
 use crate::{
     animation::Facing,
     consts,
-    input::PlayerAction,
     fighter::Inventory,
+    input::PlayerAction,
     metadata::{FighterMeta, FighterSpawnMeta, GameMeta, Settings},
 };
 

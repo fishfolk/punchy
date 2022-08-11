@@ -3,6 +3,7 @@ use bevy_rapier2d::prelude::CollisionGroups;
 use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
+use crate::item::Item;
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
     camera::YSort,
@@ -14,7 +15,6 @@ use crate::{
     movement::LinearVelocity,
     player::Player,
 };
-use crate::item::Item;
 
 /// Bundle added to a fighter stub, in order to activate it.
 #[derive(Bundle)]
@@ -114,4 +114,3 @@ impl ActiveFighterBundle {
         commands.entity(entity).insert_bundle(active_fighter_bundle);
     }
 }
-
