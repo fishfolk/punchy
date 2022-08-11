@@ -4,7 +4,7 @@
 
 use async_channel::{Receiver, Sender};
 use bevy::{prelude::*, tasks::IoTaskPool, utils::HashMap};
-use iyes_loopless::state::NextState;
+use iyes_loopless::prelude::*;
 use serde::{de::DeserializeOwned, Serialize};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -22,7 +22,8 @@ impl Plugin for PlatformPlugin {
         #[cfg(target_arch = "wasm32")]
         app.add_system(wasm::update_canvas_size);
 
-        app.init_resource::<Storage>();
+        app.init_resource::<Storage>()
+            .add_system(load_storage.run_in_state(GameState::LoadingStorage));
     }
 }
 

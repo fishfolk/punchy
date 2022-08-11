@@ -34,8 +34,8 @@ pub struct ActiveFighterBundle {
     pub velocity: LinearVelocity,
 }
 
-#[cfg_attr(feature = "debug", derive(bevy_inspector_egui::Inspectable))]
-#[derive(Component, Deserialize, Clone, Debug)]
+#[derive(Component, Deserialize, Clone, Debug, Reflect)]
+#[reflect(Component)]
 #[serde(deny_unknown_fields)]
 pub struct Stats {
     pub max_health: i32,
