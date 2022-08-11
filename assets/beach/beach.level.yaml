@@ -68,9 +68,10 @@ enemies:
   - fighter: *brute
     location: [450, 20, 0]
     trip_point_x: 300
-  - fighter: *brute
+  - fighter: /fighters/big_bass/big_bass.fighter.yaml
     location: [1000, 20, 0]
     trip_point_x: 700
+    boss: true
 
 stop_points: [500, 1000]
 

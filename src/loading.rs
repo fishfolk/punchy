@@ -7,7 +7,7 @@ use rand::seq::SliceRandom;
 use crate::{
     animation::Animation,
     config::ENGINE_CONFIG,
-    enemy::{Enemy, EnemyBundle},
+    enemy::{Boss, Enemy, EnemyBundle},
     fighter::ActiveFighterBundle,
     input::MenuAction,
     item::ItemBundle,
@@ -355,7 +355,11 @@ fn load_level(
 
         // Spawn the enemies
         for enemy in &level.enemies {
-            commands.spawn_bundle(EnemyBundle::new(enemy));
+            let mut ec = commands.spawn_bundle(EnemyBundle::new(enemy));
+
+            if enemy.boss {
+                ec.insert(Boss);
+            }
         }
 
         // Spawn the items

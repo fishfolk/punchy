@@ -12,7 +12,7 @@ use crate::{
     collision::BodyLayers,
     consts,
     damage::{DamageEvent, Health},
-    enemy::Enemy,
+    enemy::{Boss, Enemy},
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
@@ -66,6 +66,7 @@ impl Plugin for FighterStatePlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(idling)
                     .with_system(attacking)
+                    .with_system(boss_attacking)
                     .with_system(moving)
                     .with_system(throwing)
                     .with_system(grabbing)
@@ -441,18 +442,21 @@ fn idling(mut fighters: Query<(&mut Animation, &mut LinearVelocity), With<Idling
 /// > based on the attacks available to that fighter.
 fn attacking(
     mut commands: Commands,
-    mut fighters: Query<(
-        Entity,
-        &mut Animation,
-        &mut Transform,
-        &mut LinearVelocity,
-        &Facing,
-        &Stats,
-        &Handle<FighterMeta>,
-        &mut Attacking,
-        Option<&Player>,
-        Option<&Enemy>,
-    )>,
+    mut fighters: Query<
+        (
+            Entity,
+            &mut Animation,
+            &mut Transform,
+            &mut LinearVelocity,
+            &Facing,
+            &Stats,
+            &Handle<FighterMeta>,
+            &mut Attacking,
+            Option<&Player>,
+            Option<&Enemy>,
+        ),
+        Without<Boss>,
+    >,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for (
@@ -550,6 +554,119 @@ fn attacking(
         }
 
         if animation.is_finished() {
+            // Stop moving
+            **velocity = Vec2::ZERO;
+
+            // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
+            transform.translation.y = attacking.start_y;
+
+            // Set flopping to finished
+            attacking.is_finished = true;
+        }
+    }
+}
+
+/// The attacking state used for bosses
+fn boss_attacking(
+    mut commands: Commands,
+    mut fighters: Query<
+        (
+            Entity,
+            &mut Animation,
+            &mut Transform,
+            &mut LinearVelocity,
+            &Facing,
+            &Stats,
+            &Handle<FighterMeta>,
+            &mut Attacking,
+        ),
+        With<Boss>,
+    >,
+    fighter_assets: Res<Assets<FighterMeta>>,
+) {
+    for (
+        entity,
+        mut animation,
+        mut transform,
+        mut velocity,
+        facing,
+        stats,
+        meta_handle,
+        mut attacking,
+    ) in &mut fighters
+    {
+        // Start the attack
+        if !attacking.has_started {
+            attacking.has_started = true;
+            attacking.start_y = transform.translation.y;
+
+            // Start the attack  from the beginning
+            animation.play(Attacking::ANIMATION, false);
+
+            // Spawn the attack entity
+            let attack_entity = commands
+                .spawn_bundle(TransformBundle::default())
+                .insert(Sensor)
+                .insert(ActiveEvents::COLLISION_EVENTS)
+                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                .insert(CollisionGroups::new(
+                    BodyLayers::ENEMY_ATTACK,
+                    BodyLayers::PLAYER,
+                ))
+                .insert(Attack {
+                    damage: stats.damage,
+                    velocity: if facing.is_left() {
+                        Vec2::NEG_X
+                    } else {
+                        Vec2::X
+                    } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                })
+                // TODO: Read from figher metadata
+                .insert(AttackFrames {
+                    startup: 5,
+                    active: 9,
+                    recovery: 14,
+                })
+                .id();
+            commands.entity(entity).push_children(&[attack_entity]);
+
+            // Play attack sound effect
+            if let Some(fighter) = fighter_assets.get(meta_handle) {
+                if let Some(effects) = fighter.audio.effect_handles.get(Attacking::ANIMATION) {
+                    let fx_playback = AnimationAudioPlayback::new(
+                        Attacking::ANIMATION.to_owned(),
+                        effects.clone(),
+                    );
+                    commands.entity(entity).insert(fx_playback);
+                }
+            }
+        }
+
+        // Reset velocity
+        **velocity = Vec2::ZERO;
+
+        if !animation.is_finished() {
+            // Do a forward jump thing
+            //TODO: Fix hacky way to get a forward jump
+
+            // Control x movement
+            if animation.current_frame < 3 {
+                if facing.is_left() {
+                    velocity.x -= 150.0;
+                } else {
+                    velocity.x += 150.0;
+                }
+            }
+
+            // Control y movement
+            if animation.current_frame < 1 {
+                velocity.y += 270.0;
+            } else if animation.current_frame < 3 {
+                velocity.y -= 180.0;
+            }
+
+        // If the animation is finished
+        } else {
             // Stop moving
             **velocity = Vec2::ZERO;
 
