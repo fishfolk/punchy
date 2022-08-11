@@ -91,7 +91,7 @@ pub struct FighterMeta {
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
     pub audio: AudioMeta,
-    //this will need to change to support multiple attacks per fighter
+    //Will likely need a hashmap(?) of AttackMetas, fighters will have multiple attacks
     pub attack: AttackMeta,
 }
 

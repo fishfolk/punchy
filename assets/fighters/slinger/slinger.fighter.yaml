@@ -38,16 +38,6 @@ spritesheet:
 # this should be changed to a ranged attack
 attack:
   name: "punch"
-  frames:   
-    startup: 1
-    active: 2
-    recovery: 3
-  hitbox: [12, 12]
-  hitbox_offset: [24, 0]
-
-# this should be changed to a ranged attack
-attack:
-  name: "punch"
   frames:
     startup: 1
     active: 2
