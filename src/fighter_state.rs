@@ -535,7 +535,6 @@ fn flopping(
         &mut Transform,
         &mut LinearVelocity,
         &Facing,
-        &Stats,
         &Handle<FighterMeta>,
         &mut Flopping,
         Option<&Player>,
@@ -549,7 +548,6 @@ fn flopping(
         mut transform,
         mut velocity,
         facing,
-        stats,
         meta_handle,
         mut flopping,
         player,
@@ -563,51 +561,51 @@ fn flopping(
             continue;
         }
 
-        // Start the attack
-        if !flopping.has_started {
-            flopping.has_started = true;
-            flopping.start_y = transform.translation.y;
+        if let Some(fighter) = fighter_assets.get(meta_handle) {
+            // Start the attack
+            if !flopping.has_started {
+                flopping.has_started = true;
+                flopping.start_y = transform.translation.y;
 
-            // Start the attack  from the beginning
-            animation.play(Flopping::ANIMATION, false);
+                // Start the attack  from the beginning
+                animation.play(Flopping::ANIMATION, false);
 
-            // Spawn the attack entity
-            let attack_entity = commands
-                .spawn_bundle(TransformBundle::default())
-                .insert(Sensor)
-                .insert(ActiveEvents::COLLISION_EVENTS)
-                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                .insert(CollisionGroups::new(
-                    if is_player {
-                        BodyLayers::PLAYER_ATTACK
-                    } else {
-                        BodyLayers::ENEMY_ATTACK
-                    },
-                    if is_player {
-                        BodyLayers::ENEMY
-                    } else {
-                        BodyLayers::PLAYER
-                    },
-                ))
-                .insert(Attack {
-                    damage: stats.damage,
-                    velocity: if facing.is_left() {
-                        Vec2::NEG_X
-                    } else {
-                        Vec2::X
-                    } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
-                })
-                // TODO: Read from figher metadata
-                .insert(AttackFrames {
-                    startup: 0,
-                    active: 3,
-                    recovery: 4,
-                })
-                .id();
-            commands.entity(entity).push_children(&[attack_entity]);
+                // Spawn the attack entity
+                let attack_entity = commands
+                    .spawn_bundle(TransformBundle::default())
+                    .insert(Sensor)
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                    .insert(CollisionGroups::new(
+                        if is_player {
+                            BodyLayers::PLAYER_ATTACK
+                        } else {
+                            BodyLayers::ENEMY_ATTACK
+                        },
+                        if is_player {
+                            BodyLayers::ENEMY
+                        } else {
+                            BodyLayers::PLAYER
+                        },
+                    ))
+                    .insert(Attack {
+                        damage: fighter.attack.damage,
+                        velocity: if facing.is_left() {
+                            Vec2::NEG_X
+                        } else {
+                            Vec2::X
+                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                    })
+                    // TODO: Read from figher metadata
+                    .insert(AttackFrames {
+                        startup: 0,
+                        active: 3,
+                        recovery: 4,
+                    })
+                    .id();
+                commands.entity(entity).push_children(&[attack_entity]);
 
-            // Play attack sound effect
-            if let Some(fighter) = fighter_assets.get(meta_handle) {
+                // Play attack sound effect
                 if let Some(effects) = fighter.audio.effect_handles.get(Flopping::ANIMATION) {
                     let fx_playback = AnimationAudioPlayback::new(
                         Flopping::ANIMATION.to_owned(),
@@ -657,7 +655,6 @@ fn punching(
         &mut Animation,
         &mut LinearVelocity,
         &Facing,
-        &Stats,
         &Handle<FighterMeta>,
         &mut Punching,
         Option<&Player>,
@@ -665,17 +662,8 @@ fn punching(
     )>,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
-    for (
-        entity,
-        mut animation,
-        mut velocity,
-        facing,
-        stats,
-        meta_handle,
-        mut punching,
-        player,
-        enemy,
-    ) in &mut fighters
+    for (entity, mut animation, mut velocity, facing, meta_handle, mut punching, player, enemy) in
+        &mut fighters
     {
         let is_player = player.is_some();
         let is_enemy = enemy.is_some();
@@ -684,13 +672,13 @@ fn punching(
             continue;
         }
 
-        if !punching.has_started {
-            punching.has_started = true;
+        if let Some(fighter) = fighter_assets.get(meta_handle) {
+            if !punching.has_started {
+                punching.has_started = true;
 
-            // Start the attack  from the beginning
-            animation.play(Punching::ANIMATION, false);
+                // Start the attack  from the beginning
+                animation.play(Punching::ANIMATION, false);
 
-            if let Some(fighter) = fighter_assets.get(meta_handle) {
                 let mut offset = fighter.attack.hitbox_offset;
                 if facing.is_left() {
                     offset *= -1.0
@@ -717,7 +705,7 @@ fn punching(
                         },
                     ))
                     .insert(Attack {
-                        damage: stats.damage,
+                        damage: fighter.attack.damage,
                         velocity: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
@@ -757,7 +745,6 @@ fn ground_slam(
             &mut Transform,
             &mut LinearVelocity,
             &Facing,
-            &Stats,
             &Handle<FighterMeta>,
             &mut GroundSlam,
         ),
@@ -771,7 +758,6 @@ fn ground_slam(
         mut transform,
         mut velocity,
         facing,
-        stats,
         meta_handle,
         mut ground_slam,
     ) in &mut fighters
@@ -803,7 +789,7 @@ fn ground_slam(
                         BodyLayers::PLAYER,
                     ))
                     .insert(Attack {
-                        damage: stats.damage,
+                        damage: fighter.attack.damage,
                         velocity: if facing.is_left() {
                             Vec2::NEG_X
                         } else {

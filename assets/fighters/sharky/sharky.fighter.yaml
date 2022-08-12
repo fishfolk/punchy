@@ -2,7 +2,6 @@ name: Scrumptious Sharky
 
 stats:
   max_health: 600
-  damage: 35
   movement_speed: 150
 
 hud:
@@ -36,6 +35,7 @@ spritesheet:
 
 attack:
   name: "punch"
+  damage: 35
   frames:
     startup: 1
     active: 2

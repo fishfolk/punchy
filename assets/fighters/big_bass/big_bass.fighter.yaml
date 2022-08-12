@@ -2,7 +2,6 @@ name: Bandit
 
 stats:
   max_health: 350
-  damage: 35
   movement_speed: 75
 
 hud:
@@ -38,6 +37,7 @@ spritesheet:
 
 attack:
   name: "ground_slam"
+  damage: 35
   frames:
     startup: 5
     active: 9

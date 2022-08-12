@@ -39,7 +39,6 @@ pub struct ActiveFighterBundle {
 #[serde(deny_unknown_fields)]
 pub struct Stats {
     pub max_health: i32,
-    pub damage: i32,
     pub movement_speed: f32,
 }
 
@@ -53,7 +52,6 @@ impl Default for Stats {
     fn default() -> Self {
         Stats {
             max_health: 100,
-            damage: 35,
             movement_speed: 17000.,
         }
     }
