@@ -270,8 +270,9 @@ dependencies = [
 
 [[package]]
 name = "bevy-parallax"
-version = "0.1.2"
-source = "git+https://github.com/zicklag/bevy-parallax?branch=bevy-0.8#709161037288a2bec0d48c9f5f73015d8ef0c15a"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "848290b802a0315343b65eba37dc258194689b5df40fbd808aa2dec75bf812a3"
 dependencies = [
  "bevy",
  "serde",

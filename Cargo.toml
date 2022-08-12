@@ -26,7 +26,7 @@ features = [
 punchy_macros = { path = "./macros" }
 
 anyhow = "1.0.58"
-bevy-parallax = { git = "https://github.com/zicklag/bevy-parallax", branch = "bevy-0.8"}
+bevy-parallax = "0.2.0"
 bevy_egui = "0.15.0"
 egui_extras = "0.18.0"
 bevy_kira_audio = { version = "0.11.0", features = ["mp3"] }
