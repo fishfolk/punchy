@@ -100,6 +100,7 @@ pub struct FighterMeta {
 #[uuid = "45a912f4-ea5c-4eba-9ba9-f1a726140f28"]
 pub struct AttackMeta {
     pub name: String,
+    pub damage: i32,
     pub frames: AttackFrames,
     pub hitbox: Vec2,
     pub hitbox_offset: Vec2,
