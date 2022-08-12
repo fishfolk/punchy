@@ -1,5 +1,9 @@
 name: Bandit
 
+hurtbox:
+  size: [24, 12]
+  offset: [0, 0]
+
 stats:
   max_health: 150
   movement_speed: 150
@@ -42,8 +46,9 @@ attack:
     startup: 1
     active: 2
     recovery: 3
-  hitbox: [12, 12]
-  hitbox_offset: [24, 0]
+  hitbox:
+    size: [24, 24]
+    offset: [24, 0]
 
 audio:
   effects:

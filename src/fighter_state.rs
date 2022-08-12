@@ -679,9 +679,9 @@ fn punching(
                 // Start the attack  from the beginning
                 animation.play(Punching::ANIMATION, false);
 
-                let mut offset = fighter.attack.hitbox_offset;
+                let mut offset = fighter.attack.hitbox.offset;
                 if facing.is_left() {
-                    offset *= -1.0
+                    offset.x *= -1.0
                 }
                 let attack_frames = fighter.attack.frames;
                 // Spawn the attack entity
@@ -764,7 +764,7 @@ fn ground_slam(
     {
         // Start the attack
         if let Some(fighter) = fighter_assets.get(meta_handle) {
-            let mut offset = fighter.attack.hitbox_offset;
+            let mut offset = fighter.attack.hitbox.offset;
             if facing.is_left() {
                 offset *= -1.0
             }

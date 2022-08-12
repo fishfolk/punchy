@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::consts;
+use crate::{consts, metadata::ColliderMeta};
 
 /// Empty struct simply for grouping collision layer constants.
 #[derive(Copy, Clone)]
@@ -29,6 +29,20 @@ pub struct PhysicsBundle {
     pub active_collision_types: ActiveCollisionTypes,
     pub collision_groups: CollisionGroups,
 }
+
+impl PhysicsBundle {
+    pub fn new(meta: &ColliderMeta, body_layers: u32) -> Self {
+        PhysicsBundle {
+            collider: (Collider::cuboid(meta.size.x / 2., meta.size.y / 2.)),
+            sensor: Sensor,
+            active_events: ActiveEvents::COLLISION_EVENTS,
+            active_collision_types: ActiveCollisionTypes::default()
+                | ActiveCollisionTypes::STATIC_STATIC,
+            collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
+        }
+    }
+}
+
 impl Default for PhysicsBundle {
     fn default() -> Self {
         PhysicsBundle {
