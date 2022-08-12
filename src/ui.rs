@@ -53,7 +53,8 @@ impl Plugin for UIPlugin {
             );
 
         if ENGINE_CONFIG.debug_tools {
-            app.add_system(debug_tools::debug_tools_window);
+            app.add_system(debug_tools::debug_tools_window)
+                .add_system_to_stage(CoreStage::Last, debug_tools::rapier_debug_render);
         }
     }
 }

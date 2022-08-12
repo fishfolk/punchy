@@ -112,7 +112,7 @@ fn main() {
         .add_plugin(PlatformPlugin)
         .add_plugin(LocalizationPlugin)
         .add_plugin(LoadingPlugin)
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(InputManagerPlugin::<PlayerAction>::default())
         .add_plugin(InputManagerPlugin::<MenuAction>::default())
         .add_plugin(AttackPlugin)
@@ -139,17 +139,16 @@ fn main() {
 
     // Add debug plugins if enabled
     if engine_config.debug_tools {
-        app.add_plugin(RapierDebugRenderPlugin::default())
-            .insert_resource(DebugRenderContext {
-                enabled: false,
-                ..default()
-            })
-            .add_plugin(InspectableRapierPlugin)
-            .insert_resource(WorldInspectorParams {
-                enabled: false,
-                ..default()
-            })
-            .add_plugin(WorldInspectorPlugin::new());
+        app.insert_resource(DebugRenderContext {
+            enabled: false,
+            ..default()
+        })
+        .add_plugin(InspectableRapierPlugin)
+        .insert_resource(WorldInspectorParams {
+            enabled: false,
+            ..default()
+        })
+        .add_plugin(WorldInspectorPlugin::new());
     }
 
     // Register assets and loaders
