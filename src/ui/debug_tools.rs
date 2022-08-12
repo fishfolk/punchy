@@ -17,9 +17,18 @@ pub fn debug_tools_window(
 ) {
     let ctx = egui_context.ctx_mut();
 
-    // Toggle window visibility
+    // Toggle debug window visibility
     if input.just_pressed(KeyCode::F12) {
         *visible = !*visible;
+    }
+
+    // Shortcut to toggle collision shapes without having to use the menu
+    if input.just_pressed(KeyCode::F10) {
+        rapier_debug.enabled = !rapier_debug.enabled;
+    }
+    // Shortcut to toggle the inspector without having to use the menu
+    if input.just_pressed(KeyCode::F9) {
+        inspector.enabled = !inspector.enabled;
     }
 
     // Display debug tool window
