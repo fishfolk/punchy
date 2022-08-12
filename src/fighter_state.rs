@@ -950,40 +950,30 @@ fn throwing(
         ),
         With<Throwing>,
     >,
-    item_assets: Res<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, stats, mut inventory, mut health) in &mut fighters {
         // If the player has an item in their inventory
-        if let Some(meta_handle) = inventory.take() {
-            // If the item asset has loaded
-            if let Some(item) = item_assets.get(&meta_handle) {
-                // Check what kind of item this is.
-                //
-                // TODO: We should probably create a flexible item system abstraction similar to the
-                // fighter state abstraction so that items can flexibly defined without a
-                // centralized enum.
-                match item.kind {
-                    ItemKind::Throwable { .. } => {
-                        // Throw the item!
-                        commands.spawn_bundle(Projectile::from_thrown_item(
-                            fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
-                            item,
-                            facing,
-                        ));
-                    }
-                    ItemKind::Health {
-                        health: item_health,
-                    } => {
-                        // Refill player's health
-                        **health = (**health + item_health).clamp(0, stats.max_health);
-                    }
+        if let Some(item_meta) = inventory.take() {
+            // Check what kind of item this is.
+            //
+            // TODO: We should probably create a flexible item system abstraction similar to the
+            // fighter state abstraction so that items can flexibly defined without a
+            // centralized enum.
+            match item_meta.kind {
+                ItemKind::Throwable { .. } => {
+                    // Throw the item!
+                    commands.spawn_bundle(Projectile::from_thrown_item(
+                        fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                        &item_meta,
+                        facing,
+                    ));
                 }
-
-            // If the item asset isn't loaded yet
-            } else {
-                // This shouldn't happen because we make sure our assets are loaded before we start
-                // the game. But just in case, we'll want to know about it if it does happen.
-                warn!("Thrown item not spawned because it has not been loaded yet");
+                ItemKind::Health {
+                    health: item_health,
+                } => {
+                    // Refill player's health
+                    **health = (**health + item_health).clamp(0, stats.max_health);
+                }
             }
         }
 
@@ -998,13 +988,14 @@ fn grabbing(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Transform, &mut Inventory), With<Grabbing>>,
     items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
 
     for (fighter_ent, fighter_transform, mut fighter_inventory) in &mut fighters {
         // If several items are at pick distance, an arbitrary one is picked.
-        for (item_ent, item_transform, item_meta_handle) in &items_query {
+        for (item_ent, item_transform, item) in &items_query {
             if !picked_item_ids.contains(&item_ent) {
                 // Get the distance the figher is from the item
                 let fighter_item_distance = fighter_transform
@@ -1018,7 +1009,8 @@ fn grabbing(
                     if fighter_inventory.is_none() {
                         // Pick up the item
                         picked_item_ids.insert(item_ent);
-                        **fighter_inventory = Some(item_meta_handle.clone());
+                        **fighter_inventory =
+                            Some(items_assets.get(item).expect("Item not loaded!").clone());
                         commands.entity(item_ent).despawn_recursive();
                     }
 

@@ -28,6 +28,7 @@ use leafwing_input_manager::{
 };
 
 use progress::{HasLoadProgress, LoadingResources};
+
 pub mod progress;
 
 pub struct LoadingPlugin;
@@ -132,7 +133,7 @@ impl<'w, 's> GameLoader<'w, 's> {
                 // event, we need to skip the next update event.
                 *skip_next_asset_update_event = true;
 
-            // One-time initialization
+                // One-time initialization
             } else {
                 // Initialize empty fonts for all game fonts.
                 //
@@ -194,7 +195,7 @@ impl<'w, 's> GameLoader<'w, 's> {
             commands.insert_resource(game.clone());
             commands.insert_resource(game.start_level.clone());
 
-        // If the game asset isn't loaded yet
+            // If the game asset isn't loaded yet
         } else {
             trace!("Awaiting game load")
         }

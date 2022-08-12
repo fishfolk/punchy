@@ -14,7 +14,6 @@ use crate::{
 #[derive(Component)]
 pub struct Item;
 
-/// Represents an item, that is either on the map.
 #[derive(Bundle)]
 pub struct ItemBundle {
     item: Item,
@@ -59,7 +58,7 @@ pub struct Projectile {
 }
 
 impl Projectile {
-    pub fn from_thrown_item(translation: Vec3, item: &ItemMeta, facing: &Facing) -> Self {
+    pub fn from_thrown_item(translation: Vec3, item_meta: &ItemMeta, facing: &Facing) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
@@ -68,12 +67,12 @@ impl Projectile {
 
         Self {
             sprite_bundle: SpriteBundle {
-                texture: item.image.image_handle.clone(),
+                texture: item_meta.image.image_handle.clone(),
                 transform: Transform::from_xyz(translation.x, translation.y, consts::PROJECTILE_Z),
                 ..default()
             },
             attack: Attack {
-                damage: match item.kind {
+                damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
                     crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
                 },
