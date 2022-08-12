@@ -3,7 +3,7 @@ use bevy_rapier2d::prelude::CollisionGroups;
 use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
-use crate::item::Item;
+use crate::metadata::ItemMeta;
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
     camera::YSort,
@@ -48,7 +48,7 @@ pub struct Stats {
 ///
 /// A player may be holding one item
 #[derive(Component, Clone, Debug, Default, Deref, DerefMut)]
-pub struct Inventory(pub Option<Item>);
+pub struct Inventory(pub Option<ItemMeta>);
 
 impl Default for Stats {
     fn default() -> Self {

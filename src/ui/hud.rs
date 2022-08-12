@@ -6,7 +6,7 @@ use bevy_egui::{egui, EguiContext};
 use crate::{
     damage::Health,
     fighter::Inventory,
-    metadata::{FighterMeta, GameMeta, ItemMeta},
+    metadata::{FighterMeta, GameMeta},
     player::PlayerIndex,
     ui::widgets::{bordered_frame::BorderedFrame, progress_bar::ProgressBar, EguiUIExt},
     Player, Stats,
@@ -26,7 +26,6 @@ pub fn render_hud(
     >,
     game: Res<GameMeta>,
     fighter_assets: Res<Assets<FighterMeta>>,
-    items_assets: Res<Assets<ItemMeta>>,
 ) {
     let ui_theme = &game.ui_theme;
 
@@ -59,16 +58,13 @@ pub fn render_hud(
                     portrait_texture_id: egui_context
                         .add_image(fighter.hud.portrait.image_handle.clone_weak()),
                     portrait_size: egui::Vec2::new(portrait_size.x, portrait_size.y),
-                    item: inventory.as_ref().map(|item| {
-                        let meta = items_assets
-                            .get(&item.meta_handle)
-                            .expect("Item metanot loaded!");
-
-                        ItemInfo {
-                            texture_id: egui_context
-                                .add_image(meta.image.image_handle.clone_weak()),
-                            size: egui::Vec2::new(meta.image.image_size.x, meta.image.image_size.y),
-                        }
+                    item: inventory.as_ref().map(|item_meta| ItemInfo {
+                        texture_id: egui_context
+                            .add_image(item_meta.image.image_handle.clone_weak()),
+                        size: egui::Vec2::new(
+                            item_meta.image.image_size.x,
+                            item_meta.image.image_size.y,
+                        ),
                     }),
                 }
             })

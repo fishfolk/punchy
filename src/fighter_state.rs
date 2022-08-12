@@ -779,41 +779,30 @@ fn throwing(
         ),
         With<Throwing>,
     >,
-    item_assets: Res<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, stats, mut inventory, mut health) in &mut fighters {
         // If the player has an item in their inventory
-        if let Some(item) = inventory.take() {
-            // If the item asset has loaded
-            if let Some(item_meta) = item_assets.get(&item.meta_handle) {
-                // Check what kind of item this is.
-                //
-                // TODO: We should probably create a flexible item system abstraction similar to the
-                // fighter state abstraction so that items can flexibly defined without a
-                // centralized enum.
-                match item_meta.kind {
-                    ItemKind::Throwable { .. } => {
-                        // Throw the item!
-                        commands.spawn_bundle(Projectile::from_thrown_item(
-                            fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
-                            item,
-                            item_meta,
-                            facing,
-                        ));
-                    }
-                    ItemKind::Health {
-                        health: item_health,
-                    } => {
-                        // Refill player's health
-                        **health = (**health + item_health).clamp(0, stats.max_health);
-                    }
+        if let Some(item_meta) = inventory.take() {
+            // Check what kind of item this is.
+            //
+            // TODO: We should probably create a flexible item system abstraction similar to the
+            // fighter state abstraction so that items can flexibly defined without a
+            // centralized enum.
+            match item_meta.kind {
+                ItemKind::Throwable { .. } => {
+                    // Throw the item!
+                    commands.spawn_bundle(Projectile::from_thrown_item(
+                        fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                        &item_meta,
+                        facing,
+                    ));
                 }
-
-            // If the item asset isn't loaded yet
-            } else {
-                // This shouldn't happen because we make sure our assets are loaded before we start
-                // the game. But just in case, we'll want to know about it if it does happen.
-                warn!("Thrown item not spawned because it has not been loaded yet");
+                ItemKind::Health {
+                    health: item_health,
+                } => {
+                    // Refill player's health
+                    **health = (**health + item_health).clamp(0, stats.max_health);
+                }
             }
         }
 
@@ -827,7 +816,8 @@ fn throwing(
 fn grabbing(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Transform, &mut Inventory), With<Grabbing>>,
-    items_query: Query<(Entity, &Transform, &Item)>,
+    items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
@@ -848,7 +838,8 @@ fn grabbing(
                     if fighter_inventory.is_none() {
                         // Pick up the item
                         picked_item_ids.insert(item_ent);
-                        **fighter_inventory = Some(item.clone());
+                        **fighter_inventory =
+                            Some(items_assets.get(item).expect("Item not loaded!").clone());
                         commands.entity(item_ent).despawn_recursive();
                     }
 

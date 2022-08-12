@@ -7,11 +7,10 @@ use rand::seq::SliceRandom;
 use crate::{
     animation::Animation,
     config::ENGINE_CONFIG,
-    consts,
     enemy::{Boss, Enemy, EnemyBundle},
     fighter::ActiveFighterBundle,
     input::MenuAction,
-    item::Item,
+    item::ItemBundle,
     metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
     platform::Storage,
     player::{Player, PlayerBundle},
@@ -366,15 +365,8 @@ fn load_level(
 
         // Spawn the items
         for item_spawn_meta in &level.items {
-            let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-            let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
-                item_spawn_meta.location + ground_offset,
-            ));
-
-            commands.spawn_bundle(transform_bundle).insert(Item {
-                name: Name::new("Map Item"), //TODO: Implement actual item name
-                meta_handle: item_spawn_meta.item_handle.clone(),
-            });
+            let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
+            ItemBundle::spawn(item_commands, item_spawn_meta)
         }
 
         commands.insert_resource(level.clone());
@@ -414,11 +406,11 @@ fn hot_reload_level(
 
 fn load_items(
     mut commands: Commands,
-    item_spawns: Query<(Entity, &Transform, &Item), Without<Sprite>>,
+    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>), Without<Sprite>>,
     item_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (entity, transform, item) in item_spawns.iter() {
-        if let Some(item_meta) = item_assets.get(&item.meta_handle) {
+    for (entity, transform, item_handle) in item_spawns.iter() {
+        if let Some(item_meta) = item_assets.get(item_handle) {
             commands.entity(entity).insert_bundle(SpriteBundle {
                 texture: item_meta.image.image_handle.clone(),
                 transform: *transform,
