@@ -58,8 +58,6 @@ impl Default for Stats {
 }
 
 /// Turns a fighter stub data (loaded from the metadata) into a fully active fighter.
-///
-/// PS: The position of the fighter corresponds the bottom center of the sprite.
 impl ActiveFighterBundle {
     pub fn activate_fighter_stub(
         commands: &mut Commands,

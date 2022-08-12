@@ -766,7 +766,7 @@ fn ground_slam(
         if let Some(fighter) = fighter_assets.get(meta_handle) {
             let mut offset = fighter.attack.hitbox.offset;
             if facing.is_left() {
-                offset *= -1.0
+                offset.x *= -1.0
             }
             let attack_frames = fighter.attack.frames;
             if !ground_slam.has_started {
