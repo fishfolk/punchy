@@ -1,4 +1,4 @@
-start_level: beach/beach.level.yaml
+start_level: levels/1_beach/beach.level.yaml
 camera_height: 448
 # Distance of the rightmost player from the center of the camera, after which the camera moves.
 # For simplicity, this value can also be used for movement limitation calculations.
