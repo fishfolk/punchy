@@ -1,5 +1,9 @@
 name: Fishy The Fearsome
 
+hurtbox:
+  size: [24, 12]
+  offset: [0, 0]
+
 stats:
   max_health: 600
   movement_speed: 150
@@ -40,8 +44,9 @@ attack:
     startup: 1
     active: 2
     recovery: 4
-  hitbox: [16, 16]
-  hitbox_offset: [24, 0]
+  hitbox:
+    size: [32, 32]
+    offset: [32, 0]
 
 audio:
   effects:

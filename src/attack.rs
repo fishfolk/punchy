@@ -65,8 +65,8 @@ fn activate_hitbox(
             {
                 if let Some(fighter_data) = fighter_assets.get(fighter_meta) {
                     commands.entity(entity).insert(Collider::cuboid(
-                        fighter_data.attack.hitbox.x,
-                        fighter_data.attack.hitbox.y,
+                        fighter_data.attack.hitbox.size.x / 2.,
+                        fighter_data.attack.hitbox.size.y / 2.,
                     ));
                 }
             }

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::CollisionGroups;
 use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
@@ -80,7 +79,7 @@ impl ActiveFighterBundle {
             name: Name::new(fighter.name.clone()),
             animated_spritesheet_bundle: AnimatedSpriteSheetBundle {
                 sprite_sheet: SpriteSheetBundle {
-                    sprite: TextureAtlasSprite::new(0),
+                    sprite: default(),
                     texture_atlas: fighter
                         .spritesheet
                         .atlas_handle
@@ -99,13 +98,10 @@ impl ActiveFighterBundle {
             health: Health(fighter.stats.max_health),
             inventory: default(),
             damageable: default(),
-            physics_bundle: PhysicsBundle {
-                collision_groups: CollisionGroups::new(body_layers, BodyLayers::ALL),
-                ..default()
-            },
+            physics_bundle: PhysicsBundle::new(&fighter.hurtbox, body_layers),
             idling: Idling,
             state_transition_intents: default(),
-            ysort: default(),
+            ysort: YSort(fighter.spritesheet.tile_size.x as f32),
             velocity: default(),
         };
 

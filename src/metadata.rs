@@ -91,6 +91,7 @@ pub struct FighterMeta {
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
     pub audio: AudioMeta,
+    pub hurtbox: ColliderMeta,
     //Will likely need a hashmap(?) of AttackMetas, fighters will have multiple attacks
     pub attack: AttackMeta,
 }
@@ -102,8 +103,7 @@ pub struct AttackMeta {
     pub name: String,
     pub damage: i32,
     pub frames: AttackFrames,
-    pub hitbox: Vec2,
-    pub hitbox_offset: Vec2,
+    pub hitbox: ColliderMeta,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
@@ -220,4 +220,12 @@ impl From<ParallaxLayerMeta> for LayerData {
             position: meta.position,
         }
     }
+}
+
+#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct ColliderMeta {
+    //TODO: Add type of collider with different properties.
+    pub size: Vec2,
+    pub offset: Vec2,
 }
