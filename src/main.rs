@@ -55,7 +55,7 @@ use utils::ResetController;
 use crate::{
     damage::DamagePlugin, fighter_state::FighterStatePlugin, input::PlayerAction,
     lifetime::LifetimePlugin, loading::LoadingPlugin, localization::LocalizationPlugin,
-    movement::MovementPlugin, platform::PlatformPlugin,
+    movement::MovementPlugin, platform::PlatformPlugin, ui::debug_tools::YSortDebugPlugin,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -143,6 +143,7 @@ fn main() {
             enabled: false,
             ..default()
         })
+        .add_plugin(YSortDebugPlugin)
         .add_plugin(InspectableRapierPlugin)
         .insert_resource(WorldInspectorParams {
             enabled: false,
