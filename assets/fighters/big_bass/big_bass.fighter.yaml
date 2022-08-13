@@ -1,5 +1,7 @@
 name: Bandit
 
+size: [130, 176]
+
 hurtbox:
   size: [96, 32]
   offset: [0, -16]

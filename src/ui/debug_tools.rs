@@ -14,7 +14,7 @@ use bevy_rapier2d::{
     },
 };
 
-use crate::{camera::YSort, localization::LocalizationExt};
+use crate::{camera::YSort, localization::LocalizationExt, metadata::FighterMeta};
 
 /// System that renders the debug tools window which can be toggled by pressing F12
 pub fn debug_tools_window(
@@ -43,8 +43,8 @@ pub fn debug_tools_window(
     }
 
     // Shortcut to toggle y-sorting debug lines without having to use the menu
-    if input.just_pressed(KeyCode::F9) {
-        ysort_debug.enabled = !inspector.enabled;
+    if input.just_pressed(KeyCode::F8) {
+        ysort_debug.enabled = !ysort_debug.enabled;
     }
 
     // Display debug tool window
@@ -186,7 +186,7 @@ impl Plugin for YSortDebugPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(YSortDebug {
             enabled: false,
-            stroke: Stroke::new(1.0, Color32::LIGHT_GRAY),
+            stroke: Stroke::new(1.0, Color32::LIGHT_GREEN),
         })
         .add_system(draw_ysort_lines);
     }
@@ -201,24 +201,34 @@ pub struct YSortDebug {
 fn draw_ysort_lines(
     ysort_debug: Res<YSortDebug>,
     mut egui_context: ResMut<EguiContext>,
-    query: Query<(&YSort, &Transform)>,
+    query: Query<(&YSort, &Handle<FighterMeta>, &Transform)>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
+    fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     if !ysort_debug.enabled {
         return;
     }
 
     if let Ok((camera, camera_transform)) = camera_query.get_single() {
-        for (ysort, transform) in query.iter() {
+        for (ysort, fighter_meta, transform) in query.iter() {
+            //If the fighter meta is not loaded default to 16.0
+            let half_width = if let Some(meta) = fighter_assets.get(fighter_meta) {
+                meta.size.x / 2.0
+            } else {
+                16.0
+            };
+
             egui::CentralPanel::default()
                 .frame(egui::Frame::none())
                 .show(egui_context.ctx_mut(), |ui| {
-                    let mut a = transform.translation.clone();
-                    a.x += 16.;
+                    let mut a = transform.translation;
+                    a.x += half_width;
+                    a.y -= ysort.0;
                     a.z = 0.;
 
-                    let mut b = transform.translation.clone();
-                    b.x += 16.;
+                    let mut b = transform.translation;
+                    b.x -= half_width;
+                    b.y -= ysort.0;
                     b.z = 0.;
 
                     let a = camera.world_to_ndc(camera_transform, a);
