@@ -1,7 +1,9 @@
 name: Bandit
 
+size: [36, 52]
+
 hurtbox:
-  size: [24, 12]
+  size: [36, 12]
   offset: [0, 0]
 
 stats:
@@ -47,7 +49,7 @@ attack:
     active: 2
     recovery: 3
   hitbox:
-    size: [24, 24]
+    size: [36, 24]
     offset: [24, 0]
 
 audio:

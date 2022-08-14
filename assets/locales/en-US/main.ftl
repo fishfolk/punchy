@@ -36,3 +36,4 @@ bind-input = Press an input or press Escape to cancel.
 debug-tools = Debug Tools
 show-collision-shapes = Show Collision Shapes
 show-world-inspector = Show World Inspector
+show-ysort-lines = Show Y-Sort Lines

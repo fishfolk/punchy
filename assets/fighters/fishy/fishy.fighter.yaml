@@ -1,7 +1,9 @@
 name: Fishy The Fearsome
 
+size: [36, 48]
+
 hurtbox:
-  size: [24, 12]
+  size: [36, 12]
   offset: [0, 0]
 
 stats:

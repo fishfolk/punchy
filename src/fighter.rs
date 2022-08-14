@@ -101,7 +101,7 @@ impl ActiveFighterBundle {
             physics_bundle: PhysicsBundle::new(&fighter.hurtbox, body_layers),
             idling: Idling,
             state_transition_intents: default(),
-            ysort: YSort(fighter.spritesheet.tile_size.x as f32),
+            ysort: YSort(fighter.size.y / 2.),
             velocity: default(),
         };
 

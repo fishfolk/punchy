@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::*;
 use bevy_fluent::Localization;
-use bevy_inspector_egui::WorldInspectorParams;
+use bevy_inspector_egui::{
+    egui::{Color32, Stroke},
+    WorldInspectorParams,
+};
 use bevy_rapier2d::{
     plugin::RapierContext,
     prelude::{ColliderDebugColor, DebugRenderContext},
@@ -11,7 +14,7 @@ use bevy_rapier2d::{
     },
 };
 
-use crate::localization::LocalizationExt;
+use crate::{camera::YSort, localization::LocalizationExt, metadata::FighterMeta};
 
 /// System that renders the debug tools window which can be toggled by pressing F12
 pub fn debug_tools_window(
@@ -21,6 +24,7 @@ pub fn debug_tools_window(
     input: Res<Input<KeyCode>>,
     mut rapier_debug: ResMut<DebugRenderContext>,
     mut inspector: ResMut<WorldInspectorParams>,
+    mut ysort_debug: ResMut<YSortDebug>,
 ) {
     let ctx = egui_context.ctx_mut();
 
@@ -36,6 +40,11 @@ pub fn debug_tools_window(
     // Shortcut to toggle the inspector without having to use the menu
     if input.just_pressed(KeyCode::F9) {
         inspector.enabled = !inspector.enabled;
+    }
+
+    // Shortcut to toggle y-sorting debug lines without having to use the menu
+    if input.just_pressed(KeyCode::F8) {
+        ysort_debug.enabled = !ysort_debug.enabled;
     }
 
     // Display debug tool window
@@ -54,6 +63,12 @@ pub fn debug_tools_window(
             ui.checkbox(
                 &mut inspector.enabled,
                 format!("{} ( F9 )", localization.get("show-world-inspector")),
+            );
+
+            // Show sorting lines
+            ui.checkbox(
+                &mut ysort_debug.enabled,
+                format!("{} ( F8 )", localization.get("show-ysort-lines")),
             );
         });
 }
@@ -160,6 +175,79 @@ impl<'world, 'state, 'a, 'b, 'c> DebugRenderBackend
                 [a.to_pos2(), b.to_pos2()],
                 (1.0, self.object_color(object, color)),
             )
+        }
+    }
+}
+
+/// A plugin that draws the line where the Y-Sorting happens
+pub struct YSortDebugPlugin;
+
+impl Plugin for YSortDebugPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(YSortDebug {
+            enabled: false,
+            stroke: Stroke::new(1.0, Color32::LIGHT_GREEN),
+        })
+        .add_system(draw_ysort_lines);
+    }
+}
+
+pub struct YSortDebug {
+    enabled: bool,
+    stroke: egui::Stroke,
+}
+
+/// Renders the ysort debug line
+fn draw_ysort_lines(
+    ysort_debug: Res<YSortDebug>,
+    mut egui_context: ResMut<EguiContext>,
+    query: Query<(&YSort, &Handle<FighterMeta>, &Transform)>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    fighter_assets: Res<Assets<FighterMeta>>,
+) {
+    if !ysort_debug.enabled {
+        return;
+    }
+
+    if let Ok((camera, camera_transform)) = camera_query.get_single() {
+        for (ysort, fighter_meta, transform) in query.iter() {
+            //If the fighter meta is not loaded default to 16.0
+            let half_width = if let Some(meta) = fighter_assets.get(fighter_meta) {
+                meta.size.x / 2.0
+            } else {
+                16.0
+            };
+
+            egui::CentralPanel::default()
+                .frame(egui::Frame::none())
+                .show(egui_context.ctx_mut(), |ui| {
+                    let mut a = transform.translation;
+                    a.x += half_width;
+                    a.y -= ysort.0;
+                    a.z = 0.;
+
+                    let mut b = transform.translation;
+                    b.x -= half_width;
+                    b.y -= ysort.0;
+                    b.z = 0.;
+
+                    let a = camera.world_to_ndc(camera_transform, a);
+                    let b = camera.world_to_ndc(camera_transform, b);
+
+                    if let (Some(a), Some(b)) = (a, b) {
+                        // Invert y and convert to egui vec2
+                        let a = egui::Vec2::new(a.x, -a.y);
+                        let b = egui::Vec2::new(b.x, -b.y);
+
+                        // Map NDC coordinates to egui points
+                        let half_size = ui.available_size() / 2.0;
+                        let a = a * half_size + half_size;
+                        let b = b * half_size + half_size;
+
+                        ui.painter()
+                            .line_segment([a.to_pos2(), b.to_pos2()], ysort_debug.stroke);
+                    }
+                });
         }
     }
 }
