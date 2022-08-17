@@ -24,6 +24,7 @@ impl Plugin for AttackPlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(activate_hitbox)
                     .with_system(deactivate_hitbox)
+                    .with_system(despawn_collision)
                     .into(),
             )
             // Attack damage is run in PostUpdate to make sure it runs after rapier generates collision events
@@ -39,6 +40,10 @@ pub struct Attack {
     /// The direction and speed that the attack is hitting something in.
     pub velocity: Vec2,
 }
+
+/// A component that depawns an entity after collision with tolerance to x collisions.
+#[derive(Component, Deref, DerefMut, Clone, Copy, Default, Reflect)]
+pub struct DespawnOnCollision(pub u32);
 
 /// A component identifying the attacks active collision frames.
 ///
@@ -119,6 +124,26 @@ fn attack_damage_system(
                     damage: attack.damage,
                     damaged_entity: damageable_entity,
                 })
+            }
+        }
+    }
+}
+
+fn despawn_collision(
+    mut events: EventReader<CollisionEvent>,
+    mut despawn_query: Query<&mut DespawnOnCollision>,
+    mut commands: Commands,
+) {
+    for ev in events.iter() {
+        if let CollisionEvent::Started(e1, e2, _flags) = ev {
+            for e in [e1, e2].iter() {
+                if let Ok(mut despawn) = despawn_query.get_mut(**e) {
+                    if **despawn > 0 {
+                        **despawn -= 1;
+                    } else {
+                        commands.entity(**e).despawn_recursive();
+                    }
+                }
             }
         }
     }
