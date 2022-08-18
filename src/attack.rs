@@ -24,6 +24,7 @@ impl Plugin for AttackPlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(activate_hitbox)
                     .with_system(deactivate_hitbox)
+                    .with_system(breakable_system)
                     .into(),
             )
             // Attack damage is run in PostUpdate to make sure it runs after rapier generates collision events
@@ -38,6 +39,24 @@ pub struct Attack {
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.
     pub velocity: Vec2,
+}
+
+/// A component that depawns an entity after collision.
+#[derive(Component, Clone, Copy, Default, Reflect)]
+pub struct Breakable {
+    /// The number of collisions allowed before the entity is breakable.
+    pub hit_tolerance: i32,
+    /// The number of collisions occured.
+    pub hit_count: i32,
+}
+
+impl Breakable {
+    pub fn new(hits: i32) -> Self {
+        Self {
+            hit_tolerance: hits,
+            hit_count: 0,
+        }
+    }
 }
 
 /// A component identifying the attacks active collision frames.
@@ -119,6 +138,26 @@ fn attack_damage_system(
                     damage: attack.damage,
                     damaged_entity: damageable_entity,
                 })
+            }
+        }
+    }
+}
+
+fn breakable_system(
+    mut events: EventReader<CollisionEvent>,
+    mut despawn_query: Query<&mut Breakable>,
+    mut commands: Commands,
+) {
+    for ev in events.iter() {
+        if let CollisionEvent::Started(e1, e2, _flags) = ev {
+            for e in [e1, e2].iter() {
+                if let Ok(mut breakable) = despawn_query.get_mut(**e) {
+                    if breakable.hit_count < breakable.hit_tolerance {
+                        breakable.hit_count += 1;
+                    } else {
+                        commands.entity(**e).despawn_recursive();
+                    }
+                }
             }
         }
     }
