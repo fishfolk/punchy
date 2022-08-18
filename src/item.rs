@@ -3,7 +3,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
-    attack::{Attack, DespawnOnCollision},
+    attack::{Attack, Breakable},
     collision::BodyLayers,
     consts,
     lifetime::Lifetime,
@@ -55,7 +55,7 @@ pub struct Projectile {
     collision_groups: CollisionGroups,
     attack: Attack,
     lifetime: Lifetime,
-    deswawn_on_collision: DespawnOnCollision,
+    breakable: Breakable,
 }
 
 impl Projectile {
@@ -91,7 +91,7 @@ impl Projectile {
             //files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
-            deswawn_on_collision: DespawnOnCollision(0),
+            breakable: Breakable::new(0),
         }
     }
 }
