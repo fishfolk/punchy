@@ -41,16 +41,21 @@ pub struct Attack {
     pub velocity: Vec2,
 }
 
-/// A component that depawns an entity after collision with tolerance to x collisions.
+/// A component that depawns an entity after collision.
 #[derive(Component, Clone, Copy, Default, Reflect)]
 pub struct Breakable {
-    pub hits: i32,
-    count: i32,
+    /// The number of collisions allowed before the entity is breakable.
+    pub hit_tolerance: i32,
+    /// The number of collisions occured.
+    pub hit_count: i32,
 }
 
 impl Breakable {
     pub fn new(hits: i32) -> Self {
-        Self { hits, count: 0 }
+        Self {
+            hit_tolerance: hits,
+            hit_count: 0,
+        }
     }
 }
 
@@ -147,8 +152,8 @@ fn breakable_system(
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
                 if let Ok(mut breakable) = despawn_query.get_mut(**e) {
-                    if breakable.count < breakable.hits {
-                        breakable.count += 1;
+                    if breakable.hit_count < breakable.hit_tolerance {
+                        breakable.hit_count += 1;
                     } else {
                         commands.entity(**e).despawn_recursive();
                     }
