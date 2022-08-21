@@ -39,7 +39,7 @@ structopt = "0.3.26"
 rand = "0.8.5"
 getrandom = { version = "0.2", features = ["js"] }
 
-leafwing-input-manager = { version = "0.5", default-features = false }
+leafwing-input-manager = { version = "0.5.2", default-features = false }
 unic-langid = "0.9.0"
 bevy_fluent = "0.4.0"
 sys-locale = "0.2.1"
