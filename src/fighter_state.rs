@@ -237,13 +237,12 @@ pub struct GroundSlam {
 }
 impl GroundSlam {
     pub const PRIORITY: i32 = 30;
-    //TODO: return to change assets and this to "flopping"
+    //TODO: return to change assets and this to "ground_slam"?
     pub const ANIMATION: &'static str = "attacking";
 }
 
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-
 pub struct Punching {
     pub has_started: bool,
     pub is_finished: bool,
@@ -301,6 +300,7 @@ fn collect_player_actions(
                 false,
             ));
         }
+
         // Trigger grab/throw
         if action_state.just_pressed(PlayerAction::Throw) {
             if inventory.is_some() {
@@ -447,9 +447,9 @@ fn transition_from_punching(
 
 fn transition_from_ground_slam(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &GroundSlam)>,
 ) {
-    'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
+    'entity: for (entity, mut transition_intents, ground_slam) in &mut fighters {
         // Transition to any higher priority states
         let current_state_removed = transition_intents
             .transition_to_higher_priority_states::<GroundSlam>(
@@ -464,7 +464,7 @@ fn transition_from_ground_slam(
         }
 
         // If we're done flopping
-        if flopping.is_finished {
+        if ground_slam.is_finished {
             // Go back to idle
             commands
                 .entity(entity)
@@ -817,22 +817,29 @@ fn ground_slam(
 
             if !animation.is_finished() {
                 // Do a forward jump thing
-                //TODO: Fix hacky way to get a forward jump
 
                 // Control x movement
                 if animation.current_frame < attack_frames.startup {
                     if facing.is_left() {
-                        velocity.x -= 150.0;
+                        velocity.x -= 50.0;
                     } else {
-                        velocity.x += 150.0;
+                        velocity.x += 50.0;
                     }
                 }
 
                 // Control y movement
+                // TODO: Attack moves up and down the same amount, fixed distance, but it would be
+                // nice to be able to tune the speed of the fall so it feels more impactful yet
+                // doesnt have a "snap/reset effect" at the end of animation while still landing at
+                // the same Y as started(?)
+                // it might be nice to store movement properties as metadata attached to frame
+                // ranges or individual frames?
                 if animation.current_frame < attack_frames.startup {
-                    velocity.y += 270.0;
+                    let v_per_frame = 800.0 / attack_frames.startup as f32;
+                    velocity.y += v_per_frame;
                 } else if animation.current_frame < attack_frames.active {
-                    velocity.y -= 180.0;
+                    let v_per_frame = 800.0 / (attack_frames.active - attack_frames.startup) as f32;
+                    velocity.y -= v_per_frame;
                 }
 
             // If the animation is finished
