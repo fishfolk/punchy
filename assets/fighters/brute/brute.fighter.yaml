@@ -3,7 +3,7 @@ name: Brute
 size: [36, 58]
 
 hurtbox:
-  size: [36, 12]
+  size: [36, 58]
   offset: [0, 0]
 
 stats:

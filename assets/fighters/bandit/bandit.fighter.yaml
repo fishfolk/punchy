@@ -3,7 +3,7 @@ name: Bandit
 size: [36, 52]
 
 hurtbox:
-  size: [36, 12]
+  size: [36, 52]
   offset: [0, 0]
 
 stats:
