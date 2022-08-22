@@ -939,19 +939,9 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<
-        (
-            Entity,
-            &Transform,
-            &Facing,
-            &Stats,
-            &mut Inventory,
-            &mut Health,
-        ),
-        With<Throwing>,
-    >,
+    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
 ) {
-    for (entity, fighter_transform, facing, stats, mut inventory, mut health) in &mut fighters {
+    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(item_meta) = inventory.take() {
             // Check what kind of item this is.
@@ -968,11 +958,8 @@ fn throwing(
                         facing,
                     ));
                 }
-                ItemKind::Health {
-                    health: item_health,
-                } => {
-                    // Refill player's health
-                    **health = (**health + item_health).clamp(0, stats.max_health);
+                ItemKind::Health { health: _ } => {
+                    panic!("Health items should be used immediately, and can't be thrown");
                 }
             }
         }
@@ -986,14 +973,15 @@ fn throwing(
 // Trying to grab an item off the map
 fn grabbing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &mut Inventory), With<Grabbing>>,
+    mut fighters: Query<(Entity, &Transform, &mut Inventory, &Stats, &mut Health), With<Grabbing>>,
     items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
 
-    for (fighter_ent, fighter_transform, mut fighter_inventory) in &mut fighters {
+    for (fighter_ent, fighter_transform, mut fighter_inventory, stats, mut health) in &mut fighters
+    {
         // If several items are at pick distance, an arbitrary one is picked.
         for (item_ent, item_transform, item) in &items_query {
             if !picked_item_ids.contains(&item_ent) {
@@ -1007,18 +995,27 @@ fn grabbing(
                 if fighter_item_distance <= consts::PICK_ITEM_RADIUS {
                     // And our fighter isn't carrying another item
                     if fighter_inventory.is_none() {
-                        // Pick up the item
-                        picked_item_ids.insert(item_ent);
-                        **fighter_inventory =
-                            Some(items_assets.get(item).expect("Item not loaded!").clone());
-                        commands.entity(item_ent).despawn_recursive();
+                        match items_assets.get(item).unwrap().kind {
+                            ItemKind::Health {
+                                health: item_health,
+                            } => {
+                                // If its health, refill player's health instantly
+                                **health = (**health + item_health).clamp(0, stats.max_health);
+                                commands.entity(item_ent).despawn_recursive();
+                            }
+                            ItemKind::Throwable { damage: _ } => {
+                                // If its throwable, pick up the item
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+                            }
+                        }
                     }
-
                     break;
                 }
             }
         }
-
         // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
         // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
