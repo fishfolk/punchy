@@ -968,6 +968,9 @@ fn throwing(
                 ItemKind::Health { health: _ } => {
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
+                ItemKind::Box { .. } => {
+                    panic!("Box item can't be thrown for now");
+                }
             }
         }
 
@@ -1017,6 +1020,7 @@ fn grabbing(
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
                             }
+                            ItemKind::Box { .. } => {} //Can't grab box for now
                         }
                     }
                     break;

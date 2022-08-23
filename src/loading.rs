@@ -312,6 +312,7 @@ fn load_level(
     level_handle: Res<Handle<LevelMeta>>,
     mut commands: Commands,
     assets: Res<Assets<LevelMeta>>,
+    items_assets: Res<Assets<ItemMeta>>,
     mut parallax: ResMut<ParallaxResource>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
@@ -366,7 +367,8 @@ fn load_level(
         // Spawn the items
         for item_spawn_meta in &level.items {
             let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
-            ItemBundle::spawn(item_commands, item_spawn_meta)
+            let item_meta = items_assets.get(&item_spawn_meta.item_handle);
+            ItemBundle::spawn(item_commands, item_spawn_meta.location, item_meta)
         }
 
         commands.insert_resource(level.clone());

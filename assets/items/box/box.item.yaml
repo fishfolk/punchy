@@ -1,0 +1,11 @@
+name: Box
+
+image:
+    image: box.png
+    image_size: [32, 32]
+
+kind: !Box
+    hits: 10
+    hurtbox:
+        size: [36, 52]
+        offset: [0, 0]

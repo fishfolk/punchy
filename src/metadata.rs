@@ -121,6 +121,7 @@ pub struct ItemMeta {
 pub enum ItemKind {
     Throwable { damage: i32 },
     Health { health: i32 },
+    Box { hurtbox: ColliderMeta, hits: i32},
 }
 
 #[derive(Deserialize, Clone, Debug)]

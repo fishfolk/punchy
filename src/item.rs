@@ -3,11 +3,12 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
-    attack::{Attack, Breakable},
-    collision::BodyLayers,
+    attack::{Attack, Breakable, Drop},
+    collision::{BodyLayers, PhysicsBundle},
     consts,
+    damage::Damageable,
     lifetime::Lifetime,
-    metadata::{ItemMeta, ItemSpawnMeta},
+    metadata::{ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
 };
 
@@ -31,13 +32,27 @@ impl ItemBundle {
         }
     }
 
-    pub fn spawn(mut commands: EntityCommands, item_spawn_meta: &ItemSpawnMeta) {
+    pub fn spawn(
+        mut commands: EntityCommands,
+        location: Vec3,
+        item_meta: Option<&ItemMeta>
+    ) {
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
         let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
-            item_spawn_meta.location + ground_offset,
+            location + ground_offset,
         ));
 
         commands.insert_bundle(transform_bundle);
+
+        if let Some(item_meta) = item_meta {
+            if let ItemKind::Box { hurtbox, hits } = &item_meta.kind {
+                commands
+                    .insert(Damageable(true))
+                    .insert_bundle(PhysicsBundle::new(hurtbox, BodyLayers::ALL))
+                    .insert(Breakable::new(*hits))
+                    .insert(Drop);
+            }
+        }
     }
 }
 
@@ -76,6 +91,7 @@ impl Projectile {
                 damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
                     crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
+                    crate::metadata::ItemKind::Box { .. } => panic!("Cannot throw box yet"),
                 },
                 velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
             },

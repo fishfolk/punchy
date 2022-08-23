@@ -41,6 +41,9 @@ pub struct Attack {
     pub velocity: Vec2,
 }
 
+#[derive(Component)]
+pub struct Drop;
+
 /// A component that depawns an entity after collision.
 #[derive(Component, Clone, Copy, Default, Reflect)]
 pub struct Breakable {
@@ -145,17 +148,24 @@ fn attack_damage_system(
 
 fn breakable_system(
     mut events: EventReader<CollisionEvent>,
-    mut despawn_query: Query<&mut Breakable>,
+    mut despawn_query: Query<(&mut Breakable, Option<&Drop>)>,
     mut commands: Commands,
 ) {
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
                 if let Ok(mut breakable) = despawn_query.get_mut(**e) {
+                    let drop = breakable.1;
+                    let breakable = &mut breakable.0;
+                    
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
                     } else {
                         commands.entity(**e).despawn_recursive();
+
+                        if drop.is_some() {
+                            println!("Drop item")
+                        }
                     }
                 }
             }
