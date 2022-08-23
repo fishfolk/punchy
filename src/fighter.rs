@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
+use crate::attack::Hurtbox;
 use crate::metadata::ItemMeta;
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
@@ -21,8 +22,8 @@ pub struct ActiveFighterBundle {
     pub name: Name,
     #[bundle]
     pub animated_spritesheet_bundle: AnimatedSpriteSheetBundle,
-    #[bundle]
-    pub physics_bundle: PhysicsBundle,
+    // #[bundle]
+    // pub physics_bundle: PhysicsBundle,
     pub stats: Stats,
     pub ysort: YSort,
     pub health: Health,
@@ -79,7 +80,10 @@ impl ActiveFighterBundle {
             name: Name::new(fighter.name.clone()),
             animated_spritesheet_bundle: AnimatedSpriteSheetBundle {
                 sprite_sheet: SpriteSheetBundle {
-                    sprite: default(),
+                    sprite: TextureAtlasSprite {
+                        anchor: bevy::sprite::Anchor::BottomCenter,
+                        ..default()
+                    },
                     texture_atlas: fighter
                         .spritesheet
                         .atlas_handle
@@ -98,13 +102,25 @@ impl ActiveFighterBundle {
             health: Health(fighter.stats.max_health),
             inventory: default(),
             damageable: default(),
-            physics_bundle: PhysicsBundle::new(&fighter.hurtbox, body_layers),
+            // physics_bundle: PhysicsBundle::new(&fighter.hurtbox, body_layers),
             idling: Idling,
             state_transition_intents: default(),
-            ysort: YSort(fighter.size.y / 2.),
+            ysort: YSort(fighter.spritesheet.tile_size.y as f32 / 2.),
             velocity: default(),
         };
+        let hurtbox = commands
+            .spawn_bundle(PhysicsBundle::new(&fighter.hurtbox, body_layers))
+            .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+                0.0,
+                fighter.spritesheet.tile_size.y as f32 / 2.,
+                0.0,
+            )))
+            .insert(Hurtbox)
+            .id();
 
-        commands.entity(entity).insert_bundle(active_fighter_bundle);
+        commands
+            .entity(entity)
+            .insert_bundle(active_fighter_bundle)
+            .push_children(&[hurtbox]);
     }
 }
