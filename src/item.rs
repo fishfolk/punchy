@@ -32,15 +32,10 @@ impl ItemBundle {
         }
     }
 
-    pub fn spawn(
-        mut commands: EntityCommands,
-        location: Vec3,
-        item_meta: Option<&ItemMeta>
-    ) {
+    pub fn spawn(mut commands: EntityCommands, location: Vec3, item_meta: Option<&ItemMeta>) {
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-        let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
-            location + ground_offset,
-        ));
+        let transform_bundle =
+            TransformBundle::from_transform(Transform::from_translation(location + ground_offset));
 
         commands.insert_bundle(transform_bundle);
 

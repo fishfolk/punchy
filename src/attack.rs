@@ -157,7 +157,7 @@ fn breakable_system(
                 if let Ok(mut breakable) = despawn_query.get_mut(**e) {
                     let drop = breakable.1;
                     let breakable = &mut breakable.0;
-                    
+
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
                     } else {
