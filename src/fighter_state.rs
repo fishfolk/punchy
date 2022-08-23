@@ -7,7 +7,7 @@ use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
     animation::{Animation, Facing},
-    attack::{Attack, AttackFrames},
+    attack::Attack,
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
     consts,
@@ -260,7 +260,7 @@ pub struct KnockedBack {
     pub timer: Timer,
 }
 impl KnockedBack {
-    pub const PRIORITY: i32 = 20;
+    pub const PRIORITY: i32 = 40;
     pub const ANIMATION_LEFT: &'static str = "knocked_left";
     pub const ANIMATION_RIGHT: &'static str = "knocked_right";
 }
@@ -295,8 +295,8 @@ fn collect_player_actions(
         //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) {
             transition_intents.push_back(StateTransition::new(
-                Punching::default(),
-                Punching::PRIORITY,
+                Flopping::default(),
+                Flopping::PRIORITY,
                 false,
             ));
         }
@@ -351,7 +351,7 @@ fn collect_attack_knockbacks(
                 KnockedBack {
                     //Knockback velocity feels strange right now
                     velocity: event.damage_velocity,
-                    timer: Timer::from_seconds(0.18, false),
+                    timer: Timer::from_seconds(0.50, false),
                 },
                 KnockedBack::PRIORITY,
                 false,
@@ -570,9 +570,17 @@ fn flopping(
                 // Start the attack  from the beginning
                 animation.play(Flopping::ANIMATION, false);
 
+                let mut offset = fighter.attack.hitbox.offset;
+                if facing.is_left() {
+                    offset.x *= -1.0
+                }
+                let attack_frames = fighter.attack.frames;
+
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::default())
+                    .spawn_bundle(TransformBundle::from_transform(
+                        Transform::from_translation(offset.extend(0.0)),
+                    ))
                     .insert(Sensor)
                     .insert(ActiveEvents::COLLISION_EVENTS)
                     .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
@@ -596,12 +604,7 @@ fn flopping(
                             Vec2::X
                         } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
                     })
-                    // TODO: Read from figher metadata
-                    .insert(AttackFrames {
-                        startup: 0,
-                        active: 3,
-                        recovery: 4,
-                    })
+                    .insert(attack_frames)
                     .id();
                 commands.entity(entity).push_children(&[attack_entity]);
 
@@ -614,36 +617,39 @@ fn flopping(
                     commands.entity(entity).insert(fx_playback);
                 }
             }
-        }
 
-        // Reset velocity
-        **velocity = Vec2::ZERO;
-
-        // Do a forward jump thing
-        //TODO: Fix hacky way to get a forward jump
-        if animation.current_frame < 3 {
-            if facing.is_left() {
-                velocity.x -= 200.0;
-            } else {
-                velocity.x += 200.0;
-            }
-
-            if animation.current_frame < 1 {
-                velocity.y += 180.0;
-            } else if animation.current_frame < 3 {
-                velocity.y -= 90.0;
-            }
-        }
-
-        if animation.is_finished() {
-            // Stop moving
+            // Reset velocity
             **velocity = Vec2::ZERO;
 
-            // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
-            transform.translation.y = flopping.start_y;
+            // Do a forward jump thing
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame < fighter.attack.frames.recovery {
+                if facing.is_left() {
+                    velocity.x -= 200.0;
+                } else {
+                    velocity.x += 200.0;
+                }
+            }
 
-            // Set flopping to finished
-            flopping.is_finished = true;
+            if animation.current_frame < fighter.attack.frames.startup {
+                let v_per_frame = 200.0 / fighter.attack.frames.startup as f32;
+                velocity.y += v_per_frame;
+            } else if animation.current_frame < fighter.attack.frames.active {
+                let v_per_frame =
+                    200.0 / (fighter.attack.frames.active - fighter.attack.frames.startup) as f32;
+                velocity.y -= v_per_frame;
+            }
+
+            if animation.is_finished() {
+                // Stop moving
+                **velocity = Vec2::ZERO;
+
+                // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
+                transform.translation.y = flopping.start_y;
+
+                // Set flopping to finished
+                flopping.is_finished = true;
+            }
         }
     }
 }

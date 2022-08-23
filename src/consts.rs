@@ -23,7 +23,7 @@ pub const MAX_Y: f32 = (GROUND_HEIGHT / 2.) + GROUND_Y;
 pub const MIN_Y: f32 = -(GROUND_HEIGHT / 2.) + GROUND_Y;
 
 //TODO: remove in favor of loading attack velocity from YAML
-pub const ATTACK_VELOCITY: f32 = 250.0;
+pub const ATTACK_VELOCITY: f32 = 80.0;
 
 pub const ITEM_LAYER: f32 = 100.;
 pub const ITEM_WIDTH: f32 = 30.;
