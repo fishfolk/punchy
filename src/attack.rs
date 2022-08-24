@@ -174,7 +174,7 @@ fn breakable_system(
                                 item: String::new(),
                                 item_handle: drop.item.clone(),
                             };
-                            let item_bundle = ItemBundle::new(&item_spawn_meta); //ItemBundle {item: Item, name: Name::new("Map Item"), item_meta_handle: drop.item.clone()};
+                            let item_bundle = ItemBundle::new(&item_spawn_meta);
                             let item_commands = commands.spawn_bundle(item_bundle);
                             ItemBundle::spawn(item_commands, &item_spawn_meta, &items_assets)
                         }
