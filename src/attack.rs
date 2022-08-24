@@ -7,9 +7,9 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
+    item::ItemBundle,
     metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
     GameState,
-    item::ItemBundle
 };
 
 pub struct AttackPlugin;
