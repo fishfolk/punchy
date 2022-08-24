@@ -7,8 +7,9 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
-    metadata::FighterMeta,
+    metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
     GameState,
+    item::ItemBundle
 };
 
 pub struct AttackPlugin;
@@ -42,7 +43,10 @@ pub struct Attack {
 }
 
 #[derive(Component)]
-pub struct Drop;
+pub struct Drop {
+    pub item: Handle<ItemMeta>,
+    pub location: Vec3,
+}
 
 /// A component that depawns an entity after collision.
 #[derive(Component, Clone, Copy, Default, Reflect)]
@@ -150,6 +154,7 @@ fn breakable_system(
     mut events: EventReader<CollisionEvent>,
     mut despawn_query: Query<(&mut Breakable, Option<&Drop>)>,
     mut commands: Commands,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
@@ -163,8 +168,15 @@ fn breakable_system(
                     } else {
                         commands.entity(**e).despawn_recursive();
 
-                        if drop.is_some() {
-                            println!("Drop item")
+                        if let Some(drop) = drop {
+                            let item_spawn_meta = ItemSpawnMeta {
+                                location: drop.location,
+                                item: String::new(),
+                                item_handle: drop.item.clone(),
+                            };
+                            let item_bundle = ItemBundle::new(&item_spawn_meta); //ItemBundle {item: Item, name: Name::new("Map Item"), item_meta_handle: drop.item.clone()};
+                            let item_commands = commands.spawn_bundle(item_bundle);
+                            ItemBundle::spawn(item_commands, &item_spawn_meta, &items_assets)
                         }
                     }
                 }

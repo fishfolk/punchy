@@ -367,8 +367,7 @@ fn load_level(
         // Spawn the items
         for item_spawn_meta in &level.items {
             let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
-            let item_meta = items_assets.get(&item_spawn_meta.item_handle);
-            ItemBundle::spawn(item_commands, item_spawn_meta.location, item_meta)
+            ItemBundle::spawn(item_commands, item_spawn_meta, &items_assets)
         }
 
         commands.insert_resource(level.clone());

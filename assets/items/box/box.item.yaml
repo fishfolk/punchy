@@ -9,3 +9,12 @@ kind: !Box
     hurtbox:
         size: [36, 52]
         offset: [0, 0]
+    item:
+        name: Health
+
+        image:
+            image: health.png
+            image_size: [22, 20]
+
+        kind: !Health
+            health: 1000000 # Refill all of it
