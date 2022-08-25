@@ -47,11 +47,17 @@ impl ItemBundle {
         let item_meta = items_assets.get(&item_spawn_meta.item_handle);
         if let Some(item_meta) = item_meta {
             if let ItemKind::BreakableBox { hurtbox, hits, .. } = &item_meta.kind {
-                //let item = items_assets.add(item);
-
+                let physics_bundle = PhysicsBundle {
+                    collider: (Collider::cuboid(hurtbox.size.x / 2., hurtbox.size.y / 2.)),
+                    collision_groups: CollisionGroups::new(
+                        BodyLayers::ENEMY,
+                        BodyLayers::PLAYER_ATTACK,
+                    ),
+                    ..Default::default()
+                };
                 commands
                     .insert(Damageable(true))
-                    .insert_bundle(PhysicsBundle::new(hurtbox, BodyLayers::ALL))
+                    .insert_bundle(physics_bundle)
                     .insert(Breakable::new(*hits))
                     .insert(Drop {
                         item: item_spawn_meta.item_handle.clone(),
