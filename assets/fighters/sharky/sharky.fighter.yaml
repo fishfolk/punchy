@@ -1,7 +1,5 @@
 name: Scrumptious Sharky
 
-size: [36, 48]
-
 hurtbox:
   size: [36, 48]
   offset: [0, 0]

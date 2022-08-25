@@ -105,14 +105,15 @@ impl ActiveFighterBundle {
             // physics_bundle: PhysicsBundle::new(&fighter.hurtbox, body_layers),
             idling: Idling,
             state_transition_intents: default(),
-            ysort: YSort(fighter.spritesheet.tile_size.y as f32 / 2.),
+            // ysort: YSort(fighter.spritesheet.tile_size.y as f32 / 2.),
+            ysort: YSort(0.),
             velocity: default(),
         };
         let hurtbox = commands
             .spawn_bundle(PhysicsBundle::new(&fighter.hurtbox, body_layers))
             .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
                 0.0,
-                fighter.spritesheet.tile_size.y as f32 / 2.,
+                fighter.size.y,
                 0.0,
             )))
             .insert(Hurtbox)

@@ -1,7 +1,5 @@
 name: Big Bass
 
-size: [130, 176]
-
 hurtbox:
   size: [96, 120]
   offset: [0, -16]

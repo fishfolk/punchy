@@ -284,6 +284,10 @@ impl AssetLoader for FighterLoader {
                     .with_dependency(texture_path),
                 );
                 meta.spritesheet.atlas_handle.push(atlas_handle);
+                meta.size = Vec2::new(
+                    meta.spritesheet.tile_size.x as f32 / 2.,
+                    meta.spritesheet.tile_size.y as f32 / 2.,
+                );
             }
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));

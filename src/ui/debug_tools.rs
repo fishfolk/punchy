@@ -213,7 +213,7 @@ fn draw_ysort_lines(
         for (ysort, fighter_meta, transform) in query.iter() {
             //If the fighter meta is not loaded default to 16.0
             let half_width = if let Some(meta) = fighter_assets.get(fighter_meta) {
-                meta.spritesheet.tile_size.x as f32 / 2.
+                meta.size.x
             } else {
                 16.0
             };
