@@ -5,7 +5,7 @@ image:
     image_size: [32, 32]
 
 kind: !BreakableBox
-    hits: 10
+    hits: 2
     hurtbox:
         size: [36, 52]
         offset: [0, 0]

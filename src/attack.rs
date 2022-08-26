@@ -44,7 +44,7 @@ pub struct Attack {
 
 #[derive(Component)]
 pub struct Drop {
-    pub item: Handle<ItemMeta>,
+    pub item: ItemMeta,
     pub location: Vec3,
 }
 
@@ -154,7 +154,7 @@ fn breakable_system(
     mut events: EventReader<CollisionEvent>,
     mut despawn_query: Query<(&mut Breakable, Option<&Drop>)>,
     mut commands: Commands,
-    items_assets: Res<Assets<ItemMeta>>,
+    mut items_assets: ResMut<Assets<ItemMeta>>,
 ) {
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
@@ -172,11 +172,11 @@ fn breakable_system(
                             let item_spawn_meta = ItemSpawnMeta {
                                 location: drop.location,
                                 item: String::new(),
-                                item_handle: drop.item.clone(),
+                                item_handle: items_assets.add(drop.item.clone()),
                             };
                             let item_bundle = ItemBundle::new(&item_spawn_meta);
                             let item_commands = commands.spawn_bundle(item_bundle);
-                            ItemBundle::spawn(item_commands, &item_spawn_meta, &items_assets)
+                            ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
                         }
                     }
                 }

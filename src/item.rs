@@ -35,7 +35,7 @@ impl ItemBundle {
     pub fn spawn(
         mut commands: EntityCommands,
         item_spawn_meta: &ItemSpawnMeta,
-        items_assets: &Res<Assets<ItemMeta>>,
+        items_assets: &mut ResMut<Assets<ItemMeta>>,
     ) {
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
         let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
@@ -44,18 +44,23 @@ impl ItemBundle {
 
         commands.insert_bundle(transform_bundle);
 
-        let item_meta = items_assets.get(&item_spawn_meta.item_handle);
+        let item_meta = items_assets.get_mut(&item_spawn_meta.item_handle);
         if let Some(item_meta) = item_meta {
-            if let ItemKind::BreakableBox { hurtbox, hits, .. } = &item_meta.kind {
+            if let ItemKind::BreakableBox {
+                hurtbox,
+                hits,
+                item,
+            } = &item_meta.kind
+            {
                 let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::ENEMY);
-                physics_bundle.collision_groups.filters = BodyLayers::ENEMY_ATTACK;
+                physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
                 commands
                     .insert(Damageable(true))
                     .insert_bundle(physics_bundle)
                     .insert(Breakable::new(*hits))
                     .insert(Drop {
-                        item: item_spawn_meta.item_handle.clone(),
+                        item: *item.clone(),
                         location: item_spawn_meta.location,
                     });
             }
