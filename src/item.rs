@@ -6,7 +6,6 @@ use crate::{
     attack::{Attack, Breakable, Drop},
     collision::{BodyLayers, PhysicsBundle},
     consts,
-    damage::Damageable,
     lifetime::Lifetime,
     metadata::{ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
@@ -44,8 +43,7 @@ impl ItemBundle {
 
         commands.insert_bundle(transform_bundle);
 
-        let item_meta = items_assets.get_mut(&item_spawn_meta.item_handle);
-        if let Some(item_meta) = item_meta {
+        if let Some(item_meta) = items_assets.get_mut(&item_spawn_meta.item_handle) {
             if let ItemKind::BreakableBox {
                 hurtbox,
                 hits,
@@ -56,7 +54,6 @@ impl ItemBundle {
                 physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
                 commands
-                    .insert(Damageable(true))
                     .insert_bundle(physics_bundle)
                     .insert(Breakable::new(*hits))
                     .insert(Drop {
