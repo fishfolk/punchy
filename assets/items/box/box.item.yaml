@@ -12,7 +12,7 @@ kind: !BreakableBox
     hurtbox:
         size: [36, 52]
         offset: [0, 0]
-        
+
     item:
         name: Bottle
 
@@ -22,3 +22,4 @@ kind: !BreakableBox
 
         kind: !Throwable
             damage: 10
+            

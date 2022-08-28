@@ -274,6 +274,9 @@ impl Dying {
     pub const ANIMATION: &'static str = "dying";
 }
 
+#[derive(Component)]
+pub struct BeingHold;
+
 //
 // Fighter input collector systems
 //
@@ -952,9 +955,10 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory, &Children), With<Throwing>>,
+    being_hold: Query<Entity, With<BeingHold>>,
 ) {
-    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
+    for (entity, fighter_transform, facing, mut inventory, children) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(item_meta) = inventory.take() {
             // Check what kind of item this is.
@@ -986,6 +990,12 @@ fn throwing(
                             item: *item.clone(),
                             drop: false,
                         });
+
+                    for &child in children.iter() {
+                        if being_hold.contains(child) {
+                            commands.entity(child).despawn_recursive();
+                        }
+                    }
                 }
             }
         }
@@ -1038,6 +1048,24 @@ fn grabbing(
                             }
                             ItemKind::BreakableBox { .. } => {
                                 // If its throwable, pick up the item
+                                if let Some(item) = items_assets.get(item) {
+                                    let child = commands
+                                        .spawn()
+                                        .insert_bundle(SpriteBundle {
+                                            texture: item.image.image_handle.clone(),
+                                            transform: Transform::from_xyz(
+                                                0.,
+                                                consts::THROW_ITEM_OFFSET.y
+                                                    + item.image.image_size.y / 3.8,
+                                                consts::PROJECTILE_Z,
+                                            ),
+                                            ..default()
+                                        })
+                                        .insert(BeingHold)
+                                        .id();
+                                    commands.entity(fighter_ent).add_child(child);
+                                }
+
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
