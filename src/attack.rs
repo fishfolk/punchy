@@ -6,11 +6,11 @@ use serde::Deserialize;
 
 use crate::{
     animation::Animation,
+    consts,
     damage::{DamageEvent, Damageable, Health},
     item::ItemBundle,
     metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
     GameState,
-    consts
 };
 
 pub struct AttackPlugin;
@@ -182,7 +182,7 @@ fn drop_system(
     for (drop, transform, entity) in &query {
         if drop.drop {
             let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-        
+
             let item_spawn_meta = ItemSpawnMeta {
                 location: transform.translation - ground_offset,
                 item: String::new(),
