@@ -5,16 +5,20 @@ image:
     image_size: [32, 32]
 
 kind: !BreakableBox
-    hits: 2
+    hits: 1
+
+    damage: 20
+
     hurtbox:
         size: [36, 52]
         offset: [0, 0]
+        
     item:
-        name: Health
+        name: Bottle
 
         image:
-            image: health.png
-            image_size: [22, 20]
+            image: bottle.png
+            image_size: [11, 31]
 
-        kind: !Health
-            health: 1000000 # Refill all of it
+        kind: !Throwable
+            damage: 10

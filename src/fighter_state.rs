@@ -7,7 +7,7 @@ use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
     animation::{Animation, Facing},
-    attack::Attack,
+    attack::{Attack, Drop},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
     consts,
@@ -974,8 +974,18 @@ fn throwing(
                 ItemKind::Health { health: _ } => {
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
-                ItemKind::BreakableBox { .. } => {
-                    panic!("Box item can't be thrown for now");
+                ItemKind::BreakableBox { ref item, .. } => {
+                    // Throw the item!
+                    commands
+                        .spawn_bundle(Projectile::from_thrown_item(
+                            fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                            &item_meta,
+                            facing,
+                        ))
+                        .insert(Drop {
+                            item: *item.clone(),
+                            drop: false,
+                        });
                 }
             }
         }
@@ -1026,7 +1036,13 @@ fn grabbing(
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::BreakableBox { .. } => {} //Can't grab box for now
+                            ItemKind::BreakableBox { .. } => {
+                                // If its throwable, pick up the item
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+                            }
                         }
                     }
                     break;

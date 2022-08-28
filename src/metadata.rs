@@ -126,6 +126,7 @@ pub enum ItemKind {
         health: i32,
     },
     BreakableBox {
+        damage: i32,
         hurtbox: ColliderMeta,
         hits: i32,
         item: Box<ItemMeta>,

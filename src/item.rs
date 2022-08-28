@@ -48,6 +48,7 @@ impl ItemBundle {
                 hurtbox,
                 hits,
                 item,
+                ..
             } = &item_meta.kind
             {
                 let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::ENEMY);
@@ -58,7 +59,7 @@ impl ItemBundle {
                     .insert(Breakable::new(*hits))
                     .insert(Drop {
                         item: *item.clone(),
-                        location: item_spawn_meta.location,
+                        drop: false,
                     });
             }
         }
@@ -100,9 +101,7 @@ impl Projectile {
                 damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
                     crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
-                    crate::metadata::ItemKind::BreakableBox { .. } => {
-                        panic!("Cannot throw box yet")
-                    }
+                    crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
                 },
                 velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
             },
