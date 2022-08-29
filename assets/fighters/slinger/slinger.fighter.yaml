@@ -1,7 +1,5 @@
 name: Slinger
 
-size: [36, 48]
-
 hurtbox:
   size: [36, 48]
   offset: [0, 0]
@@ -16,7 +14,12 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: [Slinger_Skin1.png, Slinger_Skin2.png, Slinger_Skin3.png]
+  image:
+    [
+      slinger_cap_80_80.png,
+      slinger_headband_80_80.png,
+      slinger_goggles_80_80.png,
+    ]
   tile_size: [80, 80]
   columns: 7
   rows: 6

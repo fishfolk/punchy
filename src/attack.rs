@@ -45,10 +45,7 @@ pub struct Attack {
 }
 
 #[derive(Component)]
-pub struct Drop {
-    pub item: ItemMeta,
-    pub drop: bool,
-}
+pub struct Hurtbox;
 
 /// A component that depawns an entity after collision.
 #[derive(Component, Clone, Copy, Default, Reflect)]
@@ -66,6 +63,12 @@ impl Breakable {
             hit_count: 0,
         }
     }
+}
+
+#[derive(Component)]
+pub struct Drop {
+    pub item: ItemMeta,
+    pub drop: bool,
 }
 
 /// A component identifying the attacks active collision frames.
@@ -122,31 +125,35 @@ fn attack_damage_system(
     mut events: EventReader<CollisionEvent>,
     mut damageables: Query<(&mut Health, &Damageable)>,
     attacks: Query<&Attack>,
+    hurtboxes: Query<&Parent, With<Hurtbox>>,
     mut event_writer: EventWriter<DamageEvent>,
 ) {
     for event in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = event {
-            let (attack_entity, damageable_entity) =
-                if attacks.contains(*e1) && damageables.contains(*e2) {
+            let (attack_entity, hurtbox_entity) =
+                if attacks.contains(*e1) && hurtboxes.contains(*e2) {
                     (*e1, *e2)
-                } else if attacks.contains(*e2) && damageables.contains(*e1) {
+                } else if attacks.contains(*e2) && hurtboxes.contains(*e1) {
                     (*e2, *e1)
                 } else {
                     continue;
                 };
 
             let attack = attacks.get(attack_entity).unwrap();
-            let (mut health, damageable) = damageables.get_mut(damageable_entity).unwrap();
+            if let Ok(hurtbox_parent) = hurtboxes.get(hurtbox_entity) {
+                let hurtbox_parent_entity = hurtbox_parent.get();
+                let (mut health, damageable) = damageables.get_mut(hurtbox_parent_entity).unwrap();
 
-            if **damageable {
-                **health -= attack.damage;
+                if **damageable {
+                    **health -= attack.damage;
 
-                event_writer.send(DamageEvent {
-                    damageing_entity: attack_entity,
-                    damage_velocity: attack.velocity,
-                    damage: attack.damage,
-                    damaged_entity: damageable_entity,
-                })
+                    event_writer.send(DamageEvent {
+                        damageing_entity: attack_entity,
+                        damage_velocity: attack.velocity,
+                        damage: attack.damage,
+                        damaged_entity: hurtbox_parent_entity,
+                    })
+                }
             }
         }
     }
