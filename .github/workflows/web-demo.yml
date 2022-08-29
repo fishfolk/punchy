@@ -3,7 +3,7 @@ name: Publish Web Demo
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 jobs:
   publish-web-demo:
     runs-on: ubuntu-latest
@@ -31,7 +31,7 @@ jobs:
 
       - uses: jetli/wasm-bindgen-action@v0.1.0
         with:
-          version: '0.2.81'
+          version: "0.2.82"
 
       - name: Build WASM Release 🔨
         run: just build-release-web
@@ -58,4 +58,3 @@ jobs:
           clean: false
           target-folder: player
           ssh-key: ${{ secrets.MASTER_GH_PAGES_DEPLOY_KEY }}
-      

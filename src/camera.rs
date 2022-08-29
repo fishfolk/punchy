@@ -26,6 +26,7 @@ impl Plugin for CameraPlugin {
 
 /// Component to sort entities by their y position.
 /// Takes in a offset usually the sprite's height.
+/// the offset is currently unused, but may be used again if we implement virtual z for jumping
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct YSort(pub f32);
@@ -33,7 +34,9 @@ pub struct YSort(pub f32);
 /// Applies the y-sorting to the entities Z position.
 pub fn y_sort(mut query: Query<(&mut Transform, &YSort)>) {
     for (mut transform, ysort) in query.iter_mut() {
-        transform.translation.z = ysort.0 - transform.translation.y;
+        //temporary fix for boss being able to move behind parallax, consider removing the 300.
+        //offset or moving to a const
+        transform.translation.z = ysort.0 + 300. - transform.translation.y;
     }
 }
 
