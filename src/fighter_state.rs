@@ -294,9 +294,14 @@ fn collect_player_actions(
     >,
 ) {
     for (action_state, mut transition_intents, inventory, stats) in &mut players {
+        let mut with_box = false;
+        if let Some(inventory) = &inventory.0 {
+            with_box = matches!(inventory.kind, ItemKind::BreakableBox { .. });
+        }
+
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
-        if action_state.just_pressed(PlayerAction::Attack) {
+        if action_state.just_pressed(PlayerAction::Attack) && !with_box {
             transition_intents.push_back(StateTransition::new(
                 Flopping::default(),
                 Flopping::PRIORITY,
@@ -955,7 +960,16 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory, &Children), With<Throwing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &Facing,
+            &mut Inventory,
+            Option<&Children>,
+        ),
+        With<Throwing>,
+    >,
     being_hold: Query<Entity, With<BeingHold>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory, children) in &mut fighters {
@@ -991,9 +1005,11 @@ fn throwing(
                             drop: false,
                         });
 
-                    for &child in children.iter() {
-                        if being_hold.contains(child) {
-                            commands.entity(child).despawn_recursive();
+                    if let Some(children) = children {
+                        for &child in children.iter() {
+                            if being_hold.contains(child) {
+                                commands.entity(child).despawn_recursive();
+                            }
                         }
                     }
                 }
