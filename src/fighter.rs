@@ -84,10 +84,9 @@ impl ActiveFighterBundle {
                     sprite: TextureAtlasSprite {
                         anchor: bevy::sprite::Anchor::Custom(Vec2::new(
                             0.,
-                            //pixel padding/foot height to anchor calculation
+                            //calculate anchor to align with feet
                             0.5 * FOOT_PADDING / fighter.center_y - 0.5,
                         )),
-                        // anchor: bevy::sprite::Anchor::BottomCenter,
                         ..default()
                     },
                     texture_atlas: fighter
