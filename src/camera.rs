@@ -32,8 +32,9 @@ pub struct YSort(pub f32);
 
 /// Applies the y-sorting to the entities Z position.
 pub fn y_sort(mut query: Query<(&mut Transform, &YSort)>) {
-    for (mut transform, ysort) in query.iter_mut() {
-        transform.translation.z = ysort.0 - transform.translation.y;
+    for (mut transform, _ysort) in query.iter_mut() {
+        //temporary fix for boss being able to move behind parallax
+        transform.translation.z = 300. - transform.translation.y;
     }
 }
 
