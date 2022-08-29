@@ -1,7 +1,5 @@
 name: Brute
 
-size: [36, 58]
-
 hurtbox:
   size: [36, 58]
   offset: [0, 0]
@@ -16,8 +14,9 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: [Brute_Skin1.png, Brute_Skin2.png, Brute_Skin3.png]
-  tile_size: [64, 64]
+  image:
+    [brute_base_64_80.png, brute_eyepatch_64_80.png, brute_helmet_64_80.png]
+  tile_size: [64, 80]
   columns: 8
   rows: 6
 

@@ -87,7 +87,10 @@ impl LevelMeta {
 #[uuid = "d5e040c4-3de7-4b8a-b6c2-27f82f58d8f0"]
 pub struct FighterMeta {
     pub name: String,
-    pub size: Vec2,
+    #[serde(skip)]
+    pub center_y: f32,
+    #[serde(skip)]
+    pub collision_offset: f32,
     pub stats: Stats,
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,

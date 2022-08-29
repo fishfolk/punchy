@@ -1,7 +1,5 @@
 name: Dev
 
-size: [36, 48]
-
 hurtbox:
   size: [36, 48]
   offset: [0, 0]
@@ -16,10 +14,7 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  #right now load/spawn selects a spritesheet randomly from all available.
-  #want to change this so that individual animations can be specified to correspond to ranges and spritesheet
-  #or maybe not
-  image: [PlayerDev96x80.png]
+  image: [dev_base_96_80.png]
   tile_size: [96, 80]
   columns: 15
   rows: 14

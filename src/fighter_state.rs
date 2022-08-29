@@ -574,6 +574,7 @@ fn flopping(
                 if facing.is_left() {
                     offset.x *= -1.0
                 }
+                offset.y += fighter.collision_offset;
                 let attack_frames = fighter.attack.frames;
 
                 // Spawn the attack entity
@@ -689,6 +690,7 @@ fn punching(
                 if facing.is_left() {
                     offset.x *= -1.0
                 }
+                offset.y += fighter.collision_offset;
                 let attack_frames = fighter.attack.frames;
                 // Spawn the attack entity
                 let attack_entity = commands
@@ -774,6 +776,7 @@ fn ground_slam(
             if facing.is_left() {
                 offset.x *= -1.0
             }
+            offset.y += fighter.collision_offset;
             let attack_frames = fighter.attack.frames;
             if !ground_slam.has_started {
                 ground_slam.has_started = true;
