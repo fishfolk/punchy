@@ -3,6 +3,7 @@ use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
 use crate::attack::Hurtbox;
+use crate::consts::FOOT_PADDING;
 use crate::metadata::ItemMeta;
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
@@ -81,7 +82,12 @@ impl ActiveFighterBundle {
             animated_spritesheet_bundle: AnimatedSpriteSheetBundle {
                 sprite_sheet: SpriteSheetBundle {
                     sprite: TextureAtlasSprite {
-                        anchor: bevy::sprite::Anchor::BottomCenter,
+                        anchor: bevy::sprite::Anchor::Custom(Vec2::new(
+                            0.,
+                            //pixel padding/foot height to anchor calculation
+                            0.5 * FOOT_PADDING / fighter.center_y - 0.5,
+                        )),
+                        // anchor: bevy::sprite::Anchor::BottomCenter,
                         ..default()
                     },
                     texture_atlas: fighter
@@ -113,7 +119,7 @@ impl ActiveFighterBundle {
             .spawn_bundle(PhysicsBundle::new(&fighter.hurtbox, body_layers))
             .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
                 0.0,
-                fighter.size.y,
+                fighter.collision_offset,
                 0.0,
             )))
             .insert(Hurtbox)

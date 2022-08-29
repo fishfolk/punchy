@@ -88,7 +88,9 @@ impl LevelMeta {
 pub struct FighterMeta {
     pub name: String,
     #[serde(skip)]
-    pub size: Vec2,
+    pub center_y: f32,
+    #[serde(skip)]
+    pub collision_offset: f32,
     pub stats: Stats,
     pub hud: FighterHudMeta,
     pub spritesheet: FighterSpritesheetMeta,
