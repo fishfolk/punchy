@@ -996,7 +996,6 @@ fn throwing(
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
                 ItemKind::BreakableBox { ref item, .. } => {
-                    // Throw the item!
                     commands
                         .spawn_bundle(Projectile::from_thrown_item(
                             fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
@@ -1008,6 +1007,7 @@ fn throwing(
                             drop: false,
                         });
 
+                    // Despawn head sprite
                     if let Some(children) = children {
                         for &child in children.iter() {
                             if being_hold.contains(child) {
@@ -1066,24 +1066,26 @@ fn grabbing(
                                 commands.entity(item_ent).despawn_recursive();
                             }
                             ItemKind::BreakableBox { .. } => {
-                                // If its throwable, pick up the item
-                                if let Some(item) = items_assets.get(item) {
-                                    let child = commands
-                                        .spawn()
-                                        .insert_bundle(SpriteBundle {
-                                            texture: item.image.image_handle.clone(),
-                                            transform: Transform::from_xyz(
-                                                0.,
-                                                consts::THROW_ITEM_OFFSET.y
-                                                    + item.image.image_size.y / 3.8,
-                                                consts::PROJECTILE_Z,
-                                            ),
-                                            ..default()
-                                        })
-                                        .insert(BeingHold)
-                                        .id();
-                                    commands.entity(fighter_ent).add_child(child);
-                                }
+                                let image = items_assets
+                                    .get(item)
+                                    .expect("Item not loaded!")
+                                    .clone()
+                                    .image;
+
+                                let child = commands
+                                    .spawn()
+                                    .insert_bundle(SpriteBundle {
+                                        texture: image.image_handle.clone(),
+                                        transform: Transform::from_xyz(
+                                            0.,
+                                            consts::THROW_ITEM_OFFSET.y + image.image_size.y / 3.8, // Fix
+                                            consts::PROJECTILE_Z,
+                                        ),
+                                        ..default()
+                                    })
+                                    .insert(BeingHold)
+                                    .id();
+                                commands.entity(fighter_ent).add_child(child);
 
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =

@@ -65,9 +65,12 @@ impl Breakable {
     }
 }
 
+/// A component that with Breakable, drops a item when broke.
 #[derive(Component)]
 pub struct Drop {
+    /// Item data
     pub item: ItemMeta,
+    /// Set true to drop
     pub drop: bool,
 }
 
@@ -182,7 +185,7 @@ fn breakable_system(
 }
 
 fn drop_system(
-    query: Query<(&Drop, &Transform, Entity)>,
+    query: Query<(&Drop, &Transform, Entity), With<Breakable>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
     mut commands: Commands,
 ) {
