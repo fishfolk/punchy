@@ -43,26 +43,32 @@ impl ItemBundle {
 
         commands.insert_bundle(transform_bundle);
 
+        let mut item = None;
         let item_meta = items_assets
             .get_mut(&item_spawn_meta.item_handle)
             .expect("Item not loaded!");
         if let ItemKind::BreakableBox {
             hurtbox,
             hits,
-            item,
+            item_handle,
             ..
         } = &item_meta.kind
         {
+            item = Some(item_handle.clone());
+
             let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::BREAKABLE_ITEM);
             physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
             commands
                 .insert_bundle(physics_bundle)
-                .insert(Breakable::new(*hits))
-                .insert(Drop {
-                    item: *item.clone(),
-                    drop: false,
-                });
+                .insert(Breakable::new(*hits));
+        }
+
+        if let Some(item) = item {
+            commands.insert(Drop {
+                item: items_assets.get(&item).expect("Item not loaded!").clone(),
+                drop: false,
+            });
         }
     }
 }
@@ -116,7 +122,10 @@ impl Projectile {
             collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
             //TODO: define collision layer based on the fighter shooting projectile, load for asset
             //files of fighter which "team" they are on
-            collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM),
+            collision_groups: CollisionGroups::new(
+                BodyLayers::PLAYER_ATTACK,
+                BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM,
+            ),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
             breakable: Breakable::new(0),
         }

@@ -974,6 +974,7 @@ fn throwing(
         With<Throwing>,
     >,
     being_hold: Query<Entity, With<BeingHold>>,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory, children) in &mut fighters {
         // If the player has an item in their inventory
@@ -995,7 +996,9 @@ fn throwing(
                 ItemKind::Health { health: _ } => {
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
-                ItemKind::BreakableBox { ref item, .. } => {
+                ItemKind::BreakableBox {
+                    ref item_handle, ..
+                } => {
                     commands
                         .spawn_bundle(Projectile::from_thrown_item(
                             fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
@@ -1003,7 +1006,10 @@ fn throwing(
                             facing,
                         ))
                         .insert(Drop {
-                            item: *item.clone(),
+                            item: items_assets
+                                .get(item_handle)
+                                .expect("Drop item not loaded!")
+                                .clone(),
                             drop: false,
                         });
 

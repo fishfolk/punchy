@@ -132,7 +132,9 @@ pub enum ItemKind {
         damage: i32,
         hurtbox: ColliderMeta,
         hits: i32,
-        item: Box<ItemMeta>,
+        item: String,
+        #[serde(skip)]
+        item_handle: Handle<ItemMeta>,
     },
 }
 

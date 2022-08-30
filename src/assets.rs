@@ -314,6 +314,20 @@ impl AssetLoader for ItemLoader {
             let self_path = load_context.path();
             let mut dependencies = Vec::new();
 
+            if let ItemKind::BreakableBox {
+                ref mut item_handle,
+                ref item,
+                ..
+            } = meta.kind
+            {
+                //Loads dropped item
+                let (item_path, new_item_handle) =
+                    get_relative_asset(load_context, self_path, item);
+
+                dependencies.push(item_path);
+                *item_handle = new_item_handle;
+            }
+
             let (image_path, image_handle) =
                 get_relative_asset(load_context, self_path, &meta.image.image);
             dependencies.push(image_path);

@@ -13,13 +13,5 @@ kind: !BreakableBox
         size: [36, 52]
         offset: [0, 0]
 
-    item:
-        name: Bottle
-
-        image:
-            image: bottle.png
-            image_size: [11, 31]
-
-        kind: !Throwable
-            damage: 10
+    item: &bottle /items/bottle/bottle.item.yaml
             
