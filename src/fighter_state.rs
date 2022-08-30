@@ -1078,7 +1078,7 @@ fn grabbing(
                                         texture: image.image_handle.clone(),
                                         transform: Transform::from_xyz(
                                             0.,
-                                            consts::THROW_ITEM_OFFSET.y + image.image_size.y / 3.8, // Fix
+                                            consts::THROW_ITEM_OFFSET.y + image.image_size.y,
                                             consts::PROJECTILE_Z,
                                         ),
                                         ..default()
