@@ -600,7 +600,7 @@ fn flopping(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY
+                            BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -715,7 +715,7 @@ fn punching(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY
+                            BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },

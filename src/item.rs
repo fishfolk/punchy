@@ -116,7 +116,7 @@ impl Projectile {
             collision_types: ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
             //TODO: define collision layer based on the fighter shooting projectile, load for asset
             //files of fighter which "team" they are on
-            collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY),
+            collision_groups: CollisionGroups::new(BodyLayers::PLAYER_ATTACK, BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
             breakable: Breakable::new(0),
         }
