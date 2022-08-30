@@ -3,7 +3,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
-    attack::{Attack, Breakable, Drop},
+    attack::{Attack, Breakable},
     collision::{BodyLayers, PhysicsBundle},
     consts,
     lifetime::Lifetime,
@@ -43,25 +43,26 @@ impl ItemBundle {
 
         commands.insert_bundle(transform_bundle);
 
-        if let Some(item_meta) = items_assets.get_mut(&item_spawn_meta.item_handle) {
-            if let ItemKind::BreakableBox {
-                hurtbox,
-                hits,
-                item,
-                ..
-            } = &item_meta.kind
-            {
-                let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::ENEMY);
-                physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
+        let item_meta = items_assets
+            .get_mut(&item_spawn_meta.item_handle)
+            .expect("Item not loaded!");
+        if let ItemKind::BreakableBox {
+            hurtbox,
+            hits,
+            item,
+            ..
+        } = &item_meta.kind
+        {
+            let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::BREAKABLE_ITEM);
+            physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
-                commands
-                    .insert_bundle(physics_bundle)
-                    .insert(Breakable::new(*hits))
-                    .insert(Drop {
-                        item: *item.clone(),
-                        drop: false,
-                    });
-            }
+            commands
+                .insert_bundle(physics_bundle)
+                .insert(Breakable::new(*hits))
+                .insert(Drop {
+                    item: *item.clone(),
+                    drop: false,
+                });
         }
     }
 }
@@ -120,4 +121,13 @@ impl Projectile {
             breakable: Breakable::new(0),
         }
     }
+}
+
+/// A component that with Breakable, drops a item when broke.
+#[derive(Component)]
+pub struct Drop {
+    /// Item data
+    pub item: ItemMeta,
+    /// Set true to drop
+    pub drop: bool,
 }

@@ -8,7 +8,7 @@ use crate::{
     animation::Animation,
     consts,
     damage::{DamageEvent, Damageable, Health},
-    item::ItemBundle,
+    item::{Drop, ItemBundle},
     metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
     GameState,
 };
@@ -63,15 +63,6 @@ impl Breakable {
             hit_count: 0,
         }
     }
-}
-
-/// A component that with Breakable, drops a item when broke.
-#[derive(Component)]
-pub struct Drop {
-    /// Item data
-    pub item: ItemMeta,
-    /// Set true to drop
-    pub drop: bool,
 }
 
 /// A component identifying the attacks active collision frames.

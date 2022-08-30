@@ -7,7 +7,7 @@ use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
     animation::{Animation, Facing},
-    attack::{Attack, Drop},
+    attack::Attack,
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
     consts,
@@ -16,7 +16,7 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    item::{Item, Projectile},
+    item::{Drop, Item, Projectile},
     metadata::{FighterMeta, ItemKind, ItemMeta},
     movement::LinearVelocity,
     player::Player,

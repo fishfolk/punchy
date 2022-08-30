@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::attack::Drop;
+use crate::item::Drop;
 
 pub struct LifetimePlugin;
 

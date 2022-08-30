@@ -17,6 +17,7 @@ impl BodyLayers {
     pub const PLAYER: u32 = 1 << 1;
     pub const PLAYER_ATTACK: u32 = 1 << 2;
     pub const ENEMY_ATTACK: u32 = 1 << 3;
+    pub const BREAKABLE_ITEM: u32 = 1 << 4;
     // u32::MAX is a u32 with all of it's bits set to 1, so this will contain all of the layers.
     pub const ALL: u32 = u32::MAX;
 }
