@@ -3,7 +3,7 @@ use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
 use crate::attack::Hurtbox;
-use crate::consts::FOOT_PADDING;
+use crate::consts::{self, FOOT_PADDING};
 use crate::metadata::ItemMeta;
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation},
@@ -111,7 +111,7 @@ impl ActiveFighterBundle {
             idling: Idling,
             state_transition_intents: default(),
             // ysort: YSort(fighter.spritesheet.tile_size.y as f32 / 2.),
-            ysort: YSort(0.),
+            ysort: YSort(consts::FIGHTERS_Z),
             velocity: default(),
         };
         let hurtbox = commands
