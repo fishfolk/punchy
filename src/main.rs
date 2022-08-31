@@ -53,7 +53,7 @@ use ui::UIPlugin;
 use utils::ResetController;
 
 use crate::{
-    damage::DamagePlugin, fighter_state::FighterStatePlugin, input::PlayerAction,
+    damage::DamagePlugin, fighter_state::FighterStatePlugin, input::PlayerAction, item::ItemPlugin,
     lifetime::LifetimePlugin, loading::LoadingPlugin, localization::LocalizationPlugin,
     movement::MovementPlugin, platform::PlatformPlugin, ui::debug_tools::YSortDebugPlugin,
 };
@@ -125,6 +125,7 @@ fn main() {
         .add_plugin(DamagePlugin)
         .add_plugin(LifetimePlugin)
         .add_plugin(CameraPlugin)
+        .add_plugin(ItemPlugin)
         .insert_resource(ParallaxResource::default())
         .add_system_set_to_stage(
             CoreStage::PostUpdate,

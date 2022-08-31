@@ -1,12 +1,11 @@
 use bevy::prelude::*;
 
-use crate::item::Drop;
-
 pub struct LifetimePlugin;
 
 impl Plugin for LifetimePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(CoreStage::Last, lifetime_system);
+        app.add_system_to_stage(CoreStage::Last, lifetime_system)
+            .add_event::<LifetimeEvent>();
     }
 }
 
@@ -17,18 +16,18 @@ pub struct Lifetime(pub Timer);
 /// Despawn entities who's lifetime has expired
 fn lifetime_system(
     mut commands: Commands,
-    mut entities: Query<(Entity, &mut Lifetime, Option<&mut Drop>)>,
+    mut entities: Query<(Entity, &mut Lifetime)>,
     time: Res<Time>,
+    mut event_writer: EventWriter<LifetimeEvent>,
 ) {
-    for (entity, mut lifetime, drop) in &mut entities {
+    for (entity, mut lifetime) in &mut entities {
         lifetime.tick(time.delta());
 
         if lifetime.finished() {
-            if let Some(mut drop) = drop {
-                drop.drop = true;
-            } else {
-                commands.entity(entity).despawn_recursive();
-            }
+            event_writer.send(LifetimeEvent(entity));
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
+
+pub struct LifetimeEvent(pub Entity);

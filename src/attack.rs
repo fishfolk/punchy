@@ -6,10 +6,8 @@ use serde::Deserialize;
 
 use crate::{
     animation::Animation,
-    consts,
     damage::{DamageEvent, Damageable, Health},
-    item::{Drop, ItemBundle},
-    metadata::{FighterMeta, ItemMeta, ItemSpawnMeta},
+    metadata::FighterMeta,
     GameState,
 };
 
@@ -27,11 +25,12 @@ impl Plugin for AttackPlugin {
                     .with_system(activate_hitbox)
                     .with_system(deactivate_hitbox)
                     .with_system(breakable_system)
-                    .with_system(drop_system)
                     .into(),
             )
             // Attack damage is run in PostUpdate to make sure it runs after rapier generates collision events
-            .add_system_to_stage(CoreStage::PostUpdate, attack_damage_system);
+            .add_system_to_stage(CoreStage::PostUpdate, attack_damage_system)
+            // Event for when Breakable breaks
+            .add_event::<BreakableEvent>();
     }
 }
 
@@ -64,6 +63,8 @@ impl Breakable {
         }
     }
 }
+
+pub struct BreakableEvent(pub Entity);
 
 /// A component identifying the attacks active collision frames.
 ///
@@ -155,44 +156,22 @@ fn attack_damage_system(
 
 fn breakable_system(
     mut events: EventReader<CollisionEvent>,
-    mut despawn_query: Query<(&mut Breakable, Option<&mut Drop>)>,
+    mut despawn_query: Query<&mut Breakable>,
     mut commands: Commands,
+    mut event_writer: EventWriter<BreakableEvent>,
 ) {
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
-                if let Ok((mut breakable, drop)) = despawn_query.get_mut(**e) {
+                if let Ok(mut breakable) = despawn_query.get_mut(**e) {
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
-                    } else if let Some(mut drop) = drop {
-                        drop.drop = true;
                     } else {
+                        event_writer.send(BreakableEvent(**e));
                         commands.entity(**e).despawn_recursive();
                     }
                 }
             }
-        }
-    }
-}
-
-fn drop_system(
-    query: Query<(&Drop, &Transform, Entity), With<Breakable>>,
-    mut items_assets: ResMut<Assets<ItemMeta>>,
-    mut commands: Commands,
-) {
-    for (drop, transform, entity) in &query {
-        if drop.drop {
-            let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-
-            let item_spawn_meta = ItemSpawnMeta {
-                location: transform.translation - ground_offset,
-                item: String::new(),
-                item_handle: items_assets.add(drop.item.clone()),
-            };
-            let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-            ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
-
-            commands.entity(entity).despawn_recursive();
         }
     }
 }

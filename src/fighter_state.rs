@@ -1010,7 +1010,6 @@ fn throwing(
                                 .get(item_handle)
                                 .expect("Drop item not loaded!")
                                 .clone(),
-                            drop: false,
                         });
 
                     // Despawn head sprite

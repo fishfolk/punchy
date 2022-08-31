@@ -3,13 +3,21 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
-    attack::{Attack, Breakable},
+    attack::{Attack, Breakable, BreakableEvent},
     collision::{BodyLayers, PhysicsBundle},
     consts,
-    lifetime::Lifetime,
+    lifetime::{Lifetime, LifetimeEvent},
     metadata::{ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
 };
+
+pub struct ItemPlugin;
+
+impl Plugin for ItemPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(drop_system);
+    }
+}
 
 #[derive(Component)]
 pub struct Item;
@@ -67,7 +75,6 @@ impl ItemBundle {
         if let Some(item) = item {
             commands.insert(Drop {
                 item: items_assets.get(&item).expect("Item not loaded!").clone(),
-                drop: false,
             });
         }
     }
@@ -133,10 +140,42 @@ impl Projectile {
 }
 
 /// A component that with Breakable, drops a item when broke.
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Drop {
     /// Item data
     pub item: ItemMeta,
-    /// Set true to drop
-    pub drop: bool,
+}
+
+fn drop_system(
+    query: Query<(&Drop, &Transform, Entity)>,
+    mut items_assets: ResMut<Assets<ItemMeta>>,
+    mut commands: Commands,
+    mut breakable_event: EventReader<BreakableEvent>,
+    mut lifetime_event: EventReader<LifetimeEvent>,
+) {
+    let mut entities = vec![];
+    for BreakableEvent(entity) in breakable_event.iter() {
+        entities.push(*entity);
+    }
+    for LifetimeEvent(entity) in lifetime_event.iter() {
+        entities.push(*entity);
+    }
+
+    for event_ent in &entities {
+        for (drop, transform, entity) in &query {
+            if event_ent == &entity {
+                let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
+
+                let item_spawn_meta = ItemSpawnMeta {
+                    location: transform.translation - ground_offset,
+                    item: String::new(),
+                    item_handle: items_assets.add(drop.item.clone()),
+                };
+                let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+
+                commands.entity(entity).despawn_recursive();
+            }
+        }
+    }
 }
