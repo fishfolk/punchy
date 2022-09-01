@@ -3,10 +3,10 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     animation::Facing,
-    attack::{Attack, Breakable, BreakableEvent},
+    attack::{Attack, Breakable, BrokeEvent},
     collision::{BodyLayers, PhysicsBundle},
     consts,
-    lifetime::{Lifetime, LifetimeEvent},
+    lifetime::{Lifetime, LifetimeExpired},
     metadata::{ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
 };
@@ -147,35 +147,32 @@ pub struct Drop {
 }
 
 fn drop_system(
-    query: Query<(&Drop, &Transform, Entity)>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
     mut commands: Commands,
-    mut breakable_event: EventReader<BreakableEvent>,
-    mut lifetime_event: EventReader<LifetimeEvent>,
+    mut broke_event: EventReader<BrokeEvent>,
+    mut lifetime_event: EventReader<LifetimeExpired>,
 ) {
-    let mut entities = vec![];
-    for BreakableEvent(entity) in breakable_event.iter() {
-        entities.push(*entity);
-    }
-    for LifetimeEvent(entity) in lifetime_event.iter() {
-        entities.push(*entity);
-    }
-
-    for event_ent in &entities {
-        for (drop, transform, entity) in &query {
-            if event_ent == &entity {
-                let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-
-                let item_spawn_meta = ItemSpawnMeta {
-                    location: transform.translation - ground_offset,
-                    item: String::new(),
-                    item_handle: items_assets.add(drop.item.clone()),
-                };
-                let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-                ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
-
-                commands.entity(entity).despawn_recursive();
-            }
+    let mut drops = vec![];
+    for event in lifetime_event.iter() {
+        if let Some(drop) = event.drop.clone() {
+            drops.push((drop, event.transform.expect("Needs transform to drop!")));
         }
+    }
+    for event in broke_event.iter() {
+        if let Some(drop) = event.drop.clone() {
+            drops.push((drop, event.transform.expect("Needs transform to drop!")));
+        }
+    }
+
+    for (drop, transform) in drops {
+        let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
+
+        let item_spawn_meta = ItemSpawnMeta {
+            location: transform.translation - ground_offset,
+            item: String::new(),
+            item_handle: items_assets.add(drop.item.clone()),
+        };
+        let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+        ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
     }
 }
