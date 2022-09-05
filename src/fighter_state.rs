@@ -300,7 +300,7 @@ fn collect_player_actions(
             &mut StateTransitionIntents,
             &Inventory,
             &Stats,
-            Option<&Holding>
+            Option<&Holding>,
         ),
         With<Player>,
     >,
@@ -308,7 +308,7 @@ fn collect_player_actions(
     for (action_state, mut transition_intents, inventory, stats, holding) in &mut players {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
-        if action_state.just_pressed(PlayerAction::Attack) && holding.is_none(){
+        if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
             transition_intents.push_back(StateTransition::new(
                 Flopping::default(),
                 Flopping::PRIORITY,
@@ -970,20 +970,11 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<
-        (
-            Entity,
-            &Transform,
-            &Facing,
-            &mut Inventory,
-            Option<&Children>,
-        ),
-        With<Throwing>,
-    >,
-    being_hold: Query<Entity, With<BeingHold>>,
+    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    being_hold: Query<(Entity, &Parent), With<BeingHold>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (entity, fighter_transform, facing, mut inventory, children) in &mut fighters {
+    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(item_meta) = inventory.take() {
             // Check what kind of item this is.
@@ -1020,11 +1011,9 @@ fn throwing(
                         });
 
                     // Despawn head sprite
-                    if let Some(children) = children {
-                        for &child in children.iter() {
-                            if being_hold.contains(child) {
-                                commands.entity(child).despawn_recursive();
-                            }
+                    for (head_ent, parent) in being_hold.iter() {
+                        if parent.get() == entity {
+                            commands.entity(head_ent).despawn_recursive();
                         }
                     }
                     commands.entity(entity).remove::<Holding>();
@@ -1132,6 +1121,7 @@ fn holding(
         for parent in being_hold.iter() {
             if parent.get() == entity {
                 already_holding = true;
+                break;
             }
         }
 
