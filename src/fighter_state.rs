@@ -286,7 +286,7 @@ impl Dying {
 }
 
 #[derive(Component)]
-pub struct BeingHold;
+pub struct BeingHeld;
 
 //
 // Fighter input collector systems
@@ -607,7 +607,7 @@ fn flopping(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -722,7 +722,7 @@ fn punching(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -971,7 +971,7 @@ fn dying(
 fn throwing(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
-    being_hold: Query<(Entity, &Parent), With<BeingHold>>,
+    being_held: Query<(Entity, &Parent), With<BeingHeld>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
@@ -1011,7 +1011,7 @@ fn throwing(
                         });
 
                     // Despawn head sprite
-                    for (head_ent, parent) in being_hold.iter() {
+                    for (head_ent, parent) in being_held.iter() {
                         if parent.get() == entity {
                             commands.entity(head_ent).despawn_recursive();
                         }
@@ -1113,12 +1113,12 @@ fn grabbing(
 fn holding(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Holding)>,
-    being_hold: Query<&Parent, With<BeingHold>>,
+    being_held: Query<&Parent, With<BeingHeld>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
     for (entity, holding) in &mut fighters {
         let mut already_holding = false;
-        for parent in being_hold.iter() {
+        for parent in being_held.iter() {
             if parent.get() == entity {
                 already_holding = true;
                 break;
@@ -1143,7 +1143,7 @@ fn holding(
                     ),
                     ..default()
                 })
-                .insert(BeingHold)
+                .insert(BeingHeld)
                 .id();
             commands.entity(entity).add_child(child);
         }

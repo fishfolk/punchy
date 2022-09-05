@@ -131,7 +131,7 @@ impl Projectile {
             //files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(
                 BodyLayers::PLAYER_ATTACK,
-                BodyLayers::ENEMY + BodyLayers::BREAKABLE_ITEM,
+                BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
             ),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
             breakable: Breakable::new(0),
