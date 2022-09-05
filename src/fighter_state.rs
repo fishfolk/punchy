@@ -75,6 +75,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(grabbing)
                     .with_system(knocked_back)
                     .with_system(dying)
+                    .with_system(holding)
                     .into(),
             );
     }
@@ -252,6 +253,16 @@ impl Punching {
     pub const ANIMATION: &'static str = "attacking";
 }
 
+/// Component indicating the player is holding a item on it's head
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct Holding {
+    item: Handle<ItemMeta>,
+}
+impl Holding {
+    pub const PRIORITY: i32 = 35;
+}
+
 /// Component indicating the player is getting knocked back
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
@@ -289,19 +300,15 @@ fn collect_player_actions(
             &mut StateTransitionIntents,
             &Inventory,
             &Stats,
+            Option<&Holding>
         ),
         With<Player>,
     >,
 ) {
-    for (action_state, mut transition_intents, inventory, stats) in &mut players {
-        let mut with_box = false;
-        if let Some(inventory) = &inventory.0 {
-            with_box = matches!(inventory.kind, ItemKind::BreakableBox { .. });
-        }
-
+    for (action_state, mut transition_intents, inventory, stats, holding) in &mut players {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
-        if action_state.just_pressed(PlayerAction::Attack) && !with_box {
+        if action_state.just_pressed(PlayerAction::Attack) && holding.is_none(){
             transition_intents.push_back(StateTransition::new(
                 Flopping::default(),
                 Flopping::PRIORITY,
@@ -1020,6 +1027,7 @@ fn throwing(
                             }
                         }
                     }
+                    commands.entity(entity).remove::<Holding>();
                 }
             }
         }
@@ -1033,14 +1041,31 @@ fn throwing(
 // Trying to grab an item off the map
 fn grabbing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &mut Inventory, &Stats, &mut Health), With<Grabbing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &mut Inventory,
+            &Stats,
+            &mut Health,
+            &mut StateTransitionIntents,
+        ),
+        With<Grabbing>,
+    >,
     items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
 
-    for (fighter_ent, fighter_transform, mut fighter_inventory, stats, mut health) in &mut fighters
+    for (
+        fighter_ent,
+        fighter_transform,
+        mut fighter_inventory,
+        stats,
+        mut health,
+        mut transition_intents,
+    ) in &mut fighters
     {
         // If several items are at pick distance, an arbitrary one is picked.
         for (item_ent, item_transform, item) in &items_query {
@@ -1071,26 +1096,12 @@ fn grabbing(
                                 commands.entity(item_ent).despawn_recursive();
                             }
                             ItemKind::BreakableBox { .. } => {
-                                let image = items_assets
-                                    .get(item)
-                                    .expect("Item not loaded!")
-                                    .clone()
-                                    .image;
-
-                                let child = commands
-                                    .spawn()
-                                    .insert_bundle(SpriteBundle {
-                                        texture: image.image_handle.clone(),
-                                        transform: Transform::from_xyz(
-                                            0.,
-                                            consts::THROW_ITEM_OFFSET.y + image.image_size.y,
-                                            consts::PROJECTILE_Z,
-                                        ),
-                                        ..default()
-                                    })
-                                    .insert(BeingHold)
-                                    .id();
-                                commands.entity(fighter_ent).add_child(child);
+                                // Transition to holding state
+                                transition_intents.push_back(StateTransition::new(
+                                    Holding { item: item.clone() },
+                                    Holding::PRIORITY,
+                                    true,
+                                ));
 
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
@@ -1106,5 +1117,45 @@ fn grabbing(
         // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
         // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
+    }
+}
+
+/// Holding item
+fn holding(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &Holding)>,
+    being_hold: Query<&Parent, With<BeingHold>>,
+    items_assets: Res<Assets<ItemMeta>>,
+) {
+    for (entity, holding) in &mut fighters {
+        let mut already_holding = false;
+        for parent in being_hold.iter() {
+            if parent.get() == entity {
+                already_holding = true;
+            }
+        }
+
+        if !already_holding {
+            let image = items_assets
+                .get(&holding.item)
+                .expect("Item not loaded!")
+                .clone()
+                .image;
+
+            let child = commands
+                .spawn()
+                .insert_bundle(SpriteBundle {
+                    texture: image.image_handle.clone(),
+                    transform: Transform::from_xyz(
+                        0.,
+                        consts::THROW_ITEM_OFFSET.y + image.image_size.y,
+                        consts::PROJECTILE_Z,
+                    ),
+                    ..default()
+                })
+                .insert(BeingHold)
+                .id();
+            commands.entity(entity).add_child(child);
+        }
     }
 }
