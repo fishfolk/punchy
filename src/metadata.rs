@@ -122,8 +122,20 @@ pub struct ItemMeta {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub enum ItemKind {
-    Throwable { damage: i32 },
-    Health { health: i32 },
+    Throwable {
+        damage: i32,
+    },
+    Health {
+        health: i32,
+    },
+    BreakableBox {
+        damage: i32,
+        hurtbox: ColliderMeta,
+        hits: i32,
+        item: String,
+        #[serde(skip)]
+        item_handle: Handle<ItemMeta>,
+    },
 }
 
 #[derive(Deserialize, Clone, Debug)]

@@ -7,6 +7,7 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
+    item::Drop,
     metadata::FighterMeta,
     GameState,
 };
@@ -28,7 +29,9 @@ impl Plugin for AttackPlugin {
                     .into(),
             )
             // Attack damage is run in PostUpdate to make sure it runs after rapier generates collision events
-            .add_system_to_stage(CoreStage::PostUpdate, attack_damage_system);
+            .add_system_to_stage(CoreStage::PostUpdate, attack_damage_system)
+            // Event for when Breakable breaks
+            .add_event::<BrokeEvent>();
     }
 }
 
@@ -60,6 +63,11 @@ impl Breakable {
             hit_count: 0,
         }
     }
+}
+
+pub struct BrokeEvent {
+    pub drop: Option<Drop>,
+    pub transform: Option<Transform>,
 }
 
 /// A component identifying the attacks active collision frames.
@@ -152,16 +160,21 @@ fn attack_damage_system(
 
 fn breakable_system(
     mut events: EventReader<CollisionEvent>,
-    mut despawn_query: Query<&mut Breakable>,
+    mut despawn_query: Query<(&mut Breakable, Option<&Drop>, Option<&Transform>)>,
     mut commands: Commands,
+    mut event_writer: EventWriter<BrokeEvent>,
 ) {
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
-                if let Ok(mut breakable) = despawn_query.get_mut(**e) {
+                if let Ok((mut breakable, drop, transform)) = despawn_query.get_mut(**e) {
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
                     } else {
+                        event_writer.send(BrokeEvent {
+                            drop: drop.cloned(),
+                            transform: transform.cloned(),
+                        });
                         commands.entity(**e).despawn_recursive();
                     }
                 }

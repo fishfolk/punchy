@@ -90,5 +90,5 @@ items:
     location: [50, -70, 0]
   - item: &bottle /items/bottle/bottle.item.yaml
     location: [50, -20, 0]
-  - item: *bottle
+  - item: &box /items/box/box.item.yaml
     location: [50, 20, 0]

@@ -16,7 +16,7 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    item::{Item, Projectile},
+    item::{Drop, Item, Projectile},
     metadata::{FighterMeta, ItemKind, ItemMeta},
     movement::LinearVelocity,
     player::Player,
@@ -75,6 +75,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(grabbing)
                     .with_system(knocked_back)
                     .with_system(dying)
+                    .with_system(holding)
                     .into(),
             );
     }
@@ -252,6 +253,16 @@ impl Punching {
     pub const ANIMATION: &'static str = "attacking";
 }
 
+/// Component indicating the player is holding a item on it's head
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct Holding {
+    item: Handle<ItemMeta>,
+}
+impl Holding {
+    pub const PRIORITY: i32 = 35;
+}
+
 /// Component indicating the player is getting knocked back
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
@@ -274,6 +285,9 @@ impl Dying {
     pub const ANIMATION: &'static str = "dying";
 }
 
+#[derive(Component)]
+pub struct BeingHeld;
+
 //
 // Fighter input collector systems
 //
@@ -286,14 +300,15 @@ fn collect_player_actions(
             &mut StateTransitionIntents,
             &Inventory,
             &Stats,
+            Option<&Holding>,
         ),
         With<Player>,
     >,
 ) {
-    for (action_state, mut transition_intents, inventory, stats) in &mut players {
+    for (action_state, mut transition_intents, inventory, stats, holding) in &mut players {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
-        if action_state.just_pressed(PlayerAction::Attack) {
+        if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
             transition_intents.push_back(StateTransition::new(
                 Flopping::default(),
                 Flopping::PRIORITY,
@@ -592,7 +607,7 @@ fn flopping(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -707,7 +722,7 @@ fn punching(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -956,6 +971,8 @@ fn dying(
 fn throwing(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    being_held: Query<(Entity, &Parent), With<BeingHeld>>,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
         // If the player has an item in their inventory
@@ -977,6 +994,30 @@ fn throwing(
                 ItemKind::Health { health: _ } => {
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
+                ItemKind::BreakableBox {
+                    ref item_handle, ..
+                } => {
+                    commands
+                        .spawn_bundle(Projectile::from_thrown_item(
+                            fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                            &item_meta,
+                            facing,
+                        ))
+                        .insert(Drop {
+                            item: items_assets
+                                .get(item_handle)
+                                .expect("Drop item not loaded!")
+                                .clone(),
+                        });
+
+                    // Despawn head sprite
+                    for (head_ent, parent) in being_held.iter() {
+                        if parent.get() == entity {
+                            commands.entity(head_ent).despawn_recursive();
+                        }
+                    }
+                    commands.entity(entity).remove::<Holding>();
+                }
             }
         }
 
@@ -989,14 +1030,31 @@ fn throwing(
 // Trying to grab an item off the map
 fn grabbing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &mut Inventory, &Stats, &mut Health), With<Grabbing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &mut Inventory,
+            &Stats,
+            &mut Health,
+            &mut StateTransitionIntents,
+        ),
+        With<Grabbing>,
+    >,
     items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
 
-    for (fighter_ent, fighter_transform, mut fighter_inventory, stats, mut health) in &mut fighters
+    for (
+        fighter_ent,
+        fighter_transform,
+        mut fighter_inventory,
+        stats,
+        mut health,
+        mut transition_intents,
+    ) in &mut fighters
     {
         // If several items are at pick distance, an arbitrary one is picked.
         for (item_ent, item_transform, item) in &items_query {
@@ -1026,6 +1084,19 @@ fn grabbing(
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
                             }
+                            ItemKind::BreakableBox { .. } => {
+                                // Transition to holding state
+                                transition_intents.push_back(StateTransition::new(
+                                    Holding { item: item.clone() },
+                                    Holding::PRIORITY,
+                                    true,
+                                ));
+
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+                            }
                         }
                     }
                     break;
@@ -1035,5 +1106,46 @@ fn grabbing(
         // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
         // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
+    }
+}
+
+/// Holding item
+fn holding(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &Holding)>,
+    being_held: Query<&Parent, With<BeingHeld>>,
+    items_assets: Res<Assets<ItemMeta>>,
+) {
+    for (entity, holding) in &mut fighters {
+        let mut already_holding = false;
+        for parent in being_held.iter() {
+            if parent.get() == entity {
+                already_holding = true;
+                break;
+            }
+        }
+
+        if !already_holding {
+            let image = items_assets
+                .get(&holding.item)
+                .expect("Item not loaded!")
+                .clone()
+                .image;
+
+            let child = commands
+                .spawn()
+                .insert_bundle(SpriteBundle {
+                    texture: image.image_handle.clone(),
+                    transform: Transform::from_xyz(
+                        0.,
+                        consts::THROW_ITEM_OFFSET.y + image.image_size.y,
+                        consts::PROJECTILE_Z,
+                    ),
+                    ..default()
+                })
+                .insert(BeingHeld)
+                .id();
+            commands.entity(entity).add_child(child);
+        }
     }
 }
