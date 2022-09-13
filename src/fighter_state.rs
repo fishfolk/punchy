@@ -994,6 +994,9 @@ fn throwing(
                 ItemKind::Health { health: _ } => {
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
+                ItemKind::MeleeWeapon { .. } => {
+                    panic!("Melee weapon can't be thrown");
+                }
                 ItemKind::BreakableBox {
                     ref item_handle, ..
                 } => {
@@ -1092,6 +1095,13 @@ fn grabbing(
                                     true,
                                 ));
 
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+                            }
+                            ItemKind::MeleeWeapon { .. } => {
+                                // If its throwable, pick up the item
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());

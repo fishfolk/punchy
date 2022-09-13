@@ -1,0 +1,17 @@
+name: Sword
+
+image:
+    image: bottle.png
+    image_size: [11, 31]
+
+kind: !MeleeWeapon
+    attack:
+        name: "punch"
+        damage: 10
+        frames:
+            startup: 2
+            active: 3
+            recovery: 7
+        hitbox:
+            size: [36, 24]
+            offset: [24, 0]
