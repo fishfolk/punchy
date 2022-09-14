@@ -115,7 +115,7 @@ impl Projectile {
                 damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
                     crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
-                    crate::metadata::ItemKind::MeleeWeapon { .. } => panic!("Cannot throw melee weapon"),
+                    crate::metadata::ItemKind::MeleeWeapon { .. } => panic!("Cannot throw melee"),
                     crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
                 },
                 velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,

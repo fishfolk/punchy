@@ -16,10 +16,10 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    item::{Drop, Item, Projectile},
-    metadata::{FighterMeta, ItemKind, ItemMeta},
+    item::{Drop, Item, ItemBundle, Projectile},
+    metadata::{FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
-    player::Player,
+    player::{AvailableAttacks, Player},
     GameState, Stats,
 };
 
@@ -972,7 +972,7 @@ fn throwing(
     mut commands: Commands,
     mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
     being_held: Query<(Entity, &Parent), With<BeingHeld>>,
-    items_assets: Res<Assets<ItemMeta>>,
+    mut items_assets: ResMut<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
         // If the player has an item in their inventory
@@ -995,7 +995,16 @@ fn throwing(
                     panic!("Health items should be used immediately, and can't be thrown");
                 }
                 ItemKind::MeleeWeapon { .. } => {
-                    panic!("Melee weapon can't be thrown");
+                    //Drop item
+                    let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
+
+                    let item_spawn_meta = ItemSpawnMeta {
+                        location: fighter_transform.translation - ground_offset,
+                        item: String::new(),
+                        item_handle: items_assets.add(item_meta.clone()),
+                    };
+                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
                 }
                 ItemKind::BreakableBox {
                     ref item_handle, ..
@@ -1041,6 +1050,7 @@ fn grabbing(
             &Stats,
             &mut Health,
             &mut StateTransitionIntents,
+            Option<&mut AvailableAttacks>,
         ),
         With<Grabbing>,
     >,
@@ -1057,6 +1067,7 @@ fn grabbing(
         stats,
         mut health,
         mut transition_intents,
+        available_attacks,
     ) in &mut fighters
     {
         // If several items are at pick distance, an arbitrary one is picked.
@@ -1100,12 +1111,16 @@ fn grabbing(
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::MeleeWeapon { .. } => {
+                            ItemKind::MeleeWeapon { ref attack } => {
                                 // If its throwable, pick up the item
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
+
+                                if let Some(mut available_attacks) = available_attacks {
+                                    available_attacks.0.push(attack.clone())
+                                }
                             }
                         }
                     }

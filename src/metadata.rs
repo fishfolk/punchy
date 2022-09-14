@@ -136,7 +136,9 @@ pub enum ItemKind {
         #[serde(skip)]
         item_handle: Handle<ItemMeta>,
     },
-    MeleeWeapon { attack: AttackMeta},
+    MeleeWeapon {
+        attack: AttackMeta,
+    },
 }
 
 #[derive(Deserialize, Clone, Debug)]
