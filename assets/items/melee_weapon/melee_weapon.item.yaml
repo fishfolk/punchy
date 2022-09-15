@@ -6,7 +6,7 @@ image:
 
 kind: !MeleeWeapon
     attack:
-        name: "punch"
+        name: "melee"
         damage: 10
         frames:
             startup: 2

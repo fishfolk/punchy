@@ -301,19 +301,32 @@ fn collect_player_actions(
             &Inventory,
             &Stats,
             Option<&Holding>,
+            &AvailableAttacks,
         ),
         With<Player>,
     >,
 ) {
-    for (action_state, mut transition_intents, inventory, stats, holding) in &mut players {
+    for (action_state, mut transition_intents, inventory, stats, holding, available_attacks) in
+        &mut players
+    {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
-            transition_intents.push_back(StateTransition::new(
-                Flopping::default(),
-                Flopping::PRIORITY,
-                false,
-            ));
+            match available_attacks
+                .0
+                .last()
+                .expect("Attack not loaded")
+                .name
+                .as_str()
+            {
+                "flop" => transition_intents.push_back(StateTransition::new(
+                    Flopping::default(),
+                    Flopping::PRIORITY,
+                    false,
+                )),
+                "melee" => println!("Melee Attack"),
+                _ => {}
+            }
         }
 
         // Trigger grab/throw
@@ -970,11 +983,20 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &Facing,
+            &mut Inventory,
+            Option<&mut AvailableAttacks>,
+        ),
+        With<Throwing>,
+    >,
     being_held: Query<(Entity, &Parent), With<BeingHeld>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
 ) {
-    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
+    for (entity, fighter_transform, facing, mut inventory, available_attacks) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(item_meta) = inventory.take() {
             // Check what kind of item this is.
@@ -993,18 +1015,6 @@ fn throwing(
                 }
                 ItemKind::Health { health: _ } => {
                     panic!("Health items should be used immediately, and can't be thrown");
-                }
-                ItemKind::MeleeWeapon { .. } => {
-                    //Drop item
-                    let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
-
-                    let item_spawn_meta = ItemSpawnMeta {
-                        location: fighter_transform.translation - ground_offset,
-                        item: String::new(),
-                        item_handle: items_assets.add(item_meta.clone()),
-                    };
-                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
                 }
                 ItemKind::BreakableBox {
                     ref item_handle, ..
@@ -1029,6 +1039,22 @@ fn throwing(
                         }
                     }
                     commands.entity(entity).remove::<Holding>();
+                }
+                ItemKind::MeleeWeapon { .. } => {
+                    //Drop item
+                    let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
+
+                    let item_spawn_meta = ItemSpawnMeta {
+                        location: fighter_transform.translation - ground_offset,
+                        item: String::new(),
+                        item_handle: items_assets.add(item_meta.clone()),
+                    };
+                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+
+                    if let Some(mut available_attacks) = available_attacks {
+                        available_attacks.0.pop();
+                    }
                 }
             }
         }
