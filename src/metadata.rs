@@ -7,6 +7,7 @@ use bevy::{
 };
 use bevy_egui::egui;
 use bevy_kira_audio::AudioSource;
+use bevy_mod_js_scripting::JsScript;
 use bevy_parallax::{LayerData, ParallaxResource};
 use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
@@ -36,6 +37,10 @@ pub struct GameMeta {
 
     pub default_settings: Settings,
     pub translations: TranslationsMeta,
+    #[serde(default)]
+    pub scripts: Vec<String>,
+    #[serde(skip)]
+    pub script_handles: Vec<Handle<JsScript>>,
 }
 
 #[derive(HasLoadProgress, Deserialize, Clone, Debug)]

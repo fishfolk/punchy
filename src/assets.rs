@@ -155,6 +155,14 @@ impl AssetLoader for GameMetaLoader {
                     .insert(font_name.clone(), font_handle);
             }
 
+            // Load the script handles
+            for script_relative_path in &meta.scripts {
+                let (script_path, script_handle) =
+                    get_relative_asset(load_context, &self_path, script_relative_path);
+                dependencies.push(script_path);
+                meta.script_handles.push(script_handle);
+            }
+
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())

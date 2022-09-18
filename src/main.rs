@@ -5,6 +5,7 @@
 use bevy::{
     asset::AssetServerSettings, log::LogSettings, prelude::*, render::texture::ImageSettings,
 };
+use bevy_mod_js_scripting::JsScriptingPlugin;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use fighter::Stats;
@@ -108,6 +109,7 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
         .add_loopless_state(GameState::LoadingStorage)
+        .add_plugin(JsScriptingPlugin)
         .add_plugin(PlatformPlugin)
         .add_plugin(LocalizationPlugin)
         .add_plugin(LoadingPlugin)
