@@ -1,9 +1,7 @@
 name: Bandit
 
-size: [36, 52]
-
 hurtbox:
-  size: [36, 12]
+  size: [36, 52]
   offset: [0, 0]
 
 stats:
@@ -16,8 +14,9 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: [Bandit_Skin1.png, Bandit_Skin2.png, Bandit_Skin3.png]
-  tile_size: [64, 64]
+  image:
+    [bandit_headband_64_80.png, bandit_mask_64_80.png, bandit_seaweed_64_80.png]
+  tile_size: [64, 80]
   columns: 7
   rows: 6
 

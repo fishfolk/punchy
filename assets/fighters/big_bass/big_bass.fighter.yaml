@@ -1,9 +1,7 @@
-name: Bandit
-
-size: [130, 176]
+name: Big Bass
 
 hurtbox:
-  size: [96, 32]
+  size: [96, 120]
   offset: [0, -16]
 
 stats:
@@ -16,8 +14,8 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: [BigBass.png]
-  tile_size: [156, 176]
+  image: [bass_base_156_192.png]
+  tile_size: [156, 192]
   columns: 15
   rows: 3
 

@@ -25,7 +25,8 @@ impl Plugin for CameraPlugin {
 }
 
 /// Component to sort entities by their y position.
-/// Takes in a offset usually the sprite's height.
+/// Takes in a base value usually the sprite default Z with possibly an height offset.
+/// this value could be tweaked to implement virtual Z for jumping
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct YSort(pub f32);

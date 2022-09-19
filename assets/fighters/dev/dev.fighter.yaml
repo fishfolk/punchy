@@ -1,4 +1,4 @@
-name: Scrumptious Sharky
+name: Dev
 
 hurtbox:
   size: [36, 48]
@@ -14,10 +14,10 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: [sharky_base_96_80.png]
+  image: [dev_base_96_80.png]
   tile_size: [96, 80]
-  columns: 14
-  rows: 7
+  columns: 15
+  rows: 14
 
   animation_fps: 0.12
   animations:

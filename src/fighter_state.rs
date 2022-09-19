@@ -7,7 +7,7 @@ use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
     animation::{Animation, Facing},
-    attack::{Attack, AttackFrames},
+    attack::Attack,
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
     consts,
@@ -16,7 +16,7 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    item::{Item, Projectile},
+    item::{Drop, Item, Projectile},
     metadata::{FighterMeta, ItemKind, ItemMeta},
     movement::LinearVelocity,
     player::Player,
@@ -75,6 +75,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(grabbing)
                     .with_system(knocked_back)
                     .with_system(dying)
+                    .with_system(holding)
                     .into(),
             );
     }
@@ -237,13 +238,12 @@ pub struct GroundSlam {
 }
 impl GroundSlam {
     pub const PRIORITY: i32 = 30;
-    //TODO: return to change assets and this to "flopping"
+    //TODO: return to change assets and this to "ground_slam"?
     pub const ANIMATION: &'static str = "attacking";
 }
 
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-
 pub struct Punching {
     pub has_started: bool,
     pub is_finished: bool,
@@ -251,6 +251,16 @@ pub struct Punching {
 impl Punching {
     pub const PRIORITY: i32 = 30;
     pub const ANIMATION: &'static str = "attacking";
+}
+
+/// Component indicating the player is holding a item on it's head
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct Holding {
+    item: Handle<ItemMeta>,
+}
+impl Holding {
+    pub const PRIORITY: i32 = 35;
 }
 
 /// Component indicating the player is getting knocked back
@@ -261,7 +271,7 @@ pub struct KnockedBack {
     pub timer: Timer,
 }
 impl KnockedBack {
-    pub const PRIORITY: i32 = 20;
+    pub const PRIORITY: i32 = 40;
     pub const ANIMATION_LEFT: &'static str = "knocked_left";
     pub const ANIMATION_RIGHT: &'static str = "knocked_right";
 }
@@ -275,6 +285,9 @@ impl Dying {
     pub const ANIMATION: &'static str = "dying";
 }
 
+#[derive(Component)]
+pub struct BeingHeld;
+
 //
 // Fighter input collector systems
 //
@@ -287,20 +300,22 @@ fn collect_player_actions(
             &mut StateTransitionIntents,
             &Inventory,
             &Stats,
+            Option<&Holding>,
         ),
         With<Player>,
     >,
 ) {
-    for (action_state, mut transition_intents, inventory, stats) in &mut players {
+    for (action_state, mut transition_intents, inventory, stats, holding) in &mut players {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
-        if action_state.just_pressed(PlayerAction::Attack) {
+        if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
             transition_intents.push_back(StateTransition::new(
-                Punching::default(),
-                Punching::PRIORITY,
+                Flopping::default(),
+                Flopping::PRIORITY,
                 false,
             ));
         }
+
         // Trigger grab/throw
         if action_state.just_pressed(PlayerAction::Throw) {
             if inventory.is_some() {
@@ -351,7 +366,7 @@ fn collect_attack_knockbacks(
                 KnockedBack {
                     //Knockback velocity feels strange right now
                     velocity: event.damage_velocity,
-                    timer: Timer::from_seconds(0.18, false),
+                    timer: Timer::from_seconds(0.50, false),
                 },
                 KnockedBack::PRIORITY,
                 false,
@@ -447,9 +462,9 @@ fn transition_from_punching(
 
 fn transition_from_ground_slam(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Flopping)>,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &GroundSlam)>,
 ) {
-    'entity: for (entity, mut transition_intents, flopping) in &mut fighters {
+    'entity: for (entity, mut transition_intents, ground_slam) in &mut fighters {
         // Transition to any higher priority states
         let current_state_removed = transition_intents
             .transition_to_higher_priority_states::<GroundSlam>(
@@ -464,7 +479,7 @@ fn transition_from_ground_slam(
         }
 
         // If we're done flopping
-        if flopping.is_finished {
+        if ground_slam.is_finished {
             // Go back to idle
             commands
                 .entity(entity)
@@ -570,9 +585,18 @@ fn flopping(
                 // Start the attack  from the beginning
                 animation.play(Flopping::ANIMATION, false);
 
+                let mut offset = fighter.attack.hitbox.offset;
+                if facing.is_left() {
+                    offset.x *= -1.0
+                }
+                offset.y += fighter.collision_offset;
+                let attack_frames = fighter.attack.frames;
+
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::default())
+                    .spawn_bundle(TransformBundle::from_transform(
+                        Transform::from_translation(offset.extend(0.0)),
+                    ))
                     .insert(Sensor)
                     .insert(ActiveEvents::COLLISION_EVENTS)
                     .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
@@ -583,7 +607,7 @@ fn flopping(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -596,12 +620,7 @@ fn flopping(
                             Vec2::X
                         } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
                     })
-                    // TODO: Read from figher metadata
-                    .insert(AttackFrames {
-                        startup: 0,
-                        active: 3,
-                        recovery: 4,
-                    })
+                    .insert(attack_frames)
                     .id();
                 commands.entity(entity).push_children(&[attack_entity]);
 
@@ -614,36 +633,39 @@ fn flopping(
                     commands.entity(entity).insert(fx_playback);
                 }
             }
-        }
 
-        // Reset velocity
-        **velocity = Vec2::ZERO;
-
-        // Do a forward jump thing
-        //TODO: Fix hacky way to get a forward jump
-        if animation.current_frame < 3 {
-            if facing.is_left() {
-                velocity.x -= 200.0;
-            } else {
-                velocity.x += 200.0;
-            }
-
-            if animation.current_frame < 1 {
-                velocity.y += 180.0;
-            } else if animation.current_frame < 3 {
-                velocity.y -= 90.0;
-            }
-        }
-
-        if animation.is_finished() {
-            // Stop moving
+            // Reset velocity
             **velocity = Vec2::ZERO;
 
-            // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
-            transform.translation.y = flopping.start_y;
+            // Do a forward jump thing
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame < fighter.attack.frames.recovery {
+                if facing.is_left() {
+                    velocity.x -= 200.0;
+                } else {
+                    velocity.x += 200.0;
+                }
+            }
 
-            // Set flopping to finished
-            flopping.is_finished = true;
+            if animation.current_frame < fighter.attack.frames.startup {
+                let v_per_frame = 200.0 / fighter.attack.frames.startup as f32;
+                velocity.y += v_per_frame;
+            } else if animation.current_frame < fighter.attack.frames.active {
+                let v_per_frame =
+                    200.0 / (fighter.attack.frames.active - fighter.attack.frames.startup) as f32;
+                velocity.y -= v_per_frame;
+            }
+
+            if animation.is_finished() {
+                // Stop moving
+                **velocity = Vec2::ZERO;
+
+                // Make sure we "land on the ground" ( i.e. the player y position hasn't changed )
+                transform.translation.y = flopping.start_y;
+
+                // Set flopping to finished
+                flopping.is_finished = true;
+            }
         }
     }
 }
@@ -683,6 +705,7 @@ fn punching(
                 if facing.is_left() {
                     offset.x *= -1.0
                 }
+                offset.y += fighter.collision_offset;
                 let attack_frames = fighter.attack.frames;
                 // Spawn the attack entity
                 let attack_entity = commands
@@ -699,7 +722,7 @@ fn punching(
                             BodyLayers::ENEMY_ATTACK
                         },
                         if is_player {
-                            BodyLayers::ENEMY
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                         } else {
                             BodyLayers::PLAYER
                         },
@@ -768,6 +791,7 @@ fn ground_slam(
             if facing.is_left() {
                 offset.x *= -1.0
             }
+            offset.y += fighter.collision_offset;
             let attack_frames = fighter.attack.frames;
             if !ground_slam.has_started {
                 ground_slam.has_started = true;
@@ -817,22 +841,29 @@ fn ground_slam(
 
             if !animation.is_finished() {
                 // Do a forward jump thing
-                //TODO: Fix hacky way to get a forward jump
 
                 // Control x movement
                 if animation.current_frame < attack_frames.startup {
                     if facing.is_left() {
-                        velocity.x -= 150.0;
+                        velocity.x -= 50.0;
                     } else {
-                        velocity.x += 150.0;
+                        velocity.x += 50.0;
                     }
                 }
 
                 // Control y movement
+                // TODO: Attack moves up and down the same amount, fixed distance, but it would be
+                // nice to be able to tune the speed of the fall so it feels more impactful yet
+                // doesnt have a "snap/reset effect" at the end of animation while still landing at
+                // the same Y as started(?)
+                // it might be nice to store movement properties as metadata attached to frame
+                // ranges or individual frames?
                 if animation.current_frame < attack_frames.startup {
-                    velocity.y += 270.0;
+                    let v_per_frame = 800.0 / attack_frames.startup as f32;
+                    velocity.y += v_per_frame;
                 } else if animation.current_frame < attack_frames.active {
-                    velocity.y -= 180.0;
+                    let v_per_frame = 800.0 / (attack_frames.active - attack_frames.startup) as f32;
+                    velocity.y -= v_per_frame;
                 }
 
             // If the animation is finished
@@ -939,19 +970,11 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<
-        (
-            Entity,
-            &Transform,
-            &Facing,
-            &Stats,
-            &mut Inventory,
-            &mut Health,
-        ),
-        With<Throwing>,
-    >,
+    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    being_held: Query<(Entity, &Parent), With<BeingHeld>>,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (entity, fighter_transform, facing, stats, mut inventory, mut health) in &mut fighters {
+    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(item_meta) = inventory.take() {
             // Check what kind of item this is.
@@ -968,11 +991,32 @@ fn throwing(
                         facing,
                     ));
                 }
-                ItemKind::Health {
-                    health: item_health,
+                ItemKind::Health { health: _ } => {
+                    panic!("Health items should be used immediately, and can't be thrown");
+                }
+                ItemKind::BreakableBox {
+                    ref item_handle, ..
                 } => {
-                    // Refill player's health
-                    **health = (**health + item_health).clamp(0, stats.max_health);
+                    commands
+                        .spawn_bundle(Projectile::from_thrown_item(
+                            fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                            &item_meta,
+                            facing,
+                        ))
+                        .insert(Drop {
+                            item: items_assets
+                                .get(item_handle)
+                                .expect("Drop item not loaded!")
+                                .clone(),
+                        });
+
+                    // Despawn head sprite
+                    for (head_ent, parent) in being_held.iter() {
+                        if parent.get() == entity {
+                            commands.entity(head_ent).despawn_recursive();
+                        }
+                    }
+                    commands.entity(entity).remove::<Holding>();
                 }
             }
         }
@@ -986,14 +1030,32 @@ fn throwing(
 // Trying to grab an item off the map
 fn grabbing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &mut Inventory), With<Grabbing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &mut Inventory,
+            &Stats,
+            &mut Health,
+            &mut StateTransitionIntents,
+        ),
+        With<Grabbing>,
+    >,
     items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
     items_assets: Res<Assets<ItemMeta>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
 
-    for (fighter_ent, fighter_transform, mut fighter_inventory) in &mut fighters {
+    for (
+        fighter_ent,
+        fighter_transform,
+        mut fighter_inventory,
+        stats,
+        mut health,
+        mut transition_intents,
+    ) in &mut fighters
+    {
         // If several items are at pick distance, an arbitrary one is picked.
         for (item_ent, item_transform, item) in &items_query {
             if !picked_item_ids.contains(&item_ent) {
@@ -1007,20 +1069,83 @@ fn grabbing(
                 if fighter_item_distance <= consts::PICK_ITEM_RADIUS {
                     // And our fighter isn't carrying another item
                     if fighter_inventory.is_none() {
-                        // Pick up the item
-                        picked_item_ids.insert(item_ent);
-                        **fighter_inventory =
-                            Some(items_assets.get(item).expect("Item not loaded!").clone());
-                        commands.entity(item_ent).despawn_recursive();
-                    }
+                        match items_assets.get(item).unwrap().kind {
+                            ItemKind::Health {
+                                health: item_health,
+                            } => {
+                                // If its health, refill player's health instantly
+                                **health = (**health + item_health).clamp(0, stats.max_health);
+                                commands.entity(item_ent).despawn_recursive();
+                            }
+                            ItemKind::Throwable { damage: _ } => {
+                                // If its throwable, pick up the item
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+                            }
+                            ItemKind::BreakableBox { .. } => {
+                                // Transition to holding state
+                                transition_intents.push_back(StateTransition::new(
+                                    Holding { item: item.clone() },
+                                    Holding::PRIORITY,
+                                    true,
+                                ));
 
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+                            }
+                        }
+                    }
                     break;
                 }
             }
         }
-
         // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
         // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
+    }
+}
+
+/// Holding item
+fn holding(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &Holding)>,
+    being_held: Query<&Parent, With<BeingHeld>>,
+    items_assets: Res<Assets<ItemMeta>>,
+) {
+    for (entity, holding) in &mut fighters {
+        let mut already_holding = false;
+        for parent in being_held.iter() {
+            if parent.get() == entity {
+                already_holding = true;
+                break;
+            }
+        }
+
+        if !already_holding {
+            let image = items_assets
+                .get(&holding.item)
+                .expect("Item not loaded!")
+                .clone()
+                .image;
+
+            let child = commands
+                .spawn()
+                .insert_bundle(SpriteBundle {
+                    texture: image.image_handle.clone(),
+                    transform: Transform::from_xyz(
+                        0.,
+                        consts::THROW_ITEM_OFFSET.y + image.image_size.y,
+                        consts::PROJECTILE_Z,
+                    ),
+                    ..default()
+                })
+                .insert(BeingHeld)
+                .id();
+            commands.entity(entity).add_child(child);
+        }
     }
 }

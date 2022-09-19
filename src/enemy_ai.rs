@@ -6,8 +6,10 @@ use rand::Rng;
 use crate::{
     animation::Facing,
     consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
-    enemy::{Enemy, TripPointX},
-    fighter_state::{Idling, Moving, Punching, StateTransition, StateTransitionIntents},
+    enemy::{Boss, Enemy, TripPointX},
+    fighter_state::{
+        GroundSlam, Idling, Moving, Punching, StateTransition, StateTransitionIntents,
+    },
     player::Player,
     Stats,
 };
@@ -108,13 +110,14 @@ pub fn emit_enemy_intents(
             &EnemyTarget,
             &mut Facing,
             &mut StateTransitionIntents,
+            Option<&Boss>,
         ),
         // All enemies that are either moving or idling
         (With<Enemy>, Or<(With<Idling>, With<Moving>)>),
     >,
     mut commands: Commands,
 ) {
-    for (entity, transform, stats, target, mut facing, mut intents) in &mut query {
+    for (entity, transform, stats, target, mut facing, mut intents, maybe_boss) in &mut query {
         let position = transform.translation.truncate();
         let velocity = (target.position - position).normalize() * stats.movement_speed;
 
@@ -134,12 +137,19 @@ pub fn emit_enemy_intents(
             };
 
             // And attack!
-            intents.push_back(StateTransition::new(
-                Punching::default(),
-                Punching::PRIORITY,
-                false,
-            ));
-
+            if maybe_boss.is_some() {
+                intents.push_back(StateTransition::new(
+                    GroundSlam::default(),
+                    GroundSlam::PRIORITY,
+                    false,
+                ))
+            } else {
+                intents.push_back(StateTransition::new(
+                    Punching::default(),
+                    Punching::PRIORITY,
+                    false,
+                ));
+            }
         // If we aren't near our target yet
         } else {
             // Face the cirection we're moving

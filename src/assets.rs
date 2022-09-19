@@ -9,7 +9,7 @@ use bevy::{
 };
 use bevy_egui::egui;
 
-use crate::metadata::*;
+use crate::{consts::FOOT_PADDING, metadata::*};
 
 /// Register game asset and loaders
 pub fn register(app: &mut bevy::prelude::App) {
@@ -284,6 +284,8 @@ impl AssetLoader for FighterLoader {
                     .with_dependency(texture_path),
                 );
                 meta.spritesheet.atlas_handle.push(atlas_handle);
+                meta.center_y = meta.spritesheet.tile_size.y as f32 / 2.;
+                meta.collision_offset = meta.center_y - FOOT_PADDING;
             }
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
@@ -311,6 +313,20 @@ impl AssetLoader for ItemLoader {
 
             let self_path = load_context.path();
             let mut dependencies = Vec::new();
+
+            if let ItemKind::BreakableBox {
+                ref mut item_handle,
+                ref item,
+                ..
+            } = meta.kind
+            {
+                //Loads dropped item
+                let (item_path, new_item_handle) =
+                    get_relative_asset(load_context, self_path, item);
+
+                dependencies.push(item_path);
+                *item_handle = new_item_handle;
+            }
 
             let (image_path, image_handle) =
                 get_relative_asset(load_context, self_path, &meta.image.image);
