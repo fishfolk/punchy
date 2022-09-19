@@ -100,7 +100,6 @@ pub fn main_menu_sounds(
     asset_server: Res<AssetServer>,
 ) {
     for event in &context.ctx_mut().output().events {
-        println!("{:?}", event);
         if let OutputEvent::Clicked(info) = event {
             if info.label.as_ref().unwrap() == "Start Game" {
                 //Play down_play_button
