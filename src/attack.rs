@@ -82,6 +82,8 @@ pub struct AttackFrames {
     pub recovery: usize,
 }
 
+//Add use to weapon attack
+
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
     fighter_query: Query<(&Animation, &Handle<FighterMeta>)>,

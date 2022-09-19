@@ -138,6 +138,8 @@ pub enum ItemKind {
     },
     MeleeWeapon {
         attack: AttackMeta,
+        audio: AudioMeta,
+        spritesheet: Box<FighterSpritesheetMeta>,
     },
 }
 
