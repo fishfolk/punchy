@@ -17,7 +17,7 @@ use crate::{
     fighter::Inventory,
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile},
-    metadata::{AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta, AttackMeta},
+    metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
     player::{AvailableAttacks, Player},
     GameState, Stats,
@@ -1227,7 +1227,7 @@ fn grabbing(
                                         audio: audio.clone(),
                                         frames: attack.frames,
                                         animation: animated_sprite.animation.clone(),
-                                        attack: attack.clone()
+                                        attack: attack.clone(),
                                     })
                                     .insert_bundle(animated_sprite)
                                     .id();
@@ -1290,7 +1290,6 @@ fn melee_attacking(
     mut commands: Commands,
     mut fighters: Query<(
         Entity,
-        &Handle<FighterMeta>,
         &mut MeleeAttacking,
         Option<&Player>,
         Option<&Enemy>,
@@ -1299,18 +1298,9 @@ fn melee_attacking(
         &Facing,
     )>,
     mut melee_weapons: Query<(Entity, &Parent, &mut Animation, &MeleeWeapon)>,
-    fighter_assets: Res<Assets<FighterMeta>>,
 ) {
-    for (
-        entity,
-        meta_handle,
-        mut melee_attack,
-        player,
-        enemy,
-        available_attacks,
-        mut velocity,
-        facing,
-    ) in &mut fighters
+    for (entity, mut melee_attack, player, enemy, available_attacks, mut velocity, facing) in
+        &mut fighters
     {
         let is_player = player.is_some();
         let is_enemy = enemy.is_some();
@@ -1327,58 +1317,55 @@ fn melee_attacking(
         }
         let (mut animation, audio, weapon_ent) = melee_weapon.expect("No weapon");
 
-        if let Some(fighter) = fighter_assets.get(meta_handle) {
-            if !melee_attack.has_started {
-                melee_attack.has_started = true;
+        if !melee_attack.has_started {
+            melee_attack.has_started = true;
 
-                // Start the attack from the beginning
-                animation.play("slashing", false);
+            // Start the attack from the beginning
+            animation.play("slashing", false);
 
-                let attack = available_attacks.0.last().expect("Attack not loaded");
+            let attack = available_attacks.0.last().expect("Attack not loaded");
 
-                let mut offset = attack.hitbox.offset;
-                //offset.y += fighter.collision_offset;
-                let attack_frames = attack.frames;
-                // Spawn the attack entity
-                let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
-                        Transform::from_translation(offset.extend(0.0)),
-                    ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                    .insert(CollisionGroups::new(
-                        if is_player {
-                            BodyLayers::PLAYER_ATTACK
-                        } else {
-                            BodyLayers::ENEMY_ATTACK
-                        },
-                        if is_player {
-                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
-                        } else {
-                            BodyLayers::PLAYER
-                        },
-                    ))
-                    .insert(Attack {
-                        damage: attack.damage,
-                        velocity: if facing.is_left() {
-                            Vec2::NEG_X
-                        } else {
-                            Vec2::X
-                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
-                    })
-                    .insert(attack_frames)
-                    .id();
-                commands.entity(weapon_ent).push_children(&[attack_entity]);
+            let offset = attack.hitbox.offset;
+            let attack_frames = attack.frames;
+            // Spawn the attack entity
+            let attack_entity = commands
+                .spawn_bundle(TransformBundle::from_transform(
+                    Transform::from_translation(offset.extend(0.0)),
+                ))
+                .insert(Sensor)
+                .insert(ActiveEvents::COLLISION_EVENTS)
+                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
+                .insert(CollisionGroups::new(
+                    if is_player {
+                        BodyLayers::PLAYER_ATTACK
+                    } else {
+                        BodyLayers::ENEMY_ATTACK
+                    },
+                    if is_player {
+                        BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                    } else {
+                        BodyLayers::PLAYER
+                    },
+                ))
+                .insert(Attack {
+                    damage: attack.damage,
+                    velocity: if facing.is_left() {
+                        Vec2::NEG_X
+                    } else {
+                        Vec2::X
+                    } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                })
+                .insert(attack_frames)
+                .id();
+            commands.entity(weapon_ent).push_children(&[attack_entity]);
 
-                // Play attack sound effect
-                if let Some(effects) = audio.effect_handles.get(MeleeAttacking::ANIMATION) {
-                    let fx_playback = AnimationAudioPlayback::new(
-                        MeleeAttacking::ANIMATION.to_owned(),
-                        effects.clone(),
-                    );
-                    commands.entity(weapon_ent).insert(fx_playback);
-                }
+            // Play attack sound effect
+            if let Some(effects) = audio.effect_handles.get(MeleeAttacking::ANIMATION) {
+                let fx_playback = AnimationAudioPlayback::new(
+                    MeleeAttacking::ANIMATION.to_owned(),
+                    effects.clone(),
+                );
+                commands.entity(weapon_ent).insert(fx_playback);
             }
         }
 
@@ -1395,5 +1382,5 @@ pub struct MeleeWeapon {
     pub audio: AudioMeta,
     pub frames: AttackFrames,
     pub animation: Animation,
-    pub attack: AttackMeta
+    pub attack: AttackMeta,
 }
