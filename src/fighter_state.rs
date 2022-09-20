@@ -1290,16 +1290,23 @@ fn melee_attacking(
     mut commands: Commands,
     mut fighters: Query<(
         Entity,
-        &mut MeleeAttacking,
+        Option<&mut MeleeAttacking>,
         Option<&Player>,
         Option<&Enemy>,
         &AvailableAttacks,
         &mut LinearVelocity,
         &Facing,
     )>,
-    mut melee_weapons: Query<(Entity, &Parent, &mut Animation, &MeleeWeapon)>,
+    mut melee_weapons: Query<(
+        Entity,
+        &Parent,
+        &mut Animation,
+        &MeleeWeapon,
+        &mut Transform,
+        &mut TextureAtlasSprite,
+    )>,
 ) {
-    for (entity, mut melee_attack, player, enemy, available_attacks, mut velocity, facing) in
+    for (entity, melee_attack, player, enemy, available_attacks, mut velocity, facing) in
         &mut fighters
     {
         let is_player = player.is_some();
@@ -1310,69 +1317,92 @@ fn melee_attacking(
         }
 
         let mut melee_weapon = None;
-        for (weapon_ent, parent, animation, weapon) in &mut melee_weapons {
+        for (weapon_ent, parent, animation, weapon, weapon_transform, weapon_sprite) in
+            &mut melee_weapons
+        {
             if parent.get() == entity {
-                melee_weapon = Some((animation, weapon.audio.clone(), weapon_ent));
-            }
-        }
-        let (mut animation, audio, weapon_ent) = melee_weapon.expect("No weapon");
-
-        if !melee_attack.has_started {
-            melee_attack.has_started = true;
-
-            // Start the attack from the beginning
-            animation.play("slashing", false);
-
-            let attack = available_attacks.0.last().expect("Attack not loaded");
-
-            let offset = attack.hitbox.offset;
-            let attack_frames = attack.frames;
-            // Spawn the attack entity
-            let attack_entity = commands
-                .spawn_bundle(TransformBundle::from_transform(
-                    Transform::from_translation(offset.extend(0.0)),
-                ))
-                .insert(Sensor)
-                .insert(ActiveEvents::COLLISION_EVENTS)
-                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-                .insert(CollisionGroups::new(
-                    if is_player {
-                        BodyLayers::PLAYER_ATTACK
-                    } else {
-                        BodyLayers::ENEMY_ATTACK
-                    },
-                    if is_player {
-                        BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
-                    } else {
-                        BodyLayers::PLAYER
-                    },
-                ))
-                .insert(Attack {
-                    damage: attack.damage,
-                    velocity: if facing.is_left() {
-                        Vec2::NEG_X
-                    } else {
-                        Vec2::X
-                    } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
-                })
-                .insert(attack_frames)
-                .id();
-            commands.entity(weapon_ent).push_children(&[attack_entity]);
-
-            // Play attack sound effect
-            if let Some(effects) = audio.effect_handles.get(MeleeAttacking::ANIMATION) {
-                let fx_playback = AnimationAudioPlayback::new(
-                    MeleeAttacking::ANIMATION.to_owned(),
-                    effects.clone(),
-                );
-                commands.entity(weapon_ent).insert(fx_playback);
+                melee_weapon = Some((
+                    animation,
+                    weapon.audio.clone(),
+                    weapon_ent,
+                    weapon_transform,
+                    weapon_sprite,
+                ));
             }
         }
 
-        **velocity = Vec2::ZERO;
+        if let Some((mut animation, audio, weapon_ent, mut weapon_transform, mut weapon_sprite)) =
+            melee_weapon
+        {
+            //Check if has weapon, if so face it accordingly
+            weapon_transform.translation.x = if facing.is_left() {
+                -weapon_transform.translation.x.abs()
+            } else {
+                weapon_transform.translation.x.abs()
+            };
+            weapon_sprite.flip_x = facing.is_left();
 
-        if animation.is_finished() {
-            melee_attack.is_finished = true;
+            //Check if it's attacking
+            if let Some(mut melee_attack) = melee_attack {
+                if !melee_attack.has_started {
+                    melee_attack.has_started = true;
+
+                    // Start the attack from the beginning
+                    animation.play("slashing", false);
+
+                    let attack = available_attacks.0.last().expect("Attack not loaded");
+
+                    let offset = attack.hitbox.offset;
+                    let attack_frames = attack.frames;
+                    // Spawn the attack entity
+                    let attack_entity = commands
+                        .spawn_bundle(TransformBundle::from_transform(
+                            Transform::from_translation(offset.extend(0.0)),
+                        ))
+                        .insert(Sensor)
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(CollisionGroups::new(
+                            if is_player {
+                                BodyLayers::PLAYER_ATTACK
+                            } else {
+                                BodyLayers::ENEMY_ATTACK
+                            },
+                            if is_player {
+                                BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                            } else {
+                                BodyLayers::PLAYER
+                            },
+                        ))
+                        .insert(Attack {
+                            damage: attack.damage,
+                            velocity: if facing.is_left() {
+                                Vec2::NEG_X
+                            } else {
+                                Vec2::X
+                            } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                        })
+                        .insert(attack_frames)
+                        .id();
+                    commands.entity(weapon_ent).push_children(&[attack_entity]);
+
+                    // Play attack sound effect
+                    if let Some(effects) = audio.effect_handles.get(MeleeAttacking::ANIMATION) {
+                        let fx_playback = AnimationAudioPlayback::new(
+                            MeleeAttacking::ANIMATION.to_owned(),
+                            effects.clone(),
+                        );
+                        commands.entity(weapon_ent).insert(fx_playback);
+                    }
+                }
+                **velocity = Vec2::ZERO;
+
+                if animation.is_finished() {
+                    melee_attack.is_finished = true;
+                }
+            }
         }
     }
 }

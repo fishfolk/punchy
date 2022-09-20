@@ -9,9 +9,9 @@ kind: !MeleeWeapon
         name: "melee"
         damage: 50
         frames:
-            startup: 0
-            active: 1
-            recovery: 3
+            startup: 1
+            active: 2
+            recovery: 2
         hitbox:
             size: [50, 65]
             offset: [0, 0]
