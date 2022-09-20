@@ -17,7 +17,7 @@ use crate::{
     fighter::Inventory,
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile},
-    metadata::{AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
+    metadata::{AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta, AttackMeta},
     movement::LinearVelocity,
     player::{AvailableAttacks, Player},
     GameState, Stats,
@@ -1221,16 +1221,17 @@ fn grabbing(
                                 animated_sprite.animation.current_animation =
                                     Some("idle".to_string());
 
-                                let weapon_sprite = commands
+                                let weapon = commands
                                     .spawn()
                                     .insert(MeleeWeapon {
                                         audio: audio.clone(),
                                         frames: attack.frames,
                                         animation: animated_sprite.animation.clone(),
+                                        attack: attack.clone()
                                     })
                                     .insert_bundle(animated_sprite)
                                     .id();
-                                commands.entity(fighter_ent).add_child(weapon_sprite);
+                                commands.entity(fighter_ent).add_child(weapon);
                             }
                         }
                     }
@@ -1336,10 +1337,7 @@ fn melee_attacking(
                 let attack = available_attacks.0.last().expect("Attack not loaded");
 
                 let mut offset = attack.hitbox.offset;
-                if facing.is_left() {
-                    offset.x *= -1.0
-                }
-                offset.y += fighter.collision_offset;
+                //offset.y += fighter.collision_offset;
                 let attack_frames = attack.frames;
                 // Spawn the attack entity
                 let attack_entity = commands
@@ -1371,9 +1369,9 @@ fn melee_attacking(
                     })
                     .insert(attack_frames)
                     .id();
-                commands.entity(entity).push_children(&[attack_entity]);
+                commands.entity(weapon_ent).push_children(&[attack_entity]);
 
-                // Play attack sound effect Add audio effect to weapon
+                // Play attack sound effect
                 if let Some(effects) = audio.effect_handles.get(MeleeAttacking::ANIMATION) {
                     let fx_playback = AnimationAudioPlayback::new(
                         MeleeAttacking::ANIMATION.to_owned(),
@@ -1397,4 +1395,5 @@ pub struct MeleeWeapon {
     pub audio: AudioMeta,
     pub frames: AttackFrames,
     pub animation: Animation,
+    pub attack: AttackMeta
 }

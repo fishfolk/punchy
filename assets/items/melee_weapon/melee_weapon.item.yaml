@@ -13,8 +13,8 @@ kind: !MeleeWeapon
             active: 1
             recovery: 3
         hitbox:
-            size: [36, 24]
-            offset: [24, 0]
+            size: [50, 65]
+            offset: [0, 0]
 
     spritesheet:
         image: [sword.png]

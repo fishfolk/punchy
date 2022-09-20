@@ -7,6 +7,7 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
+    fighter_state::MeleeWeapon,
     item::Drop,
     metadata::FighterMeta,
     GameState,
@@ -86,19 +87,30 @@ pub struct AttackFrames {
 
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
-    fighter_query: Query<(&Animation, &Handle<FighterMeta>)>,
+    fighter_query: Query<(
+        &Animation,
+        Option<&Handle<FighterMeta>>,
+        Option<&MeleeWeapon>,
+    )>,
     mut commands: Commands,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for (entity, attack_frames, parent) in attack_query.iter() {
-        if let Ok((animation, fighter_meta)) = fighter_query.get(**parent) {
+        if let Ok((animation, fighter_meta, melee_weapon)) = fighter_query.get(**parent) {
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
-                if let Some(fighter_data) = fighter_assets.get(fighter_meta) {
+                if let Some(fighter_meta) = fighter_meta {
+                    if let Some(fighter_data) = fighter_assets.get(fighter_meta) {
+                        commands.entity(entity).insert(Collider::cuboid(
+                            fighter_data.attack.hitbox.size.x / 2.,
+                            fighter_data.attack.hitbox.size.y / 2.,
+                        ));
+                    }
+                } else if let Some(melee_weapon) = melee_weapon {
                     commands.entity(entity).insert(Collider::cuboid(
-                        fighter_data.attack.hitbox.size.x / 2.,
-                        fighter_data.attack.hitbox.size.y / 2.,
+                        melee_weapon.attack.hitbox.size.x / 2.,
+                        melee_weapon.attack.hitbox.size.y / 2.,
                     ));
                 }
             }
