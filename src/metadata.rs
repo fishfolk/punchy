@@ -140,6 +140,7 @@ pub enum ItemKind {
         attack: AttackMeta,
         audio: AudioMeta,
         spritesheet: Box<FighterSpritesheetMeta>,
+        sprite_offset: Vec2,
     },
 }
 

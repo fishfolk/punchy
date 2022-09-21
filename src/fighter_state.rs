@@ -1195,6 +1195,7 @@ fn grabbing(
                                 ref attack,
                                 ref spritesheet,
                                 ref audio,
+                                ref sprite_offset,
                             } => {
                                 // If its throwable, pick up the item
                                 picked_item_ids.insert(item_ent);
@@ -1210,7 +1211,11 @@ fn grabbing(
                                 let mut animated_sprite = AnimatedSpriteSheetBundle {
                                     sprite_sheet: SpriteSheetBundle {
                                         texture_atlas: spritesheet.atlas_handle[0].clone(),
-                                        transform: Transform::from_xyz(30., 30., 0.),
+                                        transform: Transform::from_xyz(
+                                            sprite_offset.x,
+                                            sprite_offset.y,
+                                            0.,
+                                        ),
                                         ..Default::default()
                                     },
                                     animation: Animation::new(
@@ -1228,6 +1233,7 @@ fn grabbing(
                                         frames: attack.frames,
                                         animation: animated_sprite.animation.clone(),
                                         attack: attack.clone(),
+                                        sprite_sign: sprite_offset.x / sprite_offset.x.abs(),
                                     })
                                     .insert_bundle(animated_sprite)
                                     .id();
@@ -1327,18 +1333,25 @@ fn melee_attacking(
                     weapon_ent,
                     weapon_transform,
                     weapon_sprite,
+                    weapon.sprite_sign,
                 ));
             }
         }
 
-        if let Some((mut animation, audio, weapon_ent, mut weapon_transform, mut weapon_sprite)) =
-            melee_weapon
+        if let Some((
+            mut animation,
+            audio,
+            weapon_ent,
+            mut weapon_transform,
+            mut weapon_sprite,
+            sprite_sign,
+        )) = melee_weapon
         {
             //Check if has weapon, if so face it accordingly
             weapon_transform.translation.x = if facing.is_left() {
-                -weapon_transform.translation.x.abs()
+                -weapon_transform.translation.x.abs() * sprite_sign
             } else {
-                weapon_transform.translation.x.abs()
+                weapon_transform.translation.x.abs() * sprite_sign
             };
             weapon_sprite.flip_x = facing.is_left();
 
@@ -1413,4 +1426,5 @@ pub struct MeleeWeapon {
     pub frames: AttackFrames,
     pub animation: Animation,
     pub attack: AttackMeta,
+    pub sprite_sign: f32,
 }

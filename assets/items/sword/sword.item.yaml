@@ -13,8 +13,8 @@ kind: !MeleeWeapon
             active: 2
             recovery: 2
         hitbox:
-            size: [50, 65]
-            offset: [0, 0]
+            size: [55, 70]
+            offset: [4, -4]
 
     spritesheet:
         image: [sword.png]
@@ -35,3 +35,5 @@ kind: !MeleeWeapon
         effects:
             slashing:
                 9: sword.ogg
+
+    sprite_offset: [12, 44]
