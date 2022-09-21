@@ -2,6 +2,7 @@
 // Also for cleanness (named channels have evident function), we don't use the default channel.
 
 use bevy::{prelude::*, utils::HashMap};
+use bevy_egui::{egui::output::OutputEvent, EguiContext};
 use bevy_kira_audio::{AudioApp, AudioChannel, AudioSource};
 use iyes_loopless::prelude::*;
 
@@ -87,6 +88,25 @@ pub fn animation_audio_playback(
                     effects_channel.play(audio_handle.clone());
                     state_effects.last_played = Some(fighter_animation_i);
                 }
+            }
+        }
+    }
+}
+
+/// Plays main menu sounds
+pub fn main_menu_sounds(
+    mut context: ResMut<EguiContext>,
+    effects_channel: Res<AudioChannel<EffectsChannel>>,
+    asset_server: Res<AssetServer>,
+) {
+    for event in &context.ctx_mut().output().events {
+        if let OutputEvent::Clicked(info) = event {
+            if info.label.as_ref().unwrap() == "Start Game" {
+                //Play down_play_button
+                effects_channel.play(asset_server.load("ui/down_play_button.ogg"));
+            } else {
+                //Play one of the down button audios, except down_play_button
+                effects_channel.play(asset_server.load("ui/down_button_1.ogg"));
             }
         }
     }
