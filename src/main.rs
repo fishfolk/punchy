@@ -97,7 +97,6 @@ fn main() {
         asset_server_settings.asset_folder = asset_dir.clone();
     }
     app.insert_resource(asset_server_settings);
-
     // Add default plugins
     #[cfg(feature = "schedule_graph")]
     app.add_plugins_with(DefaultPlugins, |plugins| {
@@ -133,6 +132,10 @@ fn main() {
                 .run_in_state(GameState::InGame)
                 .with_system(game_over_on_players_death)
                 .into(),
+        )
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            main_menu_sounds.before(bevy_egui::EguiSystem::ProcessOutput),
         );
 
     // Register reflect types that don't come from plugins
