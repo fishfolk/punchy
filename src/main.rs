@@ -5,7 +5,6 @@
 use bevy::{
     asset::AssetServerSettings, log::LogSettings, prelude::*, render::texture::ImageSettings,
 };
-use bevy_mod_js_scripting::JsScriptingPlugin;
 use bevy_parallax::{ParallaxPlugin, ParallaxResource};
 use bevy_rapier2d::prelude::*;
 use fighter::Stats;
@@ -42,6 +41,7 @@ mod metadata;
 mod movement;
 mod platform;
 mod player;
+mod scripting;
 mod ui;
 mod utils;
 
@@ -56,7 +56,8 @@ use utils::ResetController;
 use crate::{
     damage::DamagePlugin, fighter_state::FighterStatePlugin, input::PlayerAction, item::ItemPlugin,
     lifetime::LifetimePlugin, loading::LoadingPlugin, localization::LocalizationPlugin,
-    movement::MovementPlugin, platform::PlatformPlugin, ui::debug_tools::YSortDebugPlugin,
+    movement::MovementPlugin, platform::PlatformPlugin, scripting::ScriptingPlugin,
+    ui::debug_tools::YSortDebugPlugin,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -109,7 +110,10 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
         .add_loopless_state(GameState::LoadingStorage)
-        .add_plugin(JsScriptingPlugin)
+        // Punchy-specific scripting extras, must be added before
+        // `bevy_mod_js_scripting::JsScriptingPlugin`
+        .add_plugin(ScriptingPlugin)
+        .add_plugin(bevy_mod_js_scripting::JsScriptingPlugin) // Core scripting engine
         .add_plugin(PlatformPlugin)
         .add_plugin(LocalizationPlugin)
         .add_plugin(LoadingPlugin)

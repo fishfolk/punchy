@@ -8,6 +8,7 @@
     },
     "include": [
         "./assets/**/*",
-        "./lib.bevy.d.ts"
+        "./lib.bevy.d.ts",
+        "./lib.punchy.d.ts"
     ],
 }

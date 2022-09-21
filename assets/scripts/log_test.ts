@@ -1,5 +1,5 @@
 export default {
-  update() {
-    debug("Running script update");
+  first() {
+    testOp('hello from test!');
   },
 };

@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_js_scripting"
 version = "0.1.0"
-source = "git+https://github.com/zicklag/bevy_mod_js_scripting.git?branch=punchy#661add3e87b83c751be6463a1278f8564037caa1"
+source = "git+https://github.com/jakobhellermann/bevy_mod_js_scripting.git#f2022bb9974929ae241d72f46855a93ca7b0f57e"
 dependencies = [
  "anyhow",
  "bevy",
@@ -658,6 +658,7 @@ dependencies = [
  "deno_core",
  "fixedbitset",
  "js-sys",
+ "pollster",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -669,6 +670,7 @@ dependencies = [
  "swc_ecma_transforms_base",
  "swc_ecma_transforms_typescript",
  "swc_ecma_visit",
+ "type-map 0.5.0",
  "wasm-bindgen",
  "wasm_mutex",
 ]
@@ -2436,7 +2438,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c310433e4a310918d6ed9243542a6b83ec1183df95dff8f23f87bb88a264a66f"
 dependencies = [
- "type-map",
+ "type-map 0.4.0",
  "unic-langid",
 ]
 
@@ -2475,9 +2477,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.4"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8bf247779e67a9082a4790b45e71ac7cfd1321331a5c856a74a9faebdab78d0"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
 dependencies = [
  "either",
 ]
@@ -2700,9 +2702,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.132"
+version = "0.2.133"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8371e4e5341c3a96db127eb2465ac681ced4c433e01dd0e938adbef26ba93ba5"
+checksum = "c0f80d65747a3e43d1596c7c5492d95d5edddaabd45a7fcdb02b95f644164966"
 
 [[package]]
 name = "libloading"
@@ -2732,9 +2734,9 @@ dependencies = [
 
 [[package]]
 name = "lock_api"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f80bf5aacaf25cbfc8210d1cfb718f2bf3b11c4c54e5afe36c236853a8ec390"
+checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg",
  "scopeguard",
@@ -3258,9 +3260,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.14.0"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f7254b99e31cad77da24b08ebf628882739a608578bb1bcdfc1f9c21260d7c0"
+checksum = "e82dad04139b71a90c080c8463fe0dc7902db5192d939bd0950f074d014339e1"
 
 [[package]]
 name = "optional"
@@ -3505,6 +3507,12 @@ dependencies = [
  "flate2",
  "miniz_oxide 0.5.4",
 ]
+
+[[package]]
+name = "pollster"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
 
 [[package]]
 name = "pp-rs"
@@ -4470,9 +4478,9 @@ dependencies = [
 
 [[package]]
 name = "swc_visit"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b754ef01f2614eb469fd5215789bfd319566a3bf1033056d7a7bfb5a3c9a69f5"
+checksum = "82f2bcb7223e185c4c7cbf5e0c1207dec6d2bfd5e72e3fb7b3e8d179747e9130"
 dependencies = [
  "either",
  "swc_visit_macros",
@@ -4480,9 +4488,9 @@ dependencies = [
 
 [[package]]
 name = "swc_visit_macros"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c230bcd129d1fbcd1decd8b43cccd613fda11c895f7c04d6c966231dbc1959af"
+checksum = "8fb1f3561674d84947694d41fb6d5737d19539222779baeac1b3a071a2b29428"
 dependencies = [
  "Inflector",
  "pmutil",
@@ -4579,9 +4587,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.99"
+version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58dbef6ec655055e20b86b15a8cc6d439cca19b667537ac6a1369572d151ab13"
+checksum = "52205623b1b0f064a4e71182c3b18ae902267282930c6d5462c91b859668426e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4798,6 +4806,15 @@ name = "type-map"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d3364c5e96cb2ad1603037ab253ddd34d7fb72a58bdddf4b7350760fc69a46"
+dependencies = [
+ "rustc-hash",
+]
+
+[[package]]
+name = "type-map"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deb68604048ff8fa93347f02441e4487594adc20bb8a084f9e564d2b827a0a9f"
 dependencies = [
  "rustc-hash",
 ]
