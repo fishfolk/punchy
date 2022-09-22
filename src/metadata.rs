@@ -136,6 +136,12 @@ pub enum ItemKind {
         #[serde(skip)]
         item_handle: Handle<ItemMeta>,
     },
+    MeleeWeapon {
+        attack: AttackMeta,
+        audio: AudioMeta,
+        spritesheet: Box<FighterSpritesheetMeta>,
+        sprite_offset: Vec2,
+    },
 }
 
 #[derive(Deserialize, Clone, Debug)]

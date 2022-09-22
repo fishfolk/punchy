@@ -106,7 +106,7 @@ impl<'de> serde::de::Visitor<'de> for RangeVisitor {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Animation {
     pub animations: HashMap<String, Clip>,
     pub current_frame: usize,

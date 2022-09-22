@@ -314,6 +314,11 @@ impl AssetLoader for ItemLoader {
             let self_path = load_context.path();
             let mut dependencies = Vec::new();
 
+            let (image_path, image_handle) =
+                get_relative_asset(load_context, self_path, &meta.image.image);
+            dependencies.push(image_path);
+            meta.image.image_handle = image_handle;
+
             if let ItemKind::BreakableBox {
                 ref mut item_handle,
                 ref item,
@@ -326,12 +331,45 @@ impl AssetLoader for ItemLoader {
 
                 dependencies.push(item_path);
                 *item_handle = new_item_handle;
-            }
+            } else if let ItemKind::MeleeWeapon {
+                ref mut spritesheet,
+                ref mut audio,
+                ..
+            } = meta.kind
+            {
+                for (state, frame_audio_files) in &audio.effects {
+                    for (animation_i, audio_file) in frame_audio_files {
+                        let (asset_path, effect_handle) =
+                            get_relative_asset(load_context, self_path, audio_file);
 
-            let (image_path, image_handle) =
-                get_relative_asset(load_context, self_path, &meta.image.image);
-            dependencies.push(image_path);
-            meta.image.image_handle = image_handle;
+                        dependencies.push(asset_path);
+
+                        let frame_audio_handles = audio
+                            .effect_handles
+                            .entry(state.clone())
+                            .or_insert_with(HashMap::new);
+
+                        frame_audio_handles.insert(*animation_i, effect_handle);
+                    }
+                }
+
+                for (index, image) in spritesheet.image.iter().enumerate() {
+                    let (texture_path, texture_handle) =
+                        get_relative_asset(load_context, load_context.path(), image);
+
+                    let atlas_handle = load_context.set_labeled_asset(
+                        format!("atlas_{}", index).as_str(),
+                        LoadedAsset::new(TextureAtlas::from_grid(
+                            texture_handle,
+                            spritesheet.tile_size.as_vec2(),
+                            spritesheet.columns,
+                            spritesheet.rows,
+                        ))
+                        .with_dependency(texture_path),
+                    );
+                    spritesheet.atlas_handle.push(atlas_handle);
+                }
+            }
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 

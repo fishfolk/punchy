@@ -38,7 +38,7 @@ spritesheet:
       frames: [85, 90]
 
 attack:
-  name: "punch"
+  name: "flop"
   damage: 35
   frames:
     startup: 1

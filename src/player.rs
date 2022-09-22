@@ -6,7 +6,7 @@ use crate::{
     consts,
     fighter::Inventory,
     input::PlayerAction,
-    metadata::{FighterMeta, FighterSpawnMeta, GameMeta, Settings},
+    metadata::{AttackMeta, FighterMeta, FighterSpawnMeta, GameMeta, Settings},
 };
 
 #[derive(Component)]
@@ -26,6 +26,7 @@ pub struct PlayerBundle {
     fighter_handle: Handle<FighterMeta>,
     #[bundle]
     input_manager_bundle: InputManagerBundle<PlayerAction>,
+    available_attacks: AvailableAttacks,
 }
 
 impl PlayerBundle {
@@ -34,6 +35,7 @@ impl PlayerBundle {
         player_i: usize,
         game_meta: &GameMeta,
         settings: Option<&Settings>,
+        fighter_assets: &Res<Assets<FighterMeta>>,
     ) -> Self {
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, 0.0);
         let player_pos = player_meta.location + ground_offset;
@@ -51,6 +53,12 @@ impl PlayerBundle {
             ..default()
         };
 
+        let available_attacks = AvailableAttacks(vec![fighter_assets
+            .get(&player_meta.fighter_handle)
+            .expect("Fighter not loaded")
+            .attack
+            .clone()]);
+
         PlayerBundle {
             player: Player,
             index: PlayerIndex(player_i),
@@ -59,6 +67,10 @@ impl PlayerBundle {
             fighter_handle,
             input_manager_bundle,
             inventory: Inventory(None),
+            available_attacks,
         }
     }
 }
+
+#[derive(Component)]
+pub struct AvailableAttacks(pub Vec<AttackMeta>);

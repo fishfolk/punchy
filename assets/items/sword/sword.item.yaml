@@ -1,0 +1,39 @@
+name: Sword
+
+image:
+    image: sword_icon.png
+    image_size: [17, 29]
+
+kind: !MeleeWeapon
+    attack:
+        name: "melee"
+        damage: 50
+        frames:
+            startup: 1
+            active: 2
+            recovery: 2
+        hitbox:
+            size: [55, 70]
+            offset: [4, -4]
+
+    spritesheet:
+        image: [sword.png]
+        tile_size: [65, 93]
+        columns: 4
+        rows: 3
+
+        animation_fps: 0.12
+        animations:
+            idle:
+                frames: [4, 4]
+            slashing:
+                frames: [8, 11]
+            ground:
+                frames: [0, 0]
+
+    audio:
+        effects:
+            slashing:
+                9: sword.ogg
+
+    sprite_offset: [12, 44]

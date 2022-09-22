@@ -315,6 +315,7 @@ fn load_level(
     mut items_assets: ResMut<Assets<ItemMeta>>,
     mut parallax: ResMut<ParallaxResource>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    fighter_assets: Res<Assets<FighterMeta>>,
     asset_server: Res<AssetServer>,
     game: Res<GameMeta>,
     windows: Res<Windows>,
@@ -352,6 +353,7 @@ fn load_level(
                 i,
                 &game,
                 storage.get(Settings::STORAGE_KEY).as_ref(),
+                &fighter_assets,
             ));
         }
 

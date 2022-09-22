@@ -6,8 +6,8 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
-    animation::{Animation, Facing},
-    attack::Attack,
+    animation::{AnimatedSpriteSheetBundle, Animation, Facing},
+    attack::{Attack, AttackFrames},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
     consts,
@@ -16,10 +16,10 @@ use crate::{
     enemy_ai,
     fighter::Inventory,
     input::PlayerAction,
-    item::{Drop, Item, Projectile},
-    metadata::{FighterMeta, ItemKind, ItemMeta},
+    item::{Drop, Item, ItemBundle, Projectile},
+    metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
-    player::Player,
+    player::{AvailableAttacks, Player},
     GameState, Stats,
 };
 
@@ -59,6 +59,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_punching)
                     .with_system(transition_from_ground_slam)
                     .with_system(transition_from_knocked_back)
+                    .with_system(transition_from_melee_attacking)
                     .into(),
             )
             // State handler systems
@@ -76,6 +77,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(knocked_back)
                     .with_system(dying)
                     .with_system(holding)
+                    .with_system(melee_attacking)
                     .into(),
             );
     }
@@ -253,6 +255,17 @@ impl Punching {
     pub const ANIMATION: &'static str = "attacking";
 }
 
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct MeleeAttacking {
+    pub has_started: bool,
+    pub is_finished: bool,
+}
+impl MeleeAttacking {
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "slashing";
+}
+
 /// Component indicating the player is holding a item on it's head
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
@@ -301,19 +314,36 @@ fn collect_player_actions(
             &Inventory,
             &Stats,
             Option<&Holding>,
+            &AvailableAttacks,
         ),
         With<Player>,
     >,
 ) {
-    for (action_state, mut transition_intents, inventory, stats, holding) in &mut players {
+    for (action_state, mut transition_intents, inventory, stats, holding, available_attacks) in
+        &mut players
+    {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
-            transition_intents.push_back(StateTransition::new(
-                Flopping::default(),
-                Flopping::PRIORITY,
-                false,
-            ));
+            match available_attacks
+                .0
+                .last()
+                .expect("Attack not loaded")
+                .name
+                .as_str()
+            {
+                "flop" => transition_intents.push_back(StateTransition::new(
+                    Flopping::default(),
+                    Flopping::PRIORITY,
+                    false,
+                )),
+                "melee" => transition_intents.push_back(StateTransition::new(
+                    MeleeAttacking::default(),
+                    MeleeAttacking::PRIORITY,
+                    false,
+                )),
+                _ => {}
+            }
         }
 
         // Trigger grab/throw
@@ -513,6 +543,35 @@ fn transition_from_knocked_back(
             commands
                 .entity(entity)
                 .remove::<KnockedBack>()
+                .insert(Idling);
+        }
+    }
+}
+
+fn transition_from_melee_attacking(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &MeleeAttacking)>,
+) {
+    'entity: for (entity, mut transition_intents, melee_attacking) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<MeleeAttacking>(
+                entity,
+                MeleeAttacking::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done attacking
+        if melee_attacking.is_finished {
+            // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<MeleeAttacking>()
                 .insert(Idling);
         }
     }
@@ -970,11 +1029,21 @@ fn dying(
 /// Throw the item in the player's inventory
 fn throwing(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &Transform, &Facing, &mut Inventory), With<Throwing>>,
+    mut fighters: Query<
+        (
+            Entity,
+            &Transform,
+            &Facing,
+            &mut Inventory,
+            Option<&mut AvailableAttacks>,
+        ),
+        With<Throwing>,
+    >,
     being_held: Query<(Entity, &Parent), With<BeingHeld>>,
-    items_assets: Res<Assets<ItemMeta>>,
+    weapon_held: Query<(Entity, &Parent), With<MeleeWeapon>>,
+    mut items_assets: ResMut<Assets<ItemMeta>>,
 ) {
-    for (entity, fighter_transform, facing, mut inventory) in &mut fighters {
+    for (entity, fighter_transform, facing, mut inventory, available_attacks) in &mut fighters {
         // If the player has an item in their inventory
         if let Some(item_meta) = inventory.take() {
             // Check what kind of item this is.
@@ -1018,6 +1087,29 @@ fn throwing(
                     }
                     commands.entity(entity).remove::<Holding>();
                 }
+                ItemKind::MeleeWeapon { .. } => {
+                    //Drop item
+                    let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
+
+                    let item_spawn_meta = ItemSpawnMeta {
+                        location: fighter_transform.translation - ground_offset,
+                        item: String::new(),
+                        item_handle: items_assets.add(item_meta.clone()),
+                    };
+                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+
+                    if let Some(mut available_attacks) = available_attacks {
+                        available_attacks.0.pop();
+                    }
+
+                    // Despawn weapon sprite
+                    for (weapon_ent, parent) in weapon_held.iter() {
+                        if parent.get() == entity {
+                            commands.entity(weapon_ent).despawn_recursive();
+                        }
+                    }
+                }
             }
         }
 
@@ -1038,6 +1130,7 @@ fn grabbing(
             &Stats,
             &mut Health,
             &mut StateTransitionIntents,
+            Option<&mut AvailableAttacks>,
         ),
         With<Grabbing>,
     >,
@@ -1054,6 +1147,7 @@ fn grabbing(
         stats,
         mut health,
         mut transition_intents,
+        available_attacks,
     ) in &mut fighters
     {
         // If several items are at pick distance, an arbitrary one is picked.
@@ -1096,6 +1190,54 @@ fn grabbing(
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
+                            }
+                            ItemKind::MeleeWeapon {
+                                ref attack,
+                                ref spritesheet,
+                                ref audio,
+                                ref sprite_offset,
+                            } => {
+                                // If its throwable, pick up the item
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+
+                                if let Some(mut available_attacks) = available_attacks {
+                                    available_attacks.0.push(attack.clone())
+                                }
+
+                                //Spawn weapon sprite on Player
+                                let mut animated_sprite = AnimatedSpriteSheetBundle {
+                                    sprite_sheet: SpriteSheetBundle {
+                                        texture_atlas: spritesheet.atlas_handle[0].clone(),
+                                        transform: Transform::from_xyz(
+                                            sprite_offset.x,
+                                            sprite_offset.y,
+                                            0.,
+                                        ),
+                                        ..Default::default()
+                                    },
+                                    animation: Animation::new(
+                                        spritesheet.animation_fps,
+                                        spritesheet.animations.clone(),
+                                    ),
+                                };
+                                animated_sprite.animation.current_animation =
+                                    Some("idle".to_string());
+
+                                let weapon = commands
+                                    .spawn()
+                                    .insert(MeleeWeapon {
+                                        audio: audio.clone(),
+                                        frames: attack.frames,
+                                        animation: animated_sprite.animation.clone(),
+                                        attack: attack.clone(),
+                                        sprite_sign: sprite_offset.x / sprite_offset.x.abs(),
+                                    })
+                                    .insert_bundle(animated_sprite)
+                                    .id();
+                                commands.entity(fighter_ent).add_child(weapon);
                             }
                         }
                     }
@@ -1148,4 +1290,141 @@ fn holding(
             commands.entity(entity).add_child(child);
         }
     }
+}
+
+fn melee_attacking(
+    mut commands: Commands,
+    mut fighters: Query<(
+        Entity,
+        Option<&mut MeleeAttacking>,
+        Option<&Player>,
+        Option<&Enemy>,
+        &AvailableAttacks,
+        &mut LinearVelocity,
+        &Facing,
+    )>,
+    mut melee_weapons: Query<(
+        Entity,
+        &Parent,
+        &mut Animation,
+        &MeleeWeapon,
+        &mut Transform,
+        &mut TextureAtlasSprite,
+    )>,
+) {
+    for (entity, melee_attack, player, enemy, available_attacks, mut velocity, facing) in
+        &mut fighters
+    {
+        let is_player = player.is_some();
+        let is_enemy = enemy.is_some();
+        if !is_player && !is_enemy {
+            // This system only knows how to attack for players and enemies
+            continue;
+        }
+
+        let mut melee_weapon = None;
+        for (weapon_ent, parent, animation, weapon, weapon_transform, weapon_sprite) in
+            &mut melee_weapons
+        {
+            if parent.get() == entity {
+                melee_weapon = Some((
+                    animation,
+                    weapon.audio.clone(),
+                    weapon_ent,
+                    weapon_transform,
+                    weapon_sprite,
+                    weapon.sprite_sign,
+                ));
+            }
+        }
+
+        if let Some((
+            mut animation,
+            audio,
+            weapon_ent,
+            mut weapon_transform,
+            mut weapon_sprite,
+            sprite_sign,
+        )) = melee_weapon
+        {
+            //Check if has weapon, if so face it accordingly
+            weapon_transform.translation.x = if facing.is_left() {
+                -weapon_transform.translation.x.abs() * sprite_sign
+            } else {
+                weapon_transform.translation.x.abs() * sprite_sign
+            };
+            weapon_sprite.flip_x = facing.is_left();
+
+            //Check if it's attacking
+            if let Some(mut melee_attack) = melee_attack {
+                if !melee_attack.has_started {
+                    melee_attack.has_started = true;
+
+                    // Start the attack from the beginning
+                    animation.play("slashing", false);
+
+                    let attack = available_attacks.0.last().expect("Attack not loaded");
+
+                    let offset = attack.hitbox.offset;
+                    let attack_frames = attack.frames;
+                    // Spawn the attack entity
+                    let attack_entity = commands
+                        .spawn_bundle(TransformBundle::from_transform(
+                            Transform::from_translation(offset.extend(0.0)),
+                        ))
+                        .insert(Sensor)
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(CollisionGroups::new(
+                            if is_player {
+                                BodyLayers::PLAYER_ATTACK
+                            } else {
+                                BodyLayers::ENEMY_ATTACK
+                            },
+                            if is_player {
+                                BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                            } else {
+                                BodyLayers::PLAYER
+                            },
+                        ))
+                        .insert(Attack {
+                            damage: attack.damage,
+                            velocity: if facing.is_left() {
+                                Vec2::NEG_X
+                            } else {
+                                Vec2::X
+                            } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                        })
+                        .insert(attack_frames)
+                        .id();
+                    commands.entity(weapon_ent).push_children(&[attack_entity]);
+
+                    // Play attack sound effect
+                    if let Some(effects) = audio.effect_handles.get(MeleeAttacking::ANIMATION) {
+                        let fx_playback = AnimationAudioPlayback::new(
+                            MeleeAttacking::ANIMATION.to_owned(),
+                            effects.clone(),
+                        );
+                        commands.entity(weapon_ent).insert(fx_playback);
+                    }
+                }
+                **velocity = Vec2::ZERO;
+
+                if animation.is_finished() {
+                    melee_attack.is_finished = true;
+                }
+            }
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct MeleeWeapon {
+    pub audio: AudioMeta,
+    pub frames: AttackFrames,
+    pub animation: Animation,
+    pub attack: AttackMeta,
+    pub sprite_sign: f32,
 }

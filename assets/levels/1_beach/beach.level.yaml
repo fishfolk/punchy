@@ -89,6 +89,8 @@ items:
   - item: &health /items/health/health.item.yaml
     location: [50, -70, 0]
   - item: &bottle /items/bottle/bottle.item.yaml
-    location: [50, -20, 0]
+    location: [100, -20, 0]
+  - item: &sword /items/sword/sword.item.yaml
+    location: [-100, -20, 0]
   - item: &box /items/box/box.item.yaml
-    location: [50, 20, 0]
+    location: [30, 60, 0]
