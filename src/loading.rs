@@ -199,7 +199,7 @@ impl<'w, 's> GameLoader<'w, 's> {
 
             // Set the active scripts
             for script_handle in &game.script_handles {
-                active_scripts.push(script_handle.clone_weak());
+                active_scripts.insert(script_handle.clone_weak());
             }
 
             // Insert the game resource
@@ -332,6 +332,7 @@ fn load_level(
     windows: Res<Windows>,
     mut storage: ResMut<Storage>,
     loading_resources: LoadingResources,
+    mut active_scripts: ResMut<ActiveScripts>,
 ) {
     if let Some(level) = assets.get(&level_handle) {
         // Track load progress
@@ -380,7 +381,12 @@ fn load_level(
         // Spawn the items
         for item_spawn_meta in &level.items {
             let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
-            ItemBundle::spawn(item_commands, item_spawn_meta, &mut items_assets)
+            ItemBundle::spawn(
+                item_commands,
+                item_spawn_meta,
+                &mut items_assets,
+                &mut active_scripts,
+            )
         }
 
         commands.insert_resource(level.clone());

@@ -1,5 +1,5 @@
 export default {
   first() {
-    testOp('hello from test!');
+    debug('hello from test!');
   },
 };

@@ -136,9 +136,6 @@ pub enum ItemKind {
     Throwable {
         damage: i32,
     },
-    Health {
-        health: i32,
-    },
     BreakableBox {
         damage: i32,
         hurtbox: ColliderMeta,
@@ -162,6 +159,12 @@ pub enum ItemKind {
         bullet_lifetime: f32,
         ammo: usize,
         shoot_delay: f32,
+    },
+    Script {
+        /// The relative asset path to the script for this item
+        script: String,
+        #[serde(skip)]
+        script_handle: Handle<JsScript>,
     },
 }
 

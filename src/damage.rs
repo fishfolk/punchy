@@ -4,13 +4,13 @@ pub struct DamagePlugin;
 
 impl Plugin for DamagePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<DamageEvent>();
+        app.add_event::<DamageEvent>().register_type::<Health>();
     }
 }
 
 /// A component indicating how much health something has, or in other words, how much damage
 /// something can take before being destroyed.
-#[derive(Component, Deref, DerefMut)]
+#[derive(Reflect, Component, Deref, DerefMut)]
 pub struct Health(pub i32);
 
 /// A component that indicates whether an entity can be damaged.

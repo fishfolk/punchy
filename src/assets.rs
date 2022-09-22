@@ -397,7 +397,15 @@ impl AssetLoader for ItemLoader {
                     }
                 }
 
-                _ => {}
+                ItemKind::Script {
+                    script,
+                    script_handle,
+                } => {
+                    let (script_path, loaded_script_handle) =
+                        get_relative_asset(load_context, load_context.path(), script);
+                    dependencies.push(script_path);
+                    *script_handle = loaded_script_handle;
+                }
             }
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));

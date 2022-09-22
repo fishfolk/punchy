@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_js_scripting"
 version = "0.1.0"
-source = "git+https://github.com/jakobhellermann/bevy_mod_js_scripting.git#f2022bb9974929ae241d72f46855a93ca7b0f57e"
+source = "git+https://github.com/zicklag/bevy_mod_js_scripting.git?branch=punchy#0ca98e73788e2dee9b649542e627c89aebfe3724"
 dependencies = [
  "anyhow",
  "bevy",
