@@ -14,9 +14,9 @@ declare function error(...args: any): void;
 // ecs.js
 declare interface BevyScript {
   first?: () => void;
-  pre_update?: () => void;
+  preUpdate?: () => void;
   update?: () => void;
-  post_update?: () => void;
+  postUpdate?: () => void;
   last?: () => void;
 }
 

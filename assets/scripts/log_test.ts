@@ -1,5 +1,5 @@
 export default {
-  first() {
+  update() {
     debug('hello from test!');
   },
 };
