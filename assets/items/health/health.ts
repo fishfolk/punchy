@@ -12,10 +12,11 @@ export default {
   postUpdate() {
     const grabEvents = punchy.getItemGrabEvents();
 
+    const fighterQuery = world.query(Health, Stats);
     for (const event of grabEvents) {
       const fighter = event.fighter;
 
-      const [health, stats] = world.get(fighter, Health, Stats);
+      const [health, stats] = fighterQuery.get(fighter);
 
       health[0] = stats.max_health;
     }

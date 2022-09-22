@@ -23,10 +23,6 @@ declare interface BevyScript {
 declare class ComponentId {
   index: number;
 }
-declare class Entity {
-  id: number;
-  generation: number;
-}
 
 type ComponentInfo = {
   id: ComponentId;
@@ -47,17 +43,22 @@ type BevyType<T> = {
   typeName: string;
 };
 
-
-type ExtractBevyType<T> = T extends BevyType<infer U> ? U
-  : T extends ComponentId ? Value
+type ExtractBevyType<T> = T extends BevyType<infer U>
+  ? U
+  : T extends ComponentId
+  ? Value
   : never;
 type MapQueryArgs<Q> = { [C in keyof Q]: ExtractBevyType<Q[C]> };
 
 type QueryParameter = BevyType<unknown> | ComponentId;
 type QueryItem<Q> = {
   entity: Entity;
-  components: MapQueryArgs<Q>,
+  components: MapQueryArgs<Q>;
 };
+
+declare class QueryItems<Q> extends Array<QueryItem<Q>> {
+  get(entity: Entity): MapQueryArgs<Q> | undefined;
+}
 
 declare class World {
   get components(): ComponentInfo[];
@@ -67,8 +68,11 @@ declare class World {
   resource(componentId: ComponentId): Value | null;
   resource<T>(type: BevyType<T>): T | null;
 
-  query<Q extends QueryParameter[]>(...query: Q): QueryItem<Q>[];
-  get<Q extends QueryParameter[]>(entity: Entity, ...components: Q): MapQueryArgs<Q>;
+  query<Q extends QueryParameter[]>(...query: Q): QueryItems<Q>;
+  get<Q extends QueryParameter[]>(
+    entity: Entity,
+    ...components: Q
+  ): MapQueryArgs<Q>;
 }
 
 declare let world: World;
