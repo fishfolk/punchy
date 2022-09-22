@@ -5,7 +5,8 @@ camera_height: 448
 camera_move_right_boundary: 150.
 
 scripts:
-  - scripts/log_test.ts
+  # Enable our demo script
+  - scripts/demo_script.ts
 
 main_menu:
   title_font:
