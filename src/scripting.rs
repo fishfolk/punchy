@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_js_scripting::JsRuntimeConfig;
+use bevy_mod_js_scripting::{JsRuntimeConfig, JsScriptingPlugin};
 
 mod ops;
 
@@ -9,6 +9,7 @@ impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
         let custom_ops = ops::get_ops();
 
-        app.insert_non_send_resource(JsRuntimeConfig { custom_ops });
+        app.insert_non_send_resource(JsRuntimeConfig { custom_ops })
+            .add_plugin(JsScriptingPlugin);
     }
 }

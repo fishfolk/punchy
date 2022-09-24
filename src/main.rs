@@ -110,10 +110,7 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
         .add_loopless_state(GameState::LoadingStorage)
-        // Punchy-specific scripting extras, must be added before
-        // `bevy_mod_js_scripting::JsScriptingPlugin`
         .add_plugin(ScriptingPlugin)
-        .add_plugin(bevy_mod_js_scripting::JsScriptingPlugin) // Core scripting engine
         .add_plugin(PlatformPlugin)
         .add_plugin(LocalizationPlugin)
         .add_plugin(LoadingPlugin)
