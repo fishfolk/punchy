@@ -55,13 +55,16 @@ pub struct Breakable {
     pub hit_tolerance: i32,
     /// The number of collisions occured.
     pub hit_count: i32,
+    /// If it should despawn it's parent on break
+    pub despawn_parent: bool,
 }
 
 impl Breakable {
-    pub fn new(hits: i32) -> Self {
+    pub fn new(hits: i32, despawn_parent: bool) -> Self {
         Self {
             hit_tolerance: hits,
             hit_count: 0,
+            despawn_parent,
         }
     }
 }
@@ -172,14 +175,19 @@ fn attack_damage_system(
 
 fn breakable_system(
     mut events: EventReader<CollisionEvent>,
-    mut despawn_query: Query<(&mut Breakable, Option<&Drop>, Option<&Transform>)>,
+    mut despawn_query: Query<(
+        &mut Breakable,
+        Option<&Drop>,
+        Option<&Transform>,
+        Option<&Parent>,
+    )>,
     mut commands: Commands,
     mut event_writer: EventWriter<BrokeEvent>,
 ) {
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
-                if let Ok((mut breakable, drop, transform)) = despawn_query.get_mut(**e) {
+                if let Ok((mut breakable, drop, transform, parent)) = despawn_query.get_mut(**e) {
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
                     } else {
@@ -188,6 +196,12 @@ fn breakable_system(
                             transform: transform.cloned(),
                         });
                         commands.entity(**e).despawn_recursive();
+
+                        if breakable.despawn_parent {
+                            if let Some(parent) = parent {
+                                commands.entity(parent.get()).despawn_recursive()
+                            }
+                        }
                     }
                 }
             }

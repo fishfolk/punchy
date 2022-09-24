@@ -1,0 +1,48 @@
+name: Musket
+
+image:
+    image: musket_icon.png
+    image_size: [61, 25]
+
+kind: !ProjectileWeapon
+    attack:
+        name: "projectile"
+        damage: 75
+        frames:
+            startup: 1 #Sets animation frame that bullet spawns
+            active: 3
+            recovery: 3
+        hitbox:
+            size: [15, 15]
+            offset: [0, 0]
+
+    bullet_velocity: 300
+    bullet_lifetime: 1
+
+    spritesheet:
+        image: [musket.png]
+        tile_size: [92, 32]
+        columns: 4
+        rows: 5
+
+        animation_fps: 0.06
+        animations:
+            idle:
+                frames: [0, 0]
+            shooting:
+                frames: [4, 6]
+            shooting_particles:
+                frames: [8, 11]
+            bullet:
+                frames: [12, 12]
+    
+    audio:
+        effects:
+            shooting:
+                5: shoot.ogg
+
+    sprite_offset: [23, 23]
+
+    ammo: 3
+
+    shoot_delay: 1.2

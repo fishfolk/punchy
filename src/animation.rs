@@ -30,7 +30,7 @@ impl Plugin for AnimationPlugin {
 }
 
 /// Bundle for animated sprite sheets
-#[derive(Bundle)]
+#[derive(Bundle, Clone)]
 pub struct AnimatedSpriteSheetBundle {
     #[bundle]
     pub sprite_sheet: SpriteSheetBundle,

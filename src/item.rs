@@ -69,7 +69,7 @@ impl ItemBundle {
 
             commands
                 .insert_bundle(physics_bundle)
-                .insert(Breakable::new(*hits));
+                .insert(Breakable::new(*hits, false));
         }
 
         if let Some(item) = item {
@@ -115,8 +115,11 @@ impl Projectile {
                 damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
                     crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
-                    crate::metadata::ItemKind::MeleeWeapon { .. } => panic!("Cannot throw melee"),
                     crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
+                    crate::metadata::ItemKind::MeleeWeapon { .. }
+                    | crate::metadata::ItemKind::ProjectileWeapon { .. } => {
+                        panic!("Cannot throw weapon")
+                    }
                 },
                 velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
             },
@@ -135,7 +138,7 @@ impl Projectile {
                 BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
             ),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
-            breakable: Breakable::new(0),
+            breakable: Breakable::new(0, false),
         }
     }
 }

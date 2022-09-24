@@ -142,6 +142,16 @@ pub enum ItemKind {
         spritesheet: Box<FighterSpritesheetMeta>,
         sprite_offset: Vec2,
     },
+    ProjectileWeapon {
+        attack: AttackMeta,
+        audio: AudioMeta,
+        spritesheet: Box<FighterSpritesheetMeta>,
+        sprite_offset: Vec2,
+        bullet_velocity: f32,
+        bullet_lifetime: f32,
+        ammo: usize,
+        shoot_delay: f32,
+    },
 }
 
 #[derive(Deserialize, Clone, Debug)]

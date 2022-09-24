@@ -94,3 +94,5 @@ items:
     location: [-100, -20, 0]
   - item: &box /items/box/box.item.yaml
     location: [30, 60, 0]
+  - item: &musket /items/musket/musket.item.yaml
+    location: [-20, -20, 0]
