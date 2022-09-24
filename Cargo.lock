@@ -439,7 +439,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_dynamic"
 version = "0.1.0"
-source = "git+https://github.com/jakobhellermann/bevy_ecs_dynamic#76d6260462ca319d27c046d943714b7ae1885348"
+source = "git+https://github.com/jakobhellermann/bevy_ecs_dynamic#aa7a051a49bd134cfd8c169542e16526bf2b36b3"
 dependencies = [
  "bevy_ecs",
  "bevy_reflect",
@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_js_scripting"
 version = "0.1.0"
-source = "git+https://github.com/zicklag/bevy_mod_js_scripting.git?branch=punchy#279a9a1ab6506f5a0311a06ae9db1df80b8487eb"
+source = "git+https://github.com/jakobhellermann/bevy_mod_js_scripting.git#ea7548453cc68b9c8d3388dce1e837c8232eb567"
 dependencies = [
  "anyhow",
  "bevy",
@@ -2524,9 +2524,9 @@ checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
 
 [[package]]
 name = "jobserver"
-version = "0.1.24"
+version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af25a77299a7f711a01975c35a6a424eb6862092cc2d6c72c4ed6cbc56dfc1fa"
+checksum = "068b1ee6743e4d11fb9c6a1e6064b3693a1b600e7f5f5988047d98b3dc9fb90b"
 dependencies = [
  "libc",
 ]
@@ -4211,9 +4211,9 @@ checksum = "8fb1df15f412ee2e9dfc1c504260fa695c1c3f10fe9f4a6ee2d2184d7d6450e2"
 
 [[package]]
 name = "swc_atoms"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38c8d09dbafcecff870a541d08e2a31c49155723ddcfd4923a437b42e446f91b"
+checksum = "8c4672abeb1ab4f174fae3928945c3f42776f21f636e0b118b3497c4cd2d6b6e"
 dependencies = [
  "once_cell",
  "rustc-hash",
