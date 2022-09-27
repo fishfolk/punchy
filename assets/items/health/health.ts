@@ -10,6 +10,8 @@ const Stats: BevyType<Stats> = { typeName: "punchy::fighter::Stats" };
 
 export default {
   postUpdate() {
+    // The `getItemGrabEvents()` method will return all events where a fighter grabbed the item that
+    // this script is associated with.
     const grabEvents = punchy.getItemGrabEvents();
 
     const fighterQuery = world.query(Health, Stats);
