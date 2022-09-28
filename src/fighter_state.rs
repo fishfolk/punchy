@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::Duration};
 
 use bevy::{prelude::*, reflect::FromType, utils::HashSet};
 use bevy_rapier2d::prelude::{ActiveCollisionTypes, ActiveEvents, CollisionGroups, Sensor};
@@ -7,7 +7,7 @@ use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation, Facing},
-    attack::{Attack, AttackFrames},
+    attack::{Attack, Breakable},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
     consts,
@@ -17,10 +17,11 @@ use crate::{
     fighter::Inventory,
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile},
+    lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
     player::{AvailableAttacks, Player},
-    GameState, Stats,
+    Collider, GameState, Stats,
 };
 
 /// Plugin for managing fighter states
@@ -60,6 +61,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_ground_slam)
                     .with_system(transition_from_knocked_back)
                     .with_system(transition_from_melee_attacking)
+                    .with_system(transition_from_shooting)
                     .into(),
             )
             // State handler systems
@@ -78,6 +80,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(dying)
                     .with_system(holding)
                     .with_system(melee_attacking)
+                    .with_system(shooting)
                     .into(),
             );
     }
@@ -266,6 +269,18 @@ impl MeleeAttacking {
     pub const ANIMATION: &'static str = "slashing";
 }
 
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct Shooting {
+    pub has_started: bool,
+    pub is_finished: bool,
+    pub spawned_bullet: bool,
+}
+impl Shooting {
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "shooting";
+}
+
 /// Component indicating the player is holding a item on it's head
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
@@ -340,6 +355,11 @@ fn collect_player_actions(
                 "melee" => transition_intents.push_back(StateTransition::new(
                     MeleeAttacking::default(),
                     MeleeAttacking::PRIORITY,
+                    false,
+                )),
+                "projectile" => transition_intents.push_back(StateTransition::new(
+                    Shooting::default(),
+                    Shooting::PRIORITY,
                     false,
                 )),
                 _ => {}
@@ -573,6 +593,32 @@ fn transition_from_melee_attacking(
                 .entity(entity)
                 .remove::<MeleeAttacking>()
                 .insert(Idling);
+        }
+    }
+}
+
+fn transition_from_shooting(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &Shooting)>,
+) {
+    'entity: for (entity, mut transition_intents, shooting) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<Shooting>(
+                entity,
+                Shooting::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done attacking
+        if shooting.is_finished {
+            // Go back to idle
+            commands.entity(entity).remove::<Shooting>().insert(Idling);
         }
     }
 }
@@ -1041,6 +1087,7 @@ fn throwing(
     >,
     being_held: Query<(Entity, &Parent), With<BeingHeld>>,
     weapon_held: Query<(Entity, &Parent), With<MeleeWeapon>>,
+    pweapon_held: Query<(Entity, &Parent), With<ProjectileWeapon>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory, available_attacks) in &mut fighters {
@@ -1105,6 +1152,29 @@ fn throwing(
 
                     // Despawn weapon sprite
                     for (weapon_ent, parent) in weapon_held.iter() {
+                        if parent.get() == entity {
+                            commands.entity(weapon_ent).despawn_recursive();
+                        }
+                    }
+                }
+                ItemKind::ProjectileWeapon { .. } => {
+                    //Drop item
+                    let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
+
+                    let item_spawn_meta = ItemSpawnMeta {
+                        location: fighter_transform.translation - ground_offset,
+                        item: String::new(),
+                        item_handle: items_assets.add(item_meta.clone()),
+                    };
+                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+
+                    if let Some(mut available_attacks) = available_attacks {
+                        available_attacks.0.pop();
+                    }
+
+                    // Despawn weapon sprite
+                    for (weapon_ent, parent) in pweapon_held.iter() {
                         if parent.get() == entity {
                             commands.entity(weapon_ent).despawn_recursive();
                         }
@@ -1230,10 +1300,66 @@ fn grabbing(
                                     .spawn()
                                     .insert(MeleeWeapon {
                                         audio: audio.clone(),
-                                        frames: attack.frames,
-                                        animation: animated_sprite.animation.clone(),
                                         attack: attack.clone(),
                                         sprite_sign: sprite_offset.x / sprite_offset.x.abs(),
+                                    })
+                                    .insert_bundle(animated_sprite)
+                                    .id();
+                                commands.entity(fighter_ent).add_child(weapon);
+                            }
+                            ItemKind::ProjectileWeapon {
+                                ref attack,
+                                ref spritesheet,
+                                ref sprite_offset,
+                                ref audio,
+                                ref bullet_velocity,
+                                ref bullet_lifetime,
+                                ref ammo,
+                                ref shoot_delay,
+                            } => {
+                                // If its throwable, pick up the item
+                                picked_item_ids.insert(item_ent);
+                                **fighter_inventory =
+                                    Some(items_assets.get(item).expect("Item not loaded!").clone());
+                                commands.entity(item_ent).despawn_recursive();
+
+                                if let Some(mut available_attacks) = available_attacks {
+                                    available_attacks.0.push(attack.clone())
+                                }
+
+                                //Spawn weapon sprite on Player
+                                let mut animated_sprite = AnimatedSpriteSheetBundle {
+                                    sprite_sheet: SpriteSheetBundle {
+                                        texture_atlas: spritesheet.atlas_handle[0].clone(),
+                                        transform: Transform::from_xyz(
+                                            sprite_offset.x,
+                                            sprite_offset.y,
+                                            0.1,
+                                        ),
+                                        ..Default::default()
+                                    },
+                                    animation: Animation::new(
+                                        spritesheet.animation_fps,
+                                        spritesheet.animations.clone(),
+                                    ),
+                                };
+                                animated_sprite.animation.current_animation =
+                                    Some("idle".to_string());
+
+                                let mut shoot_timer = Timer::from_seconds(*shoot_delay, false);
+                                shoot_timer.set_elapsed(Duration::from_secs_f32(*shoot_delay));
+
+                                let weapon = commands
+                                    .spawn()
+                                    .insert(ProjectileWeapon {
+                                        attack: attack.clone(),
+                                        sprite_sign: sprite_offset.x / sprite_offset.x.abs(),
+                                        animated_sprite: animated_sprite.clone(),
+                                        audio: audio.clone(),
+                                        bullet_velocity: *bullet_velocity,
+                                        bullet_lifetime: *bullet_lifetime,
+                                        ammo: *ammo,
+                                        shoot_delay: shoot_timer,
                                     })
                                     .insert_bundle(animated_sprite)
                                     .id();
@@ -1420,11 +1546,208 @@ fn melee_attacking(
     }
 }
 
+fn shooting(
+    mut commands: Commands,
+    mut fighters: Query<(
+        Entity,
+        Option<&mut Shooting>,
+        Option<&Player>,
+        Option<&Enemy>,
+        &AvailableAttacks,
+        &mut LinearVelocity,
+        &Facing,
+    )>,
+    mut projectile_weapons: Query<(
+        Entity,
+        &Parent,
+        &mut Animation,
+        &mut ProjectileWeapon,
+        &mut Transform,
+        &GlobalTransform,
+        &mut TextureAtlasSprite,
+    )>,
+    shooting_particles: Query<(&Animation, Entity, &Particle), Without<ProjectileWeapon>>,
+    time: Res<Time>,
+) {
+    for (entity, shooting, player, enemy, available_attacks, mut velocity, facing) in &mut fighters
+    {
+        let is_player = player.is_some();
+        let is_enemy = enemy.is_some();
+        if !is_player && !is_enemy {
+            // This system only knows how to attack for players and enemies
+            continue;
+        }
+
+        let mut projectile_weapon = None;
+        for (
+            weapon_ent,
+            parent,
+            animation,
+            weapon,
+            weapon_transform,
+            weapon_gtransform,
+            weapon_sprite,
+        ) in &mut projectile_weapons
+        {
+            if parent.get() == entity {
+                projectile_weapon = Some((
+                    animation,
+                    weapon_ent,
+                    weapon_transform,
+                    weapon_sprite,
+                    weapon_gtransform,
+                    weapon,
+                ));
+            }
+        }
+
+        if let Some((
+            mut animation,
+            weapon_ent,
+            mut weapon_transform,
+            mut weapon_sprite,
+            weapon_gtransform,
+            mut weapon,
+        )) = projectile_weapon
+        {
+            //Check if has weapon, if so face it accordingly
+            weapon_transform.translation.x = if facing.is_left() {
+                -weapon_transform.translation.x.abs() * weapon.sprite_sign
+            } else {
+                weapon_transform.translation.x.abs() * weapon.sprite_sign
+            };
+            weapon_sprite.flip_x = facing.is_left();
+
+            //Tick shoot delay
+            weapon.shoot_delay.tick(time.delta());
+
+            //Check if it's attacking
+            if let Some(mut shooting) = shooting {
+                let attack = available_attacks.0.last().expect("Attack not loaded");
+
+                if !shooting.has_started && weapon.ammo > 0 && weapon.shoot_delay.finished() {
+                    shooting.has_started = true;
+                    weapon.shoot_delay.reset();
+
+                    // Start the attack from the beginning
+                    animation.play("shooting", false);
+
+                    //Add particles
+                    let mut animated_sprite = weapon.animated_sprite.clone();
+                    animated_sprite.sprite_sheet.transform = Transform::from_xyz(0., 0., 0.1);
+                    animated_sprite.sprite_sheet.sprite.flip_x = facing.is_left();
+                    animated_sprite.animation.play("shooting_particles", false);
+
+                    let weapon_particles = commands
+                        .spawn()
+                        .insert_bundle(animated_sprite.clone())
+                        .insert(Particle)
+                        .id();
+                    commands.entity(weapon_ent).add_child(weapon_particles);
+
+                    //Sound
+                    if let Some(effects) = weapon.audio.effect_handles.get(Shooting::ANIMATION) {
+                        let fx_playback = AnimationAudioPlayback::new(
+                            Shooting::ANIMATION.to_owned(),
+                            effects.clone(),
+                        );
+                        commands.entity(weapon_ent).insert(fx_playback);
+                    }
+                }
+
+                if animation.current_animation == Some("shooting".to_string())
+                    && animation.current_frame == attack.frames.startup
+                    && !shooting.spawned_bullet
+                {
+                    //Spawn bullet
+                    shooting.spawned_bullet = true;
+                    weapon.ammo -= 1;
+
+                    let direction_mul = if facing.is_left() {
+                        Vec2::new(-1.0, 1.0)
+                    } else {
+                        Vec2::ONE
+                    };
+
+                    let mut animated_sprite = weapon.animated_sprite.clone();
+                    animated_sprite.animation.play("bullet", false);
+                    animated_sprite.sprite_sheet.transform = Transform::from_xyz(
+                        weapon_gtransform.translation().x,
+                        weapon_gtransform.translation().y,
+                        consts::PROJECTILE_Z,
+                    );
+
+                    let bullet_attack = commands
+                        .spawn_bundle(TransformBundle::from_transform(
+                            Transform::from_translation(
+                                (attack.hitbox.offset * direction_mul).extend(0.0),
+                            ),
+                        ))
+                        .insert(Sensor)
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(CollisionGroups::new(
+                            BodyLayers::PLAYER_ATTACK,
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
+                        ))
+                        .insert(Attack {
+                            damage: attack.damage,
+                            velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
+                        })
+                        .insert(Breakable::new(0, true))
+                        .insert(Collider::cuboid(
+                            attack.hitbox.size.x / 2.,
+                            attack.hitbox.size.y / 2.,
+                        ))
+                        .id();
+
+                    commands
+                        .spawn_bundle(animated_sprite)
+                        .insert(Lifetime(Timer::from_seconds(weapon.bullet_lifetime, false)))
+                        .insert(LinearVelocity(
+                            Vec2::new(weapon.bullet_velocity, 0.) * direction_mul,
+                        ))
+                        .add_child(bullet_attack);
+                }
+
+                **velocity = Vec2::ZERO;
+
+                if animation.is_finished() {
+                    shooting.is_finished = true;
+                    animation.play("idle", false);
+                }
+            }
+        }
+    }
+
+    //Check if particle is done
+    for (animation, particle_ent, _) in shooting_particles.iter() {
+        if animation.is_finished() {
+            commands.entity(particle_ent).despawn_recursive();
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct MeleeWeapon {
     pub audio: AudioMeta,
-    pub frames: AttackFrames,
-    pub animation: Animation,
     pub attack: AttackMeta,
     pub sprite_sign: f32,
 }
+
+#[derive(Component)]
+pub struct ProjectileWeapon {
+    pub audio: AudioMeta,
+    pub attack: AttackMeta,
+    pub animated_sprite: AnimatedSpriteSheetBundle,
+    pub sprite_sign: f32,
+    pub ammo: usize,
+    pub bullet_velocity: f32,
+    pub bullet_lifetime: f32,
+    pub shoot_delay: Timer,
+}
+
+#[derive(Component)]
+pub struct Particle;
