@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
-    animation::{AnimatedSpriteSheetBundle, Animation, Facing},
+    animation::{AnimatedSpriteSheetBundle, Animation, Facing, SyncFacing},
     attack::{Attack, Breakable},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
@@ -14,7 +14,7 @@ use crate::{
     damage::{DamageEvent, Health},
     enemy::{Boss, Enemy},
     enemy_ai,
-    fighter::Inventory,
+    fighter::{Attachment, Inventory},
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile},
     lifetime::Lifetime,
@@ -1301,9 +1301,13 @@ fn grabbing(
                                     .insert(MeleeWeapon {
                                         audio: audio.clone(),
                                         attack: attack.clone(),
-                                        sprite_sign: sprite_offset.x / sprite_offset.x.abs(),
                                     })
                                     .insert_bundle(animated_sprite)
+                                    .insert(Attachment {
+                                        position_face: true,
+                                    })
+                                    .insert(Facing::default())
+                                    .insert(SyncFacing)
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1353,7 +1357,6 @@ fn grabbing(
                                     .spawn()
                                     .insert(ProjectileWeapon {
                                         attack: attack.clone(),
-                                        sprite_sign: sprite_offset.x / sprite_offset.x.abs(),
                                         animated_sprite: animated_sprite.clone(),
                                         audio: audio.clone(),
                                         bullet_velocity: *bullet_velocity,
@@ -1362,6 +1365,11 @@ fn grabbing(
                                         shoot_delay: shoot_timer,
                                     })
                                     .insert_bundle(animated_sprite)
+                                    .insert(Attachment {
+                                        position_face: true,
+                                    })
+                                    .insert(Facing::default())
+                                    .insert(SyncFacing)
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1420,23 +1428,19 @@ fn holding(
 
 fn melee_attacking(
     mut commands: Commands,
-    mut fighters: Query<(
-        Entity,
-        Option<&mut MeleeAttacking>,
-        Option<&Player>,
-        Option<&Enemy>,
-        &AvailableAttacks,
-        &mut LinearVelocity,
-        &Facing,
-    )>,
-    mut melee_weapons: Query<(
-        Entity,
-        &Parent,
-        &mut Animation,
-        &MeleeWeapon,
-        &mut Transform,
-        &mut TextureAtlasSprite,
-    )>,
+    mut fighters: Query<
+        (
+            Entity,
+            Option<&mut MeleeAttacking>,
+            Option<&Player>,
+            Option<&Enemy>,
+            &AvailableAttacks,
+            &mut LinearVelocity,
+            &Facing,
+        ),
+        Without<MeleeWeapon>,
+    >,
+    mut melee_weapons: Query<(Entity, &Parent, &mut Animation, &MeleeWeapon)>,
 ) {
     for (entity, melee_attack, player, enemy, available_attacks, mut velocity, facing) in
         &mut fighters
@@ -1449,38 +1453,13 @@ fn melee_attacking(
         }
 
         let mut melee_weapon = None;
-        for (weapon_ent, parent, animation, weapon, weapon_transform, weapon_sprite) in
-            &mut melee_weapons
-        {
+        for (weapon_ent, parent, animation, weapon) in &mut melee_weapons {
             if parent.get() == entity {
-                melee_weapon = Some((
-                    animation,
-                    weapon.audio.clone(),
-                    weapon_ent,
-                    weapon_transform,
-                    weapon_sprite,
-                    weapon.sprite_sign,
-                ));
+                melee_weapon = Some((animation, weapon.audio.clone(), weapon_ent));
             }
         }
 
-        if let Some((
-            mut animation,
-            audio,
-            weapon_ent,
-            mut weapon_transform,
-            mut weapon_sprite,
-            sprite_sign,
-        )) = melee_weapon
-        {
-            //Check if has weapon, if so face it accordingly
-            weapon_transform.translation.x = if facing.is_left() {
-                -weapon_transform.translation.x.abs() * sprite_sign
-            } else {
-                weapon_transform.translation.x.abs() * sprite_sign
-            };
-            weapon_sprite.flip_x = facing.is_left();
-
+        if let Some((mut animation, audio, weapon_ent)) = melee_weapon {
             //Check if it's attacking
             if let Some(mut melee_attack) = melee_attack {
                 if !melee_attack.has_started {
@@ -1548,23 +1527,24 @@ fn melee_attacking(
 
 fn shooting(
     mut commands: Commands,
-    mut fighters: Query<(
-        Entity,
-        Option<&mut Shooting>,
-        Option<&Player>,
-        Option<&Enemy>,
-        &AvailableAttacks,
-        &mut LinearVelocity,
-        &Facing,
-    )>,
+    mut fighters: Query<
+        (
+            Entity,
+            Option<&mut Shooting>,
+            Option<&Player>,
+            Option<&Enemy>,
+            &AvailableAttacks,
+            &mut LinearVelocity,
+            &Facing,
+        ),
+        Without<ProjectileWeapon>,
+    >,
     mut projectile_weapons: Query<(
         Entity,
         &Parent,
         &mut Animation,
         &mut ProjectileWeapon,
-        &mut Transform,
         &GlobalTransform,
-        &mut TextureAtlasSprite,
     )>,
     shooting_particles: Query<(&Animation, Entity, &Particle), Without<ProjectileWeapon>>,
     time: Res<Time>,
@@ -1579,45 +1559,14 @@ fn shooting(
         }
 
         let mut projectile_weapon = None;
-        for (
-            weapon_ent,
-            parent,
-            animation,
-            weapon,
-            weapon_transform,
-            weapon_gtransform,
-            weapon_sprite,
-        ) in &mut projectile_weapons
-        {
+        for (weapon_ent, parent, animation, weapon, weapon_gtransform) in &mut projectile_weapons {
             if parent.get() == entity {
-                projectile_weapon = Some((
-                    animation,
-                    weapon_ent,
-                    weapon_transform,
-                    weapon_sprite,
-                    weapon_gtransform,
-                    weapon,
-                ));
+                projectile_weapon = Some((animation, weapon_ent, weapon_gtransform, weapon));
             }
         }
 
-        if let Some((
-            mut animation,
-            weapon_ent,
-            mut weapon_transform,
-            mut weapon_sprite,
-            weapon_gtransform,
-            mut weapon,
-        )) = projectile_weapon
+        if let Some((mut animation, weapon_ent, weapon_gtransform, mut weapon)) = projectile_weapon
         {
-            //Check if has weapon, if so face it accordingly
-            weapon_transform.translation.x = if facing.is_left() {
-                -weapon_transform.translation.x.abs() * weapon.sprite_sign
-            } else {
-                weapon_transform.translation.x.abs() * weapon.sprite_sign
-            };
-            weapon_sprite.flip_x = facing.is_left();
-
             //Tick shoot delay
             weapon.shoot_delay.tick(time.delta());
 
@@ -1734,7 +1683,6 @@ fn shooting(
 pub struct MeleeWeapon {
     pub audio: AudioMeta,
     pub attack: AttackMeta,
-    pub sprite_sign: f32,
 }
 
 #[derive(Component)]
@@ -1742,7 +1690,6 @@ pub struct ProjectileWeapon {
     pub audio: AudioMeta,
     pub attack: AttackMeta,
     pub animated_sprite: AnimatedSpriteSheetBundle,
-    pub sprite_sign: f32,
     pub ammo: usize,
     pub bullet_velocity: f32,
     pub bullet_lifetime: f32,

@@ -6,7 +6,7 @@ use crate::attack::Hurtbox;
 use crate::consts::{self, FOOT_PADDING};
 use crate::metadata::ItemMeta;
 use crate::{
-    animation::{AnimatedSpriteSheetBundle, Animation},
+    animation::{AnimatedSpriteSheetBundle, Animation, Facing, SyncAnimation, SyncFacing},
     camera::YSort,
     collision::{BodyLayers, PhysicsBundle},
     damage::{Damageable, Health},
@@ -16,6 +16,14 @@ use crate::{
     movement::LinearVelocity,
     player::Player,
 };
+
+pub struct FighterPlugin;
+
+impl Plugin for FighterPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system_to_stage(CoreStage::PostUpdate, attachment_system);
+    }
+}
 
 /// Bundle added to a fighter stub, in order to activate it.
 #[derive(Bundle)]
@@ -124,9 +132,54 @@ impl ActiveFighterBundle {
             .insert(Hurtbox)
             .id();
 
+        let animated_spritesheet_bundle = active_fighter_bundle.animated_spritesheet_bundle.clone();
+
         commands
             .entity(entity)
             .insert_bundle(active_fighter_bundle)
             .push_children(&[hurtbox]);
+
+        if let Some(attachment) = &fighter.attachment {
+            //Clone fighter spritesheet
+            let mut attachment_spritesheet = animated_spritesheet_bundle;
+
+            //Change what's needed
+            attachment_spritesheet.sprite_sheet.texture_atlas = attachment
+                .atlas_handle
+                .choose(&mut rand::thread_rng())
+                .unwrap()
+                .clone();
+            attachment_spritesheet.animation =
+                Animation::new(attachment.animation_fps, attachment.animations.clone());
+            attachment_spritesheet.sprite_sheet.transform = Transform::from_xyz(0., 0., 0.1);
+
+            let attachment_ent = commands
+                .spawn_bundle(attachment_spritesheet)
+                .insert(Facing::default())
+                .insert(SyncFacing)
+                .insert(SyncAnimation)
+                .id();
+            commands.entity(entity).add_child(attachment_ent);
+        }
+    }
+}
+
+/// Standard way to attach things to fighters
+/// Needs Facing component
+#[derive(Component)]
+pub struct Attachment {
+    ///Change position based on facing
+    pub position_face: bool,
+}
+
+pub fn attachment_system(mut query: Query<(&Attachment, &mut Transform, &Facing)>) {
+    for (attached, mut transform, facing) in &mut query {
+        if attached.position_face {
+            transform.translation.x = if facing.is_left() {
+                -transform.translation.x.abs()
+            } else {
+                transform.translation.x.abs()
+            };
+        }
     }
 }

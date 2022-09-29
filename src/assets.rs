@@ -300,6 +300,25 @@ impl AssetLoader for FighterLoader {
                 meta.collision_offset = meta.center_y - FOOT_PADDING;
             }
 
+            if let Some(ref mut attachment) = meta.attachment {
+                for (index, image) in attachment.image.iter().enumerate() {
+                    let (texture_path, texture_handle) =
+                        get_relative_asset(load_context, load_context.path(), image);
+
+                    let atlas_handle = load_context.set_labeled_asset(
+                        format!("atlas_{}", index + attachment.image.len()).as_str(),
+                        LoadedAsset::new(TextureAtlas::from_grid(
+                            texture_handle,
+                            attachment.tile_size.as_vec2(),
+                            attachment.columns,
+                            attachment.rows,
+                        ))
+                        .with_dependency(texture_path),
+                    );
+                    attachment.atlas_handle.push(atlas_handle);
+                }
+            }
+
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
