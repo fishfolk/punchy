@@ -107,9 +107,10 @@ pub fn main_menu_sounds(
                 effects_channel.play(asset_server.load("ui/down_play_button.ogg"));
             } else {
                 //Play one of the down button audios, except down_play_button
-                effects_channel.play(asset_server.load(
-                    &format!("ui/down_button_{}.ogg", thread_rng().gen_range(1..=3))
-                ));
+                effects_channel.play(asset_server.load(&format!(
+                    "ui/down_button_{}.ogg",
+                    thread_rng().gen_range(1..=3)
+                )));
             }
         }
     }
