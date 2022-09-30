@@ -135,7 +135,9 @@ fn main() {
         )
         .add_system_to_stage(
             CoreStage::PostUpdate,
-            main_menu_sounds.before(bevy_egui::EguiSystem::ProcessOutput),
+            main_menu_sounds
+                .run_if_resource_exists::<GameMeta>()
+                .before(bevy_egui::EguiSystem::ProcessOutput),
         );
 
     // Register reflect types that don't come from plugins

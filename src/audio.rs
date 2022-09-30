@@ -1,5 +1,6 @@
 // Multiple sounds can be played by one channel, but splitting music/effects is cleaner.
 // Also for cleanness (named channels have evident function), we don't use the default channel.
+use rand::{prelude::SliceRandom, thread_rng};
 
 use bevy::{prelude::*, utils::HashMap};
 use bevy_egui::{egui::output::OutputEvent, EguiContext};
@@ -95,18 +96,24 @@ pub fn animation_audio_playback(
 
 /// Plays main menu sounds
 pub fn main_menu_sounds(
+    game: Res<GameMeta>,
     mut context: ResMut<EguiContext>,
     effects_channel: Res<AudioChannel<EffectsChannel>>,
-    asset_server: Res<AssetServer>,
 ) {
     for event in &context.ctx_mut().output().events {
         if let OutputEvent::Clicked(info) = event {
             if info.label.as_ref().unwrap() == "Start Game" {
                 //Play down_play_button
-                effects_channel.play(asset_server.load("ui/down_play_button.ogg"));
+                effects_channel.play(game.main_menu.play_button_sound_handle.clone_weak());
             } else {
                 //Play one of the down button audios, except down_play_button
-                effects_channel.play(asset_server.load("ui/down_button_1.ogg"));
+                effects_channel.play(
+                    game.main_menu
+                        .button_sound_handles
+                        .choose(&mut thread_rng())
+                        .expect("No button sounds")
+                        .clone_weak(),
+                );
             }
         }
     }

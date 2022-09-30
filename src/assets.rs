@@ -131,6 +131,18 @@ impl AssetLoader for GameMetaLoader {
             meta.main_menu.music_handle = music_handle;
             dependencies.push(music_path);
 
+            // Load button sounds
+            let (play_button_sound_path, play_button_sound_handle) =
+                get_relative_asset(load_context, &self_path, &meta.main_menu.play_button_sound);
+            dependencies.push(play_button_sound_path);
+            meta.main_menu.play_button_sound_handle = play_button_sound_handle;
+
+            for button_sound in &meta.main_menu.button_sounds {
+                let (path, handle) = get_relative_asset(load_context, &self_path, button_sound);
+                dependencies.push(path);
+                meta.main_menu.button_sound_handles.push(handle);
+            }
+
             // Load UI fonts
             for (font_name, font_relative_path) in &meta.ui_theme.font_families {
                 let (font_path, font_handle) =
