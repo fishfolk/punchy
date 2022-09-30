@@ -46,6 +46,12 @@ pub struct MainMenuMeta {
     pub music: String,
     #[serde(skip)]
     pub music_handle: Handle<AudioSource>,
+    pub play_button_sound: String,
+    #[serde(skip)]
+    pub play_button_sound_handle: Handle<AudioSource>,
+    pub button_sounds: Vec<String>,
+    #[serde(skip)]
+    pub button_sound_handles: Vec<Handle<AudioSource>>,
 }
 
 #[derive(HasLoadProgress, Deserialize, Clone, Debug)]

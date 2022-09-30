@@ -15,6 +15,11 @@ main_menu:
     image_size: [1919, 1027]
 
   music: ui/Fishycuffs [title screen].ogg
+  play_button_sound: ui/down_play_button.ogg
+  button_sounds:
+    - ui/down_button_1.ogg
+    - ui/down_button_2.ogg
+    - ui/down_button_3.ogg
 
 default_settings:
   player_controls:
