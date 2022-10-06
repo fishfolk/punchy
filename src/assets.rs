@@ -339,7 +339,7 @@ impl AssetLoader for ItemLoader {
             dependencies.push(image_path);
             meta.image.image_handle = image_handle;
 
-            match meta.kind {
+            match &mut meta.kind {
                 ItemKind::BreakableBox {
                     ref mut item_handle,
                     ref item,
@@ -396,16 +396,16 @@ impl AssetLoader for ItemLoader {
                         spritesheet.atlas_handle.push(atlas_handle);
                     }
                 }
-
                 ItemKind::Script {
                     script,
-                    script_handle,
+                    ref mut script_handle,
                 } => {
                     let (script_path, loaded_script_handle) =
                         get_relative_asset(load_context, load_context.path(), script);
                     dependencies.push(script_path);
                     *script_handle = loaded_script_handle;
                 }
+                _ => {}
             }
 
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));

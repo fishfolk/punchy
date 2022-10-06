@@ -1178,7 +1178,12 @@ fn throwing(
                         item_handle: items_assets.add(item_meta.clone()),
                     };
                     let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+                    ItemBundle::spawn(
+                        item_commands,
+                        &item_spawn_meta,
+                        &mut items_assets,
+                        &mut active_scripts,
+                    );
 
                     if let Some(mut available_attacks) = available_attacks {
                         available_attacks.0.pop();

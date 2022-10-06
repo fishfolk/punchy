@@ -135,7 +135,6 @@ impl Projectile {
             attack: Attack {
                 damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
-                    crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
                     crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
                     crate::metadata::ItemKind::MeleeWeapon { .. }
                     | crate::metadata::ItemKind::ProjectileWeapon { .. } => {
