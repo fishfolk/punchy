@@ -54,10 +54,10 @@ use ui::UIPlugin;
 use utils::ResetController;
 
 use crate::{
-    damage::DamagePlugin, fighter::FighterPlugin, fighter_state::FighterStatePlugin, input::PlayerAction, item::ItemPlugin,
-    lifetime::LifetimePlugin, loading::LoadingPlugin, localization::LocalizationPlugin,
-    movement::MovementPlugin, platform::PlatformPlugin, scripting::ScriptingPlugin,
-    ui::debug_tools::YSortDebugPlugin,
+    damage::DamagePlugin, fighter::FighterPlugin, fighter_state::FighterStatePlugin,
+    input::PlayerAction, item::ItemPlugin, lifetime::LifetimePlugin, loading::LoadingPlugin,
+    localization::LocalizationPlugin, movement::MovementPlugin, platform::PlatformPlugin,
+    scripting::ScriptingPlugin, ui::debug_tools::YSortDebugPlugin,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
