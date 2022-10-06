@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_mod_js_scripting::ActiveScripts;
 use bevy_parallax::ParallaxResource;
 use iyes_loopless::{prelude::*, state::NextState};
 
@@ -96,6 +97,7 @@ pub struct GameLoader<'w, 's> {
     assets: ResMut<'w, Assets<GameMeta>>,
     egui_ctx: ResMut<'w, EguiContext>,
     events: EventReader<'w, 's, AssetEvent<GameMeta>>,
+    active_scripts: ResMut<'w, ActiveScripts>,
 }
 
 impl<'w, 's> GameLoader<'w, 's> {
@@ -118,6 +120,7 @@ impl<'w, 's> GameLoader<'w, 's> {
             game_handle,
             mut assets,
             mut egui_ctx,
+            mut active_scripts,
             ..
         } = self;
 
@@ -132,6 +135,9 @@ impl<'w, 's> GameLoader<'w, 's> {
                 // Since we are modifying the game asset, which will trigger another asset changed
                 // event, we need to skip the next update event.
                 *skip_next_asset_update_event = true;
+
+                // Clear the active scripts
+                active_scripts.clear();
 
                 // One-time initialization
             } else {
@@ -189,6 +195,11 @@ impl<'w, 's> GameLoader<'w, 's> {
                 if let Some(border) = &mut button.borders.focused {
                     load_border_image(border);
                 }
+            }
+
+            // Set the active scripts
+            for script_handle in &game.script_handles {
+                active_scripts.insert(script_handle.clone_weak());
             }
 
             // Insert the game resource
@@ -321,6 +332,7 @@ fn load_level(
     windows: Res<Windows>,
     mut storage: ResMut<Storage>,
     loading_resources: LoadingResources,
+    mut active_scripts: ResMut<ActiveScripts>,
 ) {
     if let Some(level) = assets.get(&level_handle) {
         // Track load progress
@@ -369,7 +381,12 @@ fn load_level(
         // Spawn the items
         for item_spawn_meta in &level.items {
             let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
-            ItemBundle::spawn(item_commands, item_spawn_meta, &mut items_assets)
+            ItemBundle::spawn(
+                item_commands,
+                item_spawn_meta,
+                &mut items_assets,
+                &mut active_scripts,
+            )
         }
 
         commands.insert_resource(level.clone());

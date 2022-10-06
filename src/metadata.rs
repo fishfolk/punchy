@@ -7,6 +7,7 @@ use bevy::{
 };
 use bevy_egui::egui;
 use bevy_kira_audio::AudioSource;
+use bevy_mod_js_scripting::JsScript;
 use bevy_parallax::{LayerData, ParallaxResource};
 use punchy_macros::HasLoadProgress;
 use serde::Deserialize;
@@ -36,6 +37,10 @@ pub struct GameMeta {
 
     pub default_settings: Settings,
     pub translations: TranslationsMeta,
+    #[serde(default)]
+    pub scripts: Vec<String>,
+    #[serde(skip)]
+    pub script_handles: Vec<Handle<JsScript>>,
 }
 
 #[derive(HasLoadProgress, Deserialize, Clone, Debug)]
@@ -131,9 +136,6 @@ pub enum ItemKind {
     Throwable {
         damage: i32,
     },
-    Health {
-        health: i32,
-    },
     BreakableBox {
         damage: i32,
         hurtbox: ColliderMeta,
@@ -157,6 +159,12 @@ pub enum ItemKind {
         bullet_lifetime: f32,
         ammo: usize,
         shoot_delay: f32,
+    },
+    Script {
+        /// The relative asset path to the script for this item
+        script: String,
+        #[serde(skip)]
+        script_handle: Handle<JsScript>,
     },
 }
 

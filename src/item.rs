@@ -1,4 +1,5 @@
 use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy_mod_js_scripting::{ActiveScripts, JsScript};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
@@ -15,8 +16,22 @@ pub struct ItemPlugin;
 
 impl Plugin for ItemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(drop_system);
+        app.add_system(drop_system)
+            .add_event::<ScriptItemThrowEvent>()
+            .add_event::<ScriptItemGrabEvent>();
     }
+}
+
+#[derive(Reflect, Clone)]
+pub struct ScriptItemThrowEvent {
+    pub fighter: Entity,
+    pub script_handle: Handle<JsScript>,
+}
+
+#[derive(Reflect, Clone)]
+pub struct ScriptItemGrabEvent {
+    pub fighter: Entity,
+    pub script_handle: Handle<JsScript>,
 }
 
 #[derive(Component)]
@@ -43,6 +58,7 @@ impl ItemBundle {
         mut commands: EntityCommands,
         item_spawn_meta: &ItemSpawnMeta,
         items_assets: &mut ResMut<Assets<ItemMeta>>,
+        active_scripts: &mut ActiveScripts,
     ) {
         let ground_offset = Vec3::new(0.0, consts::GROUND_Y, consts::ITEM_LAYER);
         let transform_bundle = TransformBundle::from_transform(Transform::from_translation(
@@ -55,21 +71,26 @@ impl ItemBundle {
         let item_meta = items_assets
             .get_mut(&item_spawn_meta.item_handle)
             .expect("Item not loaded!");
-        if let ItemKind::BreakableBox {
-            hurtbox,
-            hits,
-            item_handle,
-            ..
-        } = &item_meta.kind
-        {
-            item = Some(item_handle.clone());
+        match &item_meta.kind {
+            ItemKind::BreakableBox {
+                hurtbox,
+                hits,
+                item_handle,
+                ..
+            } => {
+                item = Some(item_handle.clone());
 
-            let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::BREAKABLE_ITEM);
-            physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
+                let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::BREAKABLE_ITEM);
+                physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
-            commands
-                .insert_bundle(physics_bundle)
-                .insert(Breakable::new(*hits, false));
+                commands
+                    .insert_bundle(physics_bundle)
+                    .insert(Breakable::new(*hits, false));
+            }
+            ItemKind::Script { script_handle, .. } => {
+                active_scripts.insert(script_handle.clone());
+            }
+            _ => (),
         }
 
         if let Some(item) = item {
@@ -114,11 +135,13 @@ impl Projectile {
             attack: Attack {
                 damage: match item_meta.kind {
                     crate::metadata::ItemKind::Throwable { damage } => damage,
-                    crate::metadata::ItemKind::Health { .. } => panic!("Cannot throw health item"),
                     crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
                     crate::metadata::ItemKind::MeleeWeapon { .. }
                     | crate::metadata::ItemKind::ProjectileWeapon { .. } => {
                         panic!("Cannot throw weapon")
+                    }
+                    crate::metadata::ItemKind::Script { .. } => {
+                        panic!("Cannot throw scripted items as projectiles")
                     }
                 },
                 velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
@@ -155,6 +178,7 @@ fn drop_system(
     mut commands: Commands,
     mut broke_event: EventReader<BrokeEvent>,
     mut lifetime_event: EventReader<LifetimeExpired>,
+    mut active_scripts: ResMut<ActiveScripts>,
 ) {
     let mut drops = vec![];
     for event in lifetime_event.iter() {
@@ -177,6 +201,11 @@ fn drop_system(
             item_handle: items_assets.add(drop.item.clone()),
         };
         let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-        ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+        ItemBundle::spawn(
+            item_commands,
+            &item_spawn_meta,
+            &mut items_assets,
+            &mut active_scripts,
+        );
     }
 }
