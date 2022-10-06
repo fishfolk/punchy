@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, time::Duration};
 
 use bevy::{prelude::*, reflect::FromType, utils::HashSet};
+use bevy_mod_js_scripting::ActiveScripts;
 use bevy_rapier2d::prelude::{ActiveCollisionTypes, ActiveEvents, CollisionGroups, Sensor};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
@@ -16,7 +17,7 @@ use crate::{
     enemy_ai,
     fighter::{Attachment, Inventory},
     input::PlayerAction,
-    item::{Drop, Item, ItemBundle, Projectile},
+    item::{Drop, Item, ItemBundle, Projectile, ScriptItemGrabEvent, ScriptItemThrowEvent},
     lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
@@ -1089,6 +1090,8 @@ fn throwing(
     weapon_held: Query<(Entity, &Parent), With<MeleeWeapon>>,
     pweapon_held: Query<(Entity, &Parent), With<ProjectileWeapon>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
+    mut active_scripts: ResMut<ActiveScripts>,
+    mut script_item_throw_events: ResMut<Events<ScriptItemThrowEvent>>,
 ) {
     for (entity, fighter_transform, facing, mut inventory, available_attacks) in &mut fighters {
         // If the player has an item in their inventory
@@ -1098,7 +1101,7 @@ fn throwing(
             // TODO: We should probably create a flexible item system abstraction similar to the
             // fighter state abstraction so that items can flexibly defined without a
             // centralized enum.
-            match item_meta.kind {
+            match &item_meta.kind {
                 ItemKind::Throwable { .. } => {
                     // Throw the item!
                     commands.spawn_bundle(Projectile::from_thrown_item(
@@ -1107,8 +1110,11 @@ fn throwing(
                         facing,
                     ));
                 }
-                ItemKind::Health { health: _ } => {
-                    panic!("Health items should be used immediately, and can't be thrown");
+                ItemKind::Script { script_handle, .. } => {
+                    script_item_throw_events.send(ScriptItemThrowEvent {
+                        fighter: entity,
+                        script_handle: script_handle.clone_weak(),
+                    });
                 }
                 ItemKind::BreakableBox {
                     ref item_handle, ..
@@ -1144,7 +1150,12 @@ fn throwing(
                         item_handle: items_assets.add(item_meta.clone()),
                     };
                     let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+                    ItemBundle::spawn(
+                        item_commands,
+                        &item_spawn_meta,
+                        &mut items_assets,
+                        &mut active_scripts,
+                    );
 
                     if let Some(mut available_attacks) = available_attacks {
                         available_attacks.0.pop();
@@ -1167,7 +1178,12 @@ fn throwing(
                         item_handle: items_assets.add(item_meta.clone()),
                     };
                     let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
-                    ItemBundle::spawn(item_commands, &item_spawn_meta, &mut items_assets);
+                    ItemBundle::spawn(
+                        item_commands,
+                        &item_spawn_meta,
+                        &mut items_assets,
+                        &mut active_scripts,
+                    );
 
                     if let Some(mut available_attacks) = available_attacks {
                         available_attacks.0.pop();
@@ -1197,8 +1213,6 @@ fn grabbing(
             Entity,
             &Transform,
             &mut Inventory,
-            &Stats,
-            &mut Health,
             &mut StateTransitionIntents,
             Option<&mut AvailableAttacks>,
         ),
@@ -1206,6 +1220,7 @@ fn grabbing(
     >,
     items_query: Query<(Entity, &Transform, &Handle<ItemMeta>), With<Item>>,
     items_assets: Res<Assets<ItemMeta>>,
+    mut script_item_grab_events: ResMut<Events<ScriptItemGrabEvent>>,
 ) {
     // We need to track the picked items, otherwise, in theory, two players could pick the same item.
     let mut picked_item_ids = HashSet::new();
@@ -1214,8 +1229,6 @@ fn grabbing(
         fighter_ent,
         fighter_transform,
         mut fighter_inventory,
-        stats,
-        mut health,
         mut transition_intents,
         available_attacks,
     ) in &mut fighters
@@ -1233,12 +1246,12 @@ fn grabbing(
                 if fighter_item_distance <= consts::PICK_ITEM_RADIUS {
                     // And our fighter isn't carrying another item
                     if fighter_inventory.is_none() {
-                        match items_assets.get(item).unwrap().kind {
-                            ItemKind::Health {
-                                health: item_health,
-                            } => {
-                                // If its health, refill player's health instantly
-                                **health = (**health + item_health).clamp(0, stats.max_health);
+                        match &items_assets.get(item).unwrap().kind {
+                            ItemKind::Script { script_handle, .. } => {
+                                script_item_grab_events.send(ScriptItemGrabEvent {
+                                    fighter: fighter_ent,
+                                    script_handle: script_handle.clone_weak(),
+                                });
                                 commands.entity(item_ent).despawn_recursive();
                             }
                             ItemKind::Throwable { damage: _ } => {

@@ -155,6 +155,14 @@ impl AssetLoader for GameMetaLoader {
                     .insert(font_name.clone(), font_handle);
             }
 
+            // Load the script handles
+            for script_relative_path in &meta.scripts {
+                let (script_path, script_handle) =
+                    get_relative_asset(load_context, &self_path, script_relative_path);
+                dependencies.push(script_path);
+                meta.script_handles.push(script_handle);
+            }
+
             load_context.set_default_asset(LoadedAsset::new(meta).with_dependencies(dependencies));
 
             Ok(())
@@ -350,7 +358,7 @@ impl AssetLoader for ItemLoader {
             dependencies.push(image_path);
             meta.image.image_handle = image_handle;
 
-            match meta.kind {
+            match &mut meta.kind {
                 ItemKind::BreakableBox {
                     ref mut item_handle,
                     ref item,
@@ -407,7 +415,15 @@ impl AssetLoader for ItemLoader {
                         spritesheet.atlas_handle.push(atlas_handle);
                     }
                 }
-
+                ItemKind::Script {
+                    script,
+                    ref mut script_handle,
+                } => {
+                    let (script_path, loaded_script_handle) =
+                        get_relative_asset(load_context, load_context.path(), script);
+                    dependencies.push(script_path);
+                    *script_handle = loaded_script_handle;
+                }
                 _ => {}
             }
 

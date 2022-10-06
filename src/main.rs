@@ -41,6 +41,7 @@ mod metadata;
 mod movement;
 mod platform;
 mod player;
+mod scripting;
 mod ui;
 mod utils;
 
@@ -53,9 +54,9 @@ use ui::UIPlugin;
 use utils::ResetController;
 
 use crate::{
-    damage::DamagePlugin, fighter::FighterPlugin, fighter_state::FighterStatePlugin,
-    input::PlayerAction, item::ItemPlugin, lifetime::LifetimePlugin, loading::LoadingPlugin,
-    localization::LocalizationPlugin, movement::MovementPlugin, platform::PlatformPlugin,
+    damage::DamagePlugin, fighter::FighterPlugin, fighter_state::FighterStatePlugin, input::PlayerAction, item::ItemPlugin,
+    lifetime::LifetimePlugin, loading::LoadingPlugin, localization::LocalizationPlugin,
+    movement::MovementPlugin, platform::PlatformPlugin, scripting::ScriptingPlugin,
     ui::debug_tools::YSortDebugPlugin,
 };
 
@@ -109,6 +110,7 @@ fn main() {
     // Add other systems and resources
     app.insert_resource(ClearColor(Color::BLACK))
         .add_loopless_state(GameState::LoadingStorage)
+        .add_plugin(ScriptingPlugin)
         .add_plugin(PlatformPlugin)
         .add_plugin(LocalizationPlugin)
         .add_plugin(LoadingPlugin)
