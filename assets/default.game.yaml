@@ -6,7 +6,7 @@ camera_move_right_boundary: 150.
 
 scripts:
   # Enable our demo script
-  - scripts/demo_script.ts
+  # - scripts/demo_script.ts
 
 main_menu:
   title_font:
