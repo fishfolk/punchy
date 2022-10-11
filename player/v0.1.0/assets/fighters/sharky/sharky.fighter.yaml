@@ -1,0 +1,54 @@
+name: Scrumptious Sharky
+
+hurtbox:
+  size: [36, 48]
+  offset: [0, 0]
+
+stats:
+  max_health: 600
+  movement_speed: 150
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
+spritesheet:
+  image: [sharky_base_96_80.png]
+  tile_size: [96, 80]
+  columns: 14
+  rows: 7
+
+  animation_fps: 0.12
+  animations:
+    idle:
+      frames: [0, 13]
+      repeat: true
+    running:
+      frames: [14, 19]
+      repeat: true
+    knocked_right:
+      frames: [85, 90]
+    knocked_left:
+      frames: [71, 76]
+    dying:
+      frames: [71, 76]
+    #spritesheet does not contain unique attack animation
+    attacking:
+      frames: [85, 90]
+
+attack:
+  name: "flop"
+  damage: 35
+  frames:
+    startup: 1
+    active: 2
+    recovery: 4
+  hitbox:
+    size: [32, 32]
+    offset: [32, 0]
+
+audio:
+  effects:
+    attacking:
+      87: flop.ogg

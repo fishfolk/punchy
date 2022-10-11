@@ -1,0 +1,55 @@
+name: Brute
+
+hurtbox:
+  size: [36, 58]
+  offset: [0, 0]
+
+stats:
+  max_health: 200
+  movement_speed: 50
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
+spritesheet:
+  image:
+    [brute_base_64_80.png, brute_eyepatch_64_80.png, brute_helmet_64_80.png]
+  tile_size: [64, 80]
+  columns: 8
+  rows: 6
+
+  animation_fps: 0.12
+  animations:
+    idle:
+      frames: [0, 3]
+      repeat: true
+    running:
+      frames: [8, 11]
+      repeat: true
+    knocked_right:
+      frames: [40, 46]
+    knocked_left:
+      frames: [40, 46]
+    dying:
+      frames: [40, 46]
+    waiting:
+      frames: [0, 3]
+      repeat: false
+    attacking:
+      frames: [16, 23]
+
+attack:
+  name: "punch"
+  damage: 10
+  frames:
+    startup: 2
+    active: 3
+    recovery: 7
+  hitbox:
+    size: [36, 24]
+    offset: [24, 0]
+
+audio:
+  effects: {}

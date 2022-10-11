@@ -1,0 +1,98 @@
+music: 01A_BEACH_MAYHEM.mp3
+background_color: [101, 131, 162]
+parallax_background:
+  layers:
+    - speed: 0.98
+      path: background_01.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 0
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0.9
+      path: background_02.2.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 1
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0.82
+      path: background_03.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 2
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0.74
+      path: background_04.2.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 3
+      scale: 0.9
+      transition_factor: 0.9
+    - speed: 0
+      path: background_05.2.png
+      tile_size: [960, 540]
+      cols: 1
+      rows: 1
+      z: 4
+      scale: 0.9
+      transition_factor: 0.9
+
+players:
+  - fighter: /fighters/fishy/fishy.fighter.yaml
+    location: [0, 0, 0]
+  - fighter: /fighters/sharky/sharky.fighter.yaml
+    location: [-70, 30, 0]
+
+enemies:
+  - fighter: &slinger /fighters/slinger/slinger.fighter.yaml
+    location: [325, 0, 0]
+    trip_point_x: -1
+  - fighter: *slinger
+    location: [225, 50, 0]
+    trip_point_x: -1
+  - fighter: &bandit /fighters/bandit/bandit.fighter.yaml
+    location: [225, -10, 0]
+    trip_point_x: -1
+  - fighter: *bandit
+    location: [275, -50, 0]
+    trip_point_x: -1
+  - fighter: &brute /fighters/brute/brute.fighter.yaml
+    location: [400, -30, 0]
+    trip_point_x: -1
+  - fighter: *brute
+    location: [450, 20, 0]
+    trip_point_x: 300
+  - fighter: /fighters/big_bass/big_bass.fighter.yaml
+    location: [600, 20, 0]
+    trip_point_x: 400
+    boss: true
+
+  - fighter: &brute /fighters/brute/brute.fighter.yaml
+    location: [400, -30, 0]
+    trip_point_x: -1
+  - fighter: *brute
+    location: [450, 20, 0]
+    trip_point_x: 300
+  - fighter: *brute
+    location: [1000, 20, 0]
+    trip_point_x: 700
+
+stop_points: [500, 1000]
+
+items:
+  - item: &health /items/health/health.item.yaml
+    location: [50, -70, 0]
+  - item: &bottle /items/bottle/bottle.item.yaml
+    location: [100, -20, 0]
+  - item: &sword /items/sword/sword.item.yaml
+    location: [-100, -20, 0]
+  - item: &box /items/box/box.item.yaml
+    location: [30, 60, 0]
+  - item: &musket /items/musket/musket.item.yaml
+    location: [-20, -20, 0]

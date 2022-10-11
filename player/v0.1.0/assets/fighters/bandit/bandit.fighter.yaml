@@ -1,0 +1,57 @@
+name: Bandit
+
+hurtbox:
+  size: [36, 52]
+  offset: [0, 0]
+
+stats:
+  max_health: 150
+  movement_speed: 150
+
+hud:
+  portrait:
+    image: portrait.png
+    image_size: [35, 35]
+
+spritesheet:
+  image:
+    [bandit_headband_64_80.png, bandit_mask_64_80.png, bandit_seaweed_64_80.png]
+  tile_size: [64, 80]
+  columns: 7
+  rows: 6
+
+  animation_fps: 0.12
+  animations:
+    idle:
+      frames: [0, 3]
+      repeat: true
+    running:
+      frames: [7, 10]
+      repeat: true
+    knocked_right:
+      frames: [35, 41]
+    knocked_left:
+      frames: [35, 41]
+    dying:
+      frames: [35, 41]
+    waiting:
+      frames: [0, 3]
+      repeat: false
+    attacking:
+      frames: [14, 17]
+
+attack:
+  name: "punch"
+  damage: 4
+  frames:
+    startup: 1
+    active: 2
+    recovery: 3
+  hitbox:
+    size: [36, 24]
+    offset: [24, 0]
+
+audio:
+  effects:
+    attacking:
+      16: hit.ogg
