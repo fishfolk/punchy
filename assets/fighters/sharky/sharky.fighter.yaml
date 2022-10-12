@@ -14,8 +14,8 @@ hud:
     image_size: [35, 35]
 
 spritesheet:
-  image: [sharky_base_96_140.png]
-  tile_size: [96, 140]
+  image: [sharky_base_96_80.png]
+  tile_size: [96, 80]
   columns: 14
   rows: 7
 
