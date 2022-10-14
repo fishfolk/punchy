@@ -7,7 +7,7 @@ use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
 use crate::{
-    animation::{AnimatedSpriteSheetBundle, Animation, Facing, SyncFacing},
+    animation::{AnimatedSpriteSheetBundle, Animation, Facing},
     attack::{Attack, Breakable},
     audio::AnimationAudioPlayback,
     collision::BodyLayers,
@@ -1318,9 +1318,10 @@ fn grabbing(
                                     .insert_bundle(animated_sprite)
                                     .insert(Attached {
                                         position_face: true,
+                                        sync_facing: true,
+                                        sync_animation: false,
                                     })
                                     .insert(Facing::default())
-                                    .insert(SyncFacing)
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1380,9 +1381,10 @@ fn grabbing(
                                     .insert_bundle(animated_sprite)
                                     .insert(Attached {
                                         position_face: true,
+                                        sync_facing: true,
+                                        sync_animation: false,
                                     })
                                     .insert(Facing::default())
-                                    .insert(SyncFacing)
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1433,8 +1435,6 @@ fn holding(
                     ..default()
                 })
                 .insert(BeingHeld)
-                .insert(Facing::default())
-                .insert(SyncFacing)
                 .id();
             commands.entity(entity).add_child(child);
         }

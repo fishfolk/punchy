@@ -6,7 +6,7 @@ use crate::attack::Hurtbox;
 use crate::consts::{self, FOOT_PADDING};
 use crate::metadata::ItemMeta;
 use crate::{
-    animation::{AnimatedSpriteSheetBundle, Animation, Facing, SyncAnimation, SyncFacing},
+    animation::{AnimatedSpriteSheetBundle, Animation, Facing},
     camera::YSort,
     collision::{BodyLayers, PhysicsBundle},
     damage::{Damageable, Health},
@@ -151,36 +151,69 @@ impl ActiveFighterBundle {
                 .clone();
             attachment_spritesheet.animation =
                 Animation::new(attachment.animation_fps, attachment.animations.clone());
-            attachment_spritesheet.sprite_sheet.transform = Transform::from_xyz(0., fighter.spritesheet.tile_size.y as f32 * 0.3, 0.1);
-            attachment_spritesheet.sprite_sheet.sprite.anchor =  bevy::sprite::Anchor::Center;
+            attachment_spritesheet.sprite_sheet.transform =
+                Transform::from_xyz(0., fighter.spritesheet.tile_size.y as f32 * 0.3, 0.1);
+            attachment_spritesheet.sprite_sheet.sprite.anchor = bevy::sprite::Anchor::Center;
 
             let attachment_ent = commands
                 .spawn_bundle(attachment_spritesheet)
+                .insert(Attached {
+                    position_face: false,
+                    sync_animation: true,
+                    sync_facing: true,
+                })
                 .insert(Facing::default())
-                .insert(SyncFacing)
-                .insert(SyncAnimation)
                 .id();
             commands.entity(entity).add_child(attachment_ent);
         }
     }
 }
 
-/// Standard way to attach things to fighters
-/// Needs Facing component
 #[derive(Component)]
 pub struct Attached {
-    ///Change position based on facing
+    /// Syncs facing with parent facing
+    pub sync_facing: bool,
+    // Syncs animation with parent animation
+    pub sync_animation: bool,
+    /// Change position based on facing
     pub position_face: bool,
 }
 
-pub fn attachment_system(mut query: Query<(&Attached, &mut Transform, &Facing)>) {
-    for (attached, mut transform, facing) in &mut query {
-        if attached.position_face {
-            transform.translation.x = if facing.is_left() {
-                -transform.translation.x.abs()
-            } else {
-                transform.translation.x.abs()
-            };
+pub fn attachment_system(
+    mut attached: Query<(
+        &Parent,
+        &Attached,
+        &mut Transform,
+        &mut Facing,
+        &mut Animation,
+    )>,
+    parents: Query<(Entity, &Facing, &Animation), (With<Children>, Without<Attached>)>,
+) {
+    for (parent_ent, parent_facing, parent_animation) in &parents {
+        for (parent, attached, mut transform, mut facing, mut animation) in &mut attached {
+            if parent_ent == parent.get() {
+                //Sync facing
+                if attached.sync_facing {
+                    *facing = parent_facing.clone();
+                }
+
+                //Sync animation
+                if attached.sync_animation {
+                    animation.current_frame = parent_animation.current_frame;
+                    animation.current_animation = parent_animation.current_animation.clone();
+                    animation.timer = parent_animation.timer.clone();
+                    animation.played_once = parent_animation.played_once;
+                }
+            }
+
+            // Change position
+            if attached.position_face {
+                transform.translation.x = if facing.is_left() {
+                    -transform.translation.x.abs()
+                } else {
+                    transform.translation.x.abs()
+                };
+            }
         }
     }
 }

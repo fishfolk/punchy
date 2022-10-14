@@ -24,10 +24,8 @@ impl Plugin for AnimationPlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(animation_flipping)
                     .with_system(animation_cycling)
-                    .with_system(sync_animation)
                     .into(),
-            )
-            .add_system_to_stage(CoreStage::Update, sync_facing);
+            );
     }
 }
 
@@ -214,42 +212,5 @@ fn animation_cycling(mut query: Query<(&mut TextureAtlasSprite, &mut Animation)>
 fn animation_flipping(mut query: Query<(&mut TextureAtlasSprite, &Facing)>) {
     for (mut texture_atlas_sprite, facing) in query.iter_mut() {
         texture_atlas_sprite.flip_x = facing.is_left();
-    }
-}
-
-/// Syncs facing with parent facing
-#[derive(Component)]
-pub struct SyncFacing;
-
-fn sync_facing(
-    mut sync_facing: Query<(&Parent, &mut Facing), With<SyncFacing>>,
-    parents: Query<(Entity, &Facing), (With<Children>, Without<SyncFacing>)>,
-) {
-    for (parent_ent, facing) in &parents {
-        for (parent, mut child_facing) in &mut sync_facing {
-            if parent_ent == parent.get() {
-                *child_facing = facing.clone();
-            }
-        }
-    }
-}
-
-/// Syncs animation with parent animation
-#[derive(Component)]
-pub struct SyncAnimation;
-
-fn sync_animation(
-    mut sync_animation: Query<(&Parent, &mut Animation), With<SyncAnimation>>,
-    parents: Query<(Entity, &Animation), (With<Children>, Without<SyncAnimation>)>,
-) {
-    for (parent_ent, animation) in &parents {
-        for (parent, mut child_animation) in &mut sync_animation {
-            if parent_ent == parent.get() {
-                child_animation.current_frame = animation.current_frame;
-                child_animation.current_animation = animation.current_animation.clone();
-                child_animation.timer = animation.timer.clone();
-                child_animation.played_once = animation.played_once;
-            }
-        }
     }
 }
