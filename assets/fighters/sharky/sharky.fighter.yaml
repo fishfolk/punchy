@@ -54,7 +54,7 @@ audio:
       87: flop.ogg
 
 attachment:
-  image: [fishy_hat.png]
+  image: [strawhat.png]
   tile_size: [96, 140]
   columns: 14
   rows: 7

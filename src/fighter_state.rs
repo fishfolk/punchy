@@ -1443,18 +1443,15 @@ fn holding(
 
 fn melee_attacking(
     mut commands: Commands,
-    mut fighters: Query<
-        (
-            Entity,
-            Option<&mut MeleeAttacking>,
-            Option<&Player>,
-            Option<&Enemy>,
-            &AvailableAttacks,
-            &mut LinearVelocity,
-            &Facing,
-        ),
-        Without<MeleeWeapon>,
-    >,
+    mut fighters: Query<(
+        Entity,
+        Option<&mut MeleeAttacking>,
+        Option<&Player>,
+        Option<&Enemy>,
+        &AvailableAttacks,
+        &mut LinearVelocity,
+        &Facing,
+    )>,
     mut melee_weapons: Query<(Entity, &Parent, &mut Animation, &MeleeWeapon)>,
 ) {
     for (entity, melee_attack, player, enemy, available_attacks, mut velocity, facing) in
@@ -1542,18 +1539,15 @@ fn melee_attacking(
 
 fn shooting(
     mut commands: Commands,
-    mut fighters: Query<
-        (
-            Entity,
-            Option<&mut Shooting>,
-            Option<&Player>,
-            Option<&Enemy>,
-            &AvailableAttacks,
-            &mut LinearVelocity,
-            &Facing,
-        ),
-        Without<ProjectileWeapon>,
-    >,
+    mut fighters: Query<(
+        Entity,
+        Option<&mut Shooting>,
+        Option<&Player>,
+        Option<&Enemy>,
+        &AvailableAttacks,
+        &mut LinearVelocity,
+        &Facing,
+    )>,
     mut projectile_weapons: Query<(
         Entity,
         &Parent,
