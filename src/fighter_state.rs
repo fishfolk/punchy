@@ -15,7 +15,7 @@ use crate::{
     damage::{DamageEvent, Health},
     enemy::{Boss, Enemy},
     enemy_ai,
-    fighter::{Attachment, Inventory},
+    fighter::{Attached, Inventory},
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile, ScriptItemGrabEvent, ScriptItemThrowEvent},
     lifetime::Lifetime,
@@ -1316,7 +1316,7 @@ fn grabbing(
                                         attack: attack.clone(),
                                     })
                                     .insert_bundle(animated_sprite)
-                                    .insert(Attachment {
+                                    .insert(Attached {
                                         position_face: true,
                                     })
                                     .insert(Facing::default())
@@ -1378,7 +1378,7 @@ fn grabbing(
                                         shoot_delay: shoot_timer,
                                     })
                                     .insert_bundle(animated_sprite)
-                                    .insert(Attachment {
+                                    .insert(Attached {
                                         position_face: true,
                                     })
                                     .insert(Facing::default())
@@ -1433,6 +1433,8 @@ fn holding(
                     ..default()
                 })
                 .insert(BeingHeld)
+                .insert(Facing::default())
+                .insert(SyncFacing)
                 .id();
             commands.entity(entity).add_child(child);
         }
