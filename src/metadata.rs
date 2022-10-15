@@ -109,6 +109,7 @@ pub struct FighterMeta {
     pub hurtbox: ColliderMeta,
     //Will likely need a hashmap(?) of AttackMetas, fighters will have multiple attacks
     pub attack: AttackMeta,
+    pub attachment: Option<FighterSpritesheetMeta>,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]

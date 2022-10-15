@@ -6,7 +6,7 @@ use crate::attack::Hurtbox;
 use crate::consts::{self, FOOT_PADDING};
 use crate::metadata::ItemMeta;
 use crate::{
-    animation::{AnimatedSpriteSheetBundle, Animation},
+    animation::{AnimatedSpriteSheetBundle, Animation, Facing},
     camera::YSort,
     collision::{BodyLayers, PhysicsBundle},
     damage::{Damageable, Health},
@@ -16,6 +16,14 @@ use crate::{
     movement::LinearVelocity,
     player::Player,
 };
+
+pub struct FighterPlugin;
+
+impl Plugin for FighterPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system_to_stage(CoreStage::PostUpdate, attachment_system);
+    }
+}
 
 /// Bundle added to a fighter stub, in order to activate it.
 #[derive(Bundle)]
@@ -124,9 +132,92 @@ impl ActiveFighterBundle {
             .insert(Hurtbox)
             .id();
 
+        let animated_spritesheet_bundle = active_fighter_bundle.animated_spritesheet_bundle.clone();
+
         commands
             .entity(entity)
             .insert_bundle(active_fighter_bundle)
             .push_children(&[hurtbox]);
+
+        if let Some(attachment) = &fighter.attachment {
+            //Clone fighter spritesheet
+            let mut attachment_spritesheet = animated_spritesheet_bundle;
+
+            //Change what's needed
+            attachment_spritesheet.sprite_sheet.texture_atlas = attachment
+                .atlas_handle
+                .choose(&mut rand::thread_rng())
+                .unwrap()
+                .clone();
+            attachment_spritesheet.animation =
+                Animation::new(attachment.animation_fps, attachment.animations.clone());
+            attachment_spritesheet.sprite_sheet.transform = Transform::from_xyz(
+                0.,
+                fighter.spritesheet.tile_size.y as f32
+                    * -(0.5 * FOOT_PADDING / fighter.center_y - 0.5), //This comes from the fighter anchor
+                0.1,
+            );
+            attachment_spritesheet.sprite_sheet.sprite.anchor = bevy::sprite::Anchor::Center;
+
+            let attachment_ent = commands
+                .spawn_bundle(attachment_spritesheet)
+                .insert(Attached {
+                    position_face: false,
+                    sync_animation: true,
+                    sync_facing: true,
+                })
+                .insert(Facing::default())
+                .id();
+            commands.entity(entity).add_child(attachment_ent);
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct Attached {
+    /// Syncs facing with parent facing
+    pub sync_facing: bool,
+    // Syncs animation with parent animation
+    pub sync_animation: bool,
+    /// Change position based on facing
+    pub position_face: bool,
+}
+
+pub fn attachment_system(
+    mut attached: Query<(
+        &Parent,
+        &Attached,
+        &mut Transform,
+        &mut Facing,
+        &mut Animation,
+    )>,
+    parents: Query<(Entity, &Facing, &Animation), (With<Children>, Without<Attached>)>,
+) {
+    for (parent_ent, parent_facing, parent_animation) in &parents {
+        for (parent, attached, mut transform, mut facing, mut animation) in &mut attached {
+            if parent_ent == parent.get() {
+                //Sync facing
+                if attached.sync_facing {
+                    *facing = parent_facing.clone();
+                }
+
+                //Sync animation
+                if attached.sync_animation {
+                    animation.current_frame = parent_animation.current_frame;
+                    animation.current_animation = parent_animation.current_animation.clone();
+                    animation.timer = parent_animation.timer.clone();
+                    animation.played_once = parent_animation.played_once;
+                }
+            }
+
+            // Change position
+            if attached.position_face {
+                transform.translation.x = if facing.is_left() {
+                    -transform.translation.x.abs()
+                } else {
+                    transform.translation.x.abs()
+                };
+            }
+        }
     }
 }
