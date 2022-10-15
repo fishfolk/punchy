@@ -1297,7 +1297,7 @@ fn grabbing(
                                         transform: Transform::from_xyz(
                                             sprite_offset.x,
                                             sprite_offset.y,
-                                            0.,
+                                            0.2,
                                         ),
                                         ..Default::default()
                                     },
@@ -1352,7 +1352,7 @@ fn grabbing(
                                         transform: Transform::from_xyz(
                                             sprite_offset.x,
                                             sprite_offset.y,
-                                            0.1,
+                                            0.2,
                                         ),
                                         ..Default::default()
                                     },

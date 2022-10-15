@@ -151,8 +151,12 @@ impl ActiveFighterBundle {
                 .clone();
             attachment_spritesheet.animation =
                 Animation::new(attachment.animation_fps, attachment.animations.clone());
-            attachment_spritesheet.sprite_sheet.transform =
-                Transform::from_xyz(0., fighter.spritesheet.tile_size.y as f32 * 0.3, 0.1);
+            attachment_spritesheet.sprite_sheet.transform = Transform::from_xyz(
+                0.,
+                fighter.spritesheet.tile_size.y as f32
+                    * -(0.5 * FOOT_PADDING / fighter.center_y - 0.5), //This comes from the fighter anchor
+                0.1,
+            );
             attachment_spritesheet.sprite_sheet.sprite.anchor = bevy::sprite::Anchor::Center;
 
             let attachment_ent = commands
