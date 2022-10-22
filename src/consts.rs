@@ -26,8 +26,8 @@ pub const MAX_Y: f32 = (GROUND_HEIGHT / 2.) + GROUND_Y;
 //TODO: figure out a better way to do this than tacking on an extra offset
 pub const MIN_Y: f32 = -(GROUND_HEIGHT / 2.) + GROUND_Y - 50.;
 
-//TODO: remove in favor of loading attack velocity from YAML
-pub const ATTACK_VELOCITY: f32 = 80.0;
+pub const ITEM_ATTACK_VELOCITY: f32 = 80.0;
+pub const STUN_TIME: f32 = 0.50;
 
 pub const ITEM_LAYER: f32 = 100.;
 pub const ITEM_WIDTH: f32 = 30.;

@@ -43,7 +43,7 @@ impl Plugin for FighterStatePlugin {
                     .after(InputManagerSystem::Update)
                     .run_in_state(GameState::InGame)
                     .with_system(collect_fighter_eliminations)
-                    .with_system(collect_attack_knockbacks)
+                    .with_system(collect_hit_stuns)
                     .with_system(collect_player_actions)
                     .with_system(
                         enemy_ai::set_target_near_player.chain(enemy_ai::emit_enemy_intents),
@@ -60,7 +60,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_flopping)
                     .with_system(transition_from_punching)
                     .with_system(transition_from_ground_slam)
-                    .with_system(transition_from_knocked_back)
+                    .with_system(transition_from_hit_stun)
                     .with_system(transition_from_melee_attacking)
                     .with_system(transition_from_shooting)
                     .into(),
@@ -77,7 +77,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(moving)
                     .with_system(throwing)
                     .with_system(grabbing)
-                    .with_system(knocked_back)
+                    .with_system(hit_stun)
                     .with_system(dying)
                     .with_system(holding)
                     .with_system(melee_attacking)
@@ -292,17 +292,19 @@ impl Holding {
     pub const PRIORITY: i32 = 35;
 }
 
-/// Component indicating the player is getting knocked back
+/// Component indicating the player was knocked back or hit stop
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-pub struct KnockedBack {
+pub struct HitStun {
     pub velocity: Vec2,
     pub timer: Timer,
 }
-impl KnockedBack {
+impl HitStun {
     pub const PRIORITY: i32 = 40;
-    pub const ANIMATION_LEFT: &'static str = "knocked_left";
-    pub const ANIMATION_RIGHT: &'static str = "knocked_right";
+    pub const KNOCKED_LEFT: &'static str = "knocked_left";
+    pub const KNOCKED_RIGHT: &'static str = "knocked_right";
+    pub const STOPPED_LEFT: &'static str = "knocked_left";
+    pub const STOPPED_RIGHT: &'static str = "knocked_right";
 }
 
 /// Component indicating the player is dying
@@ -400,26 +402,26 @@ fn collect_player_actions(
     }
 }
 
-/// Look for attacks that have contacted a figher and knock them back
+/// Look for attacks that have contacted a figher and hit stun them
 ///
 /// TODO: Not all attacks will have knockback. Maybe we should replace `damage_velocity` with
 /// `damage_impulse` including the knockback time so that it can be ignored by this system if it's
 /// velocity or time is zero.
-fn collect_attack_knockbacks(
+fn collect_hit_stuns(
     mut fighters: Query<&mut StateTransitionIntents, With<Handle<FighterMeta>>>,
     mut damage_events: EventReader<DamageEvent>,
 ) {
     for event in damage_events.iter() {
         // If the damaged entity was a fighter
         if let Ok(mut transition_intents) = fighters.get_mut(event.damaged_entity) {
-            // Trigger knock back
+            // Trigger hit stun
             transition_intents.push_back(StateTransition::new(
-                KnockedBack {
-                    //Knockback velocity feels strange right now
+                HitStun {
+                    //Hit stun velocity feels strange right now
                     velocity: event.damage_velocity,
-                    timer: Timer::from_seconds(0.50, false),
+                    timer: Timer::from_seconds(event.stun_time.unwrap_or(consts::STUN_TIME), false),
                 },
-                KnockedBack::PRIORITY,
+                HitStun::PRIORITY,
                 false,
             ));
         }
@@ -540,17 +542,17 @@ fn transition_from_ground_slam(
     }
 }
 
-// Initiate any transitions from the knocked back state
-fn transition_from_knocked_back(
+// Initiate any transitions from the hit stun state
+fn transition_from_hit_stun(
     mut commands: Commands,
-    mut fighters: Query<(Entity, &mut StateTransitionIntents, &KnockedBack)>,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &HitStun)>,
 ) {
-    'entity: for (entity, mut transition_intents, knocked_back) in &mut fighters {
+    'entity: for (entity, mut transition_intents, hit_stun) in &mut fighters {
         // Transition to any higher priority states
         let current_state_removed = transition_intents
-            .transition_to_higher_priority_states::<KnockedBack>(
+            .transition_to_higher_priority_states::<HitStun>(
                 entity,
-                KnockedBack::PRIORITY,
+                HitStun::PRIORITY,
                 &mut commands,
             );
 
@@ -560,11 +562,8 @@ fn transition_from_knocked_back(
         }
 
         // Transition to idle when finished
-        if knocked_back.timer.finished() {
-            commands
-                .entity(entity)
-                .remove::<KnockedBack>()
-                .insert(Idling);
+        if hit_stun.timer.finished() {
+            commands.entity(entity).remove::<HitStun>().insert(Idling);
         }
     }
 }
@@ -724,7 +723,8 @@ fn flopping(
                             Vec2::NEG_X
                         } else {
                             Vec2::X
-                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                        } * fighter.attack.velocity.unwrap_or(Vec2::ZERO),
+                        stun_time: fighter.attack.stun_time,
                     })
                     .insert(attack_frames)
                     .id();
@@ -839,7 +839,8 @@ fn punching(
                             Vec2::NEG_X
                         } else {
                             Vec2::X
-                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                        } * fighter.attack.velocity.unwrap_or(Vec2::ZERO),
+                        stun_time: fighter.attack.stun_time,
                     })
                     .insert(attack_frames)
                     .id();
@@ -924,7 +925,8 @@ fn ground_slam(
                             Vec2::NEG_X
                         } else {
                             Vec2::X
-                        } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                        } * fighter.attack.velocity.unwrap_or(Vec2::ZERO),
+                        stun_time: fighter.attack.stun_time,
                     })
                     .insert(attack_frames)
                     .id();
@@ -1021,37 +1023,38 @@ fn moving(
     }
 }
 
-/// Update knocked back players
-fn knocked_back(
-    mut fighters: Query<(
-        &mut Animation,
-        &Facing,
-        &mut LinearVelocity,
-        &mut KnockedBack,
-    )>,
+/// Update hit stunned players
+fn hit_stun(
+    mut fighters: Query<(&mut Animation, &Facing, &mut LinearVelocity, &mut HitStun)>,
     time: Res<Time>,
 ) {
-    for (mut animation, facing, mut velocity, mut knocked_back) in &mut fighters {
-        // If this is the start of the knock back
-        if knocked_back.timer.elapsed_secs() == 0.0 {
+    for (mut animation, facing, mut velocity, mut hit_stun) in &mut fighters {
+        // If this is the start of the hit stun
+        if hit_stun.timer.elapsed_secs() == 0.0 {
             // Calculate animation to use based on attack direction
-            let is_left = knocked_back.velocity.x < 0.0;
+            let is_left = hit_stun.velocity.x < 0.0;
             let use_left_anim = if facing.is_left() { !is_left } else { is_left };
-            let animation_name = if use_left_anim {
-                KnockedBack::ANIMATION_LEFT
+
+            let animation_name = if hit_stun.velocity == Vec2::ZERO {
+                (HitStun::STOPPED_LEFT, HitStun::STOPPED_RIGHT)
             } else {
-                KnockedBack::ANIMATION_RIGHT
+                (HitStun::KNOCKED_LEFT, HitStun::KNOCKED_RIGHT)
+            };
+            let animation_name = if use_left_anim {
+                animation_name.0
+            } else {
+                animation_name.1
             };
 
             // Play the animation
             animation.play(animation_name, false);
         }
 
-        // Tick the knock-back timer
-        knocked_back.timer.tick(time.delta());
+        // Tick the hit stuntimer
+        hit_stun.timer.tick(time.delta());
 
-        // Set our figher velocity to the knock back velocity
-        **velocity = knocked_back.velocity;
+        // Set our figher velocity to the hit stun velocity
+        **velocity = hit_stun.velocity;
     }
 }
 
@@ -1512,7 +1515,8 @@ fn melee_attacking(
                                 Vec2::NEG_X
                             } else {
                                 Vec2::X
-                            } * Vec2::new(consts::ATTACK_VELOCITY, 0.0),
+                            } * attack.velocity.unwrap_or(Vec2::ZERO),
+                            stun_time: attack.stun_time,
                         })
                         .insert(attack_frames)
                         .id();
@@ -1652,7 +1656,8 @@ fn shooting(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: Vec2::new(consts::ATTACK_VELOCITY, 0.0) * direction_mul,
+                            velocity: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
+                            stun_time: attack.stun_time,
                         })
                         .insert(Breakable::new(0, true))
                         .insert(Collider::cuboid(

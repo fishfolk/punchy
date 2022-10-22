@@ -43,6 +43,7 @@ pub struct Attack {
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.
     pub velocity: Vec2,
+    pub stun_time: Option<f32>,
 }
 
 #[derive(Component)]
@@ -166,6 +167,7 @@ fn attack_damage_system(
                         damage_velocity: attack.velocity,
                         damage: attack.damage,
                         damaged_entity: hurtbox_parent_entity,
+                        stun_time: attack.stun_time,
                     })
                 }
             }
