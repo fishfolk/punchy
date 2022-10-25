@@ -2492,9 +2492,9 @@ checksum = "6c8af84674fe1f223a982c933a0ee1086ac4d4052aa0fb8060c12c6ad838e754"
 
 [[package]]
 name = "iyes_loopless"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fec251a82c60be9e282aec12056fa153666d5730b21d124655d7c22114d342c8"
+checksum = "20f42b3a59033b3372129b84850a6d39e02c25f3f170c4f8b84232b775602bb0"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -2603,9 +2603,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "leafwing-input-manager"
-version = "0.5.2"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc0e2dd6c5d8c0bc64951036855bb3fb8f4ed88442cb6c02ed490b29cae5c186"
+checksum = "32953f440c0c48698cf354a78ccdb4fda4cb6ca1846f326e1280021fa333e158"
 dependencies = [
  "bevy",
  "derive_more",
@@ -2617,9 +2617,9 @@ dependencies = [
 
 [[package]]
 name = "leafwing_input_manager_macros"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d38676bbe26f336c5554150be0050a7033c72e882f8df4be5a2b3b1e6b2929cd"
+checksum = "d98664cb644020e9c60d50c49a4630eb0a44aa15008d859208c538d75a4216b9"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
