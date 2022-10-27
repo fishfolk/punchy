@@ -27,7 +27,7 @@ pub const MAX_Y: f32 = (GROUND_HEIGHT / 2.) + GROUND_Y;
 pub const MIN_Y: f32 = -(GROUND_HEIGHT / 2.) + GROUND_Y - 50.;
 
 pub const ITEM_ATTACK_VELOCITY: f32 = 80.0;
-pub const STUN_TIME: f32 = 0.50;
+pub const HITSTUN_DURATION: f32 = 0.50;
 
 pub const ITEM_LAYER: f32 = 100.;
 pub const ITEM_WIDTH: f32 = 30.;

@@ -120,7 +120,7 @@ pub struct AttackMeta {
     pub damage: i32,
     pub frames: AttackFrames,
     pub hitbox: ColliderMeta,
-    pub stun_time: Option<f32>,
+    pub hitstun_duration: f32,
     pub velocity: Option<Vec2>,
 }
 

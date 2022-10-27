@@ -32,5 +32,5 @@ pub struct DamageEvent {
     pub damageing_entity: Entity,
     pub damaged_entity: Entity,
     pub damage: i32,
-    pub stun_time: Option<f32>,
+    pub hitstun_duration: f32,
 }

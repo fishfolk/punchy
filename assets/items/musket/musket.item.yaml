@@ -15,6 +15,7 @@ kind: !ProjectileWeapon
         hitbox:
             size: [15, 15]
             offset: [0, 0]
+        hitstun_duration: 0.2
 
     bullet_velocity: 300
     bullet_lifetime: 1
