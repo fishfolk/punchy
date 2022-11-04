@@ -51,7 +51,7 @@ pub fn debug_tools_window(
     egui::Window::new(localization.get("debug-tools"))
         // ID is needed because title comes from localizaition which can change
         .id(egui::Id::new("debug_tools"))
-        .open(&mut *visible)
+        .open(&mut visible)
         .show(ctx, |ui| {
             // Show collision shapes
             ui.checkbox(

@@ -71,7 +71,7 @@ impl<T: Asset> HasLoadProgress for Handle<T> {
         let loaded = loading_resources.asset_server.get_load_state(self) == LoadState::Loaded;
 
         LoadProgress {
-            loaded: if loaded { 1 } else { 0 },
+            loaded: u32::from(loaded),
             total: 1,
         }
     }
