@@ -120,6 +120,8 @@ pub struct AttackMeta {
     pub damage: i32,
     pub frames: AttackFrames,
     pub hitbox: ColliderMeta,
+    pub hitstun_duration: f32,
+    pub velocity: Option<Vec2>,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]

@@ -27,6 +27,8 @@ spritesheet:
     running:
       frames: [14, 19]
       repeat: true
+    hitstun:
+      frames: [71, 73]
     knocked_right:
       frames: [85, 90]
     knocked_left:
@@ -47,6 +49,8 @@ attack:
   hitbox:
     size: [32, 32]
     offset: [32, 0]
+  hitstun_duration: 0.2
+  # velocity: [20.0, 0.0]
 
 audio:
   effects:

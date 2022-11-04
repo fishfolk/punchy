@@ -17,7 +17,7 @@ spritesheet:
   image: [bass_base_156_192.png]
   tile_size: [156, 192]
   columns: 15
-  rows: 3
+  rows: 5
 
   animation_fps: 0.12
   animations:
@@ -27,10 +27,12 @@ spritesheet:
     running:
       frames: [15, 24]
       repeat: true
+    hitstun:
+      frames: [60, 66]
     knocked_right:
-      frames: [0, 3]
+      frames: [60, 66]
     knocked_left:
-      frames: [0, 3]
+      frames: [60, 66]
     dying:
       frames: [0, 3]
     waiting:
@@ -49,6 +51,7 @@ attack:
   hitbox:
     size: [96, 32]
     offset: [0, -69]
+  hitstun_duration: 0.2
 
 audio:
   effects:
