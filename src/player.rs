@@ -53,11 +53,14 @@ impl PlayerBundle {
             ..default()
         };
 
-        let available_attacks = AvailableAttacks(vec![fighter_assets
-            .get(&player_meta.fighter_handle)
-            .expect("Fighter not loaded")
-            .attack
-            .clone()]);
+        //TODO: Maybe this should be moved to loading.rs
+        let available_attacks = AvailableAttacks(
+            fighter_assets
+                .get(&player_meta.fighter_handle)
+                .expect("Fighter not loaded")
+                .attacks
+                .clone(),
+        );
 
         PlayerBundle {
             player: Player,
@@ -74,3 +77,5 @@ impl PlayerBundle {
 
 #[derive(Component)]
 pub struct AvailableAttacks(pub Vec<AttackMeta>);
+
+//impl current_attack
