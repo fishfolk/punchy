@@ -39,17 +39,17 @@ spritesheet:
     attacking:
       frames: [85, 90]
 
-attack:
-  name: "punch"
-  damage: 35
-  frames:
-    startup: 1
-    active: 2
-    recovery: 4
-  hitbox:
-    size: [32, 32]
-    offset: [32, 0]
-  hitstun_duration: 0.2
+attacks:
+  - name: "punch"
+    damage: 35
+    frames:
+      startup: 1
+      active: 2
+      recovery: 4
+    hitbox:
+      size: [32, 32]
+      offset: [32, 0]
+    hitstun_duration: 0.2
 
 audio:
   effects:
