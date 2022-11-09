@@ -14,12 +14,15 @@ use crate::{
     Stats,
 };
 
+//maybe implement as plugin
+
 /// A place that an enemy fighter is going to move to, in an attempt to attack a player.
 ///
 /// The attack distance is for randomization purposes, and it's the distance that triggers the
 /// attack. More precisely, it's the max distance - if the enemy finds itself at a smaller distance,
 /// it will attack.
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 #[component(storage = "SparseSet")]
 pub struct EnemyTarget {
     pub position: Vec2,
@@ -136,6 +139,7 @@ pub fn emit_enemy_intents(
                 Facing::Left
             };
 
+            // make them attack with their first available attack??
             // And attack!
             if maybe_boss.is_some() {
                 intents.push_back(StateTransition::new(

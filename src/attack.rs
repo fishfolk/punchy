@@ -7,8 +7,8 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
+    fighter::AvailableAttacks,
     item::Drop,
-    player::AvailableAttacks,
     GameState,
 };
 

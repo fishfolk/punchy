@@ -16,8 +16,8 @@ hud:
 spritesheet:
   image: [dev_base_96_80.png]
   tile_size: [96, 80]
-  columns: 15
-  rows: 14
+  columns: 14
+  rows: 15
 
   animation_fps: 0.12
   animations:

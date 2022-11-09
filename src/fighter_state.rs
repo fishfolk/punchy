@@ -15,13 +15,13 @@ use crate::{
     damage::{DamageEvent, Health},
     enemy::{Boss, Enemy},
     enemy_ai,
-    fighter::{Attached, Inventory},
+    fighter::{Attached, AvailableAttacks, Inventory},
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile, ScriptItemGrabEvent, ScriptItemThrowEvent},
     lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
-    player::{AvailableAttacks, Player},
+    player::Player,
     Collider, GameState, Stats,
 };
 
