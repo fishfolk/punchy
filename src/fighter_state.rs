@@ -15,13 +15,13 @@ use crate::{
     damage::{DamageEvent, Health},
     enemy::{Boss, Enemy},
     enemy_ai,
-    fighter::{Attached, Inventory},
+    fighter::{Attached, AvailableAttacks, Inventory},
     input::PlayerAction,
     item::{Drop, Item, ItemBundle, Projectile, ScriptItemGrabEvent, ScriptItemThrowEvent},
     lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
-    player::{AvailableAttacks, Player},
+    player::Player,
     Collider, GameState, Stats,
 };
 
@@ -662,6 +662,7 @@ fn flopping(
         &mut LinearVelocity,
         &Facing,
         &Handle<FighterMeta>,
+        &AvailableAttacks,
         &mut Flopping,
         Option<&Player>,
         Option<&Enemy>,
@@ -675,6 +676,7 @@ fn flopping(
         mut velocity,
         facing,
         meta_handle,
+        available_attacks,
         mut flopping,
         player,
         enemy,
@@ -687,6 +689,7 @@ fn flopping(
             continue;
         }
 
+        let attack = available_attacks.0.last().expect("Attack not loaded");
         if let Some(fighter) = fighter_assets.get(meta_handle) {
             // Start the attack
             if !flopping.has_started {
@@ -696,12 +699,12 @@ fn flopping(
                 // Start the attack  from the beginning
                 animation.play(Flopping::ANIMATION, false);
 
-                let mut offset = fighter.attack.hitbox.offset;
+                let mut offset = attack.hitbox.offset;
                 if facing.is_left() {
                     offset.x *= -1.0
                 }
                 offset.y += fighter.collision_offset;
-                let attack_frames = fighter.attack.frames;
+                let attack_frames = attack.frames;
 
                 // Spawn the attack entity
                 let attack_entity = commands
@@ -724,13 +727,13 @@ fn flopping(
                         },
                     ))
                     .insert(Attack {
-                        damage: fighter.attack.damage,
+                        damage: attack.damage,
                         velocity: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
-                        } * fighter.attack.velocity.unwrap_or(Vec2::ZERO),
-                        hitstun_duration: fighter.attack.hitstun_duration,
+                        } * attack.velocity.unwrap_or(Vec2::ZERO),
+                        hitstun_duration: attack.hitstun_duration,
                     })
                     .insert(attack_frames)
                     .id();
@@ -751,7 +754,7 @@ fn flopping(
 
             // Do a forward jump thing
             //TODO: Fix hacky way to get a forward jump
-            if animation.current_frame < fighter.attack.frames.recovery {
+            if animation.current_frame < attack.frames.recovery {
                 if facing.is_left() {
                     velocity.x -= 200.0;
                 } else {
@@ -759,12 +762,11 @@ fn flopping(
                 }
             }
 
-            if animation.current_frame < fighter.attack.frames.startup {
-                let v_per_frame = 200.0 / fighter.attack.frames.startup as f32;
+            if animation.current_frame < attack.frames.startup {
+                let v_per_frame = 200.0 / attack.frames.startup as f32;
                 velocity.y += v_per_frame;
-            } else if animation.current_frame < fighter.attack.frames.active {
-                let v_per_frame =
-                    200.0 / (fighter.attack.frames.active - fighter.attack.frames.startup) as f32;
+            } else if animation.current_frame < attack.frames.active {
+                let v_per_frame = 200.0 / (attack.frames.active - attack.frames.startup) as f32;
                 velocity.y -= v_per_frame;
             }
 
@@ -790,14 +792,24 @@ fn punching(
         &mut LinearVelocity,
         &Facing,
         &Handle<FighterMeta>,
+        &AvailableAttacks,
         &mut Punching,
         Option<&Player>,
         Option<&Enemy>,
     )>,
     fighter_assets: Res<Assets<FighterMeta>>,
 ) {
-    for (entity, mut animation, mut velocity, facing, meta_handle, mut punching, player, enemy) in
-        &mut fighters
+    for (
+        entity,
+        mut animation,
+        mut velocity,
+        facing,
+        meta_handle,
+        available_attacks,
+        mut punching,
+        player,
+        enemy,
+    ) in &mut fighters
     {
         let is_player = player.is_some();
         let is_enemy = enemy.is_some();
@@ -806,6 +818,7 @@ fn punching(
             continue;
         }
 
+        let attack = available_attacks.0.last().expect("Attack not loaded");
         if let Some(fighter) = fighter_assets.get(meta_handle) {
             if !punching.has_started {
                 punching.has_started = true;
@@ -813,12 +826,12 @@ fn punching(
                 // Start the attack  from the beginning
                 animation.play(Punching::ANIMATION, false);
 
-                let mut offset = fighter.attack.hitbox.offset;
+                let mut offset = attack.hitbox.offset;
                 if facing.is_left() {
                     offset.x *= -1.0
                 }
                 offset.y += fighter.collision_offset;
-                let attack_frames = fighter.attack.frames;
+                let attack_frames = attack.frames;
                 // Spawn the attack entity
                 let attack_entity = commands
                     .spawn_bundle(TransformBundle::from_transform(
@@ -840,13 +853,13 @@ fn punching(
                         },
                     ))
                     .insert(Attack {
-                        damage: fighter.attack.damage,
+                        damage: attack.damage,
                         velocity: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
-                        } * fighter.attack.velocity.unwrap_or(Vec2::ZERO),
-                        hitstun_duration: fighter.attack.hitstun_duration,
+                        } * attack.velocity.unwrap_or(Vec2::ZERO),
+                        hitstun_duration: attack.hitstun_duration,
                     })
                     .insert(attack_frames)
                     .id();
@@ -882,6 +895,7 @@ fn ground_slam(
             &mut LinearVelocity,
             &Facing,
             &Handle<FighterMeta>,
+            &AvailableAttacks,
             &mut GroundSlam,
         ),
         With<Boss>,
@@ -895,17 +909,19 @@ fn ground_slam(
         mut velocity,
         facing,
         meta_handle,
+        available_attacks,
         mut ground_slam,
     ) in &mut fighters
     {
         // Start the attack
+        let attack = available_attacks.0.last().expect("Attack not loaded");
         if let Some(fighter) = fighter_assets.get(meta_handle) {
-            let mut offset = fighter.attack.hitbox.offset;
+            let mut offset = attack.hitbox.offset;
             if facing.is_left() {
                 offset.x *= -1.0
             }
             offset.y += fighter.collision_offset;
-            let attack_frames = fighter.attack.frames;
+            let attack_frames = attack.frames;
             if !ground_slam.has_started {
                 ground_slam.has_started = true;
                 ground_slam.start_y = transform.translation.y;
@@ -926,13 +942,13 @@ fn ground_slam(
                         BodyLayers::PLAYER,
                     ))
                     .insert(Attack {
-                        damage: fighter.attack.damage,
+                        damage: attack.damage,
                         velocity: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
-                        } * fighter.attack.velocity.unwrap_or(Vec2::ZERO),
-                        hitstun_duration: fighter.attack.hitstun_duration,
+                        } * attack.velocity.unwrap_or(Vec2::ZERO),
+                        hitstun_duration: attack.hitstun_duration,
                     })
                     .insert(attack_frames)
                     .id();

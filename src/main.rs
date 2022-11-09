@@ -49,6 +49,7 @@ use animation::*;
 use attack::AttackPlugin;
 use audio::*;
 use camera::*;
+use enemy_ai::EnemyTarget;
 use metadata::GameMeta;
 use ui::UIPlugin;
 use utils::ResetController;
@@ -137,6 +138,8 @@ fn main() {
                 .with_system(game_over_on_players_death)
                 .into(),
         )
+        //this should be moved to AudioPlugin, it also causes a panic in egui_inspector when
+        //using the color picker widget currently
         .add_system_to_stage(
             CoreStage::PostUpdate,
             main_menu_sounds
@@ -145,7 +148,7 @@ fn main() {
         );
 
     // Register reflect types that don't come from plugins
-    app.register_type::<Stats>();
+    app.register_type::<Stats>().register_type::<EnemyTarget>();
 
     // Add debug plugins if enabled
     if engine_config.debug_tools {

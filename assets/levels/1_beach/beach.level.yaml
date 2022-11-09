@@ -44,7 +44,8 @@ parallax_background:
       transition_factor: 0.9
 
 players:
-  - fighter: /fighters/fishy/fishy.fighter.yaml
+  # - fighter: /fighters/fishy/fishy.fighter.yaml
+  - fighter: /fighters/dev/dev.fighter.yaml
     location: [0, 0, 0]
   - fighter: /fighters/sharky/sharky.fighter.yaml
     location: [-70, 30, 0]
