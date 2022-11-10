@@ -12,7 +12,7 @@ use crate::{
     damage::{Damageable, Health},
     enemy::Enemy,
     fighter_state::{Idling, StateTransitionIntents},
-    metadata::FighterMeta,
+    metadata::{AttackMeta, FighterMeta},
     movement::LinearVelocity,
     player::Player,
 };
@@ -42,7 +42,11 @@ pub struct ActiveFighterBundle {
     /// Fighters start off idling, but this component may be removed when the fighter state changes.
     pub idling: Idling,
     pub velocity: LinearVelocity,
+    pub available_attacks: AvailableAttacks,
 }
+
+#[derive(Component)]
+pub struct AvailableAttacks(pub Vec<AttackMeta>);
 
 #[derive(Component, Deserialize, Clone, Debug, Reflect)]
 #[reflect(Component)]
@@ -121,6 +125,7 @@ impl ActiveFighterBundle {
             // ysort: YSort(fighter.spritesheet.tile_size.y as f32 / 2.),
             ysort: YSort(consts::FIGHTERS_Z),
             velocity: default(),
+            available_attacks: AvailableAttacks(fighter.attacks.clone()),
         };
         let hurtbox = commands
             .spawn_bundle(PhysicsBundle::new(&fighter.hurtbox, body_layers))

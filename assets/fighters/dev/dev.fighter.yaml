@@ -16,8 +16,8 @@ hud:
 spritesheet:
   image: [dev_base_96_80.png]
   tile_size: [96, 80]
-  columns: 15
-  rows: 14
+  columns: 14
+  rows: 15
 
   animation_fps: 0.12
   animations:
@@ -27,6 +27,8 @@ spritesheet:
     running:
       frames: [14, 19]
       repeat: true
+    hitstun:
+      frames: [71, 73]
     knocked_right:
       frames: [85, 90]
     knocked_left:
@@ -37,16 +39,17 @@ spritesheet:
     attacking:
       frames: [85, 90]
 
-attack:
-  name: "punch"
-  damage: 35
-  frames:
-    startup: 1
-    active: 2
-    recovery: 4
-  hitbox:
-    size: [32, 32]
-    offset: [32, 0]
+attacks:
+  - name: "punch"
+    damage: 35
+    frames:
+      startup: 1
+      active: 2
+      recovery: 4
+    hitbox:
+      size: [32, 32]
+      offset: [32, 0]
+    hitstun_duration: 0.2
 
 audio:
   effects:

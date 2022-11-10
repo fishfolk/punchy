@@ -107,8 +107,7 @@ pub struct FighterMeta {
     pub spritesheet: FighterSpritesheetMeta,
     pub audio: AudioMeta,
     pub hurtbox: ColliderMeta,
-    //Will likely need a hashmap(?) of AttackMetas, fighters will have multiple attacks
-    pub attack: AttackMeta,
+    pub attacks: Vec<AttackMeta>,
     pub attachment: Option<FighterSpritesheetMeta>,
 }
 
@@ -120,6 +119,8 @@ pub struct AttackMeta {
     pub damage: i32,
     pub frames: AttackFrames,
     pub hitbox: ColliderMeta,
+    pub hitstun_duration: f32,
+    pub velocity: Option<Vec2>,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]

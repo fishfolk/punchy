@@ -7,9 +7,8 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
-    fighter_state::MeleeWeapon,
+    fighter::AvailableAttacks,
     item::Drop,
-    metadata::FighterMeta,
     GameState,
 };
 
@@ -43,6 +42,7 @@ pub struct Attack {
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.
     pub velocity: Vec2,
+    pub hitstun_duration: f32,
 }
 
 #[derive(Component)]
@@ -88,30 +88,18 @@ pub struct AttackFrames {
 
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
-    fighter_query: Query<(
-        &Animation,
-        Option<&Handle<FighterMeta>>,
-        Option<&MeleeWeapon>,
-    )>,
+    fighter_query: Query<(&Animation, &AvailableAttacks)>,
     mut commands: Commands,
-    fighter_assets: Res<Assets<FighterMeta>>,
 ) {
     for (entity, attack_frames, parent) in attack_query.iter() {
-        if let Ok((animation, fighter_meta, melee_weapon)) = fighter_query.get(**parent) {
+        if let Ok((animation, available_attacks)) = fighter_query.get(**parent) {
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
-                if let Some(fighter_meta) = fighter_meta {
-                    if let Some(fighter_data) = fighter_assets.get(fighter_meta) {
-                        commands.entity(entity).insert(Collider::cuboid(
-                            fighter_data.attack.hitbox.size.x / 2.,
-                            fighter_data.attack.hitbox.size.y / 2.,
-                        ));
-                    }
-                } else if let Some(melee_weapon) = melee_weapon {
+                if let Some(attack) = available_attacks.0.last() {
                     commands.entity(entity).insert(Collider::cuboid(
-                        melee_weapon.attack.hitbox.size.x / 2.,
-                        melee_weapon.attack.hitbox.size.y / 2.,
+                        attack.hitbox.size.x / 2.,
+                        attack.hitbox.size.y / 2.,
                     ));
                 }
             }
@@ -158,6 +146,7 @@ fn attack_damage_system(
                 let hurtbox_parent_entity = hurtbox_parent.get();
                 let (mut health, damageable) = damageables.get_mut(hurtbox_parent_entity).unwrap();
 
+                //apply damage to target
                 if **damageable {
                     **health -= attack.damage;
 
@@ -166,6 +155,7 @@ fn attack_damage_system(
                         damage_velocity: attack.velocity,
                         damage: attack.damage,
                         damaged_entity: hurtbox_parent_entity,
+                        hitstun_duration: attack.hitstun_duration,
                     })
                 }
             }
