@@ -267,6 +267,17 @@ impl AssetLoader for FighterLoader {
             let self_path = load_context.path();
             let mut dependencies = Vec::new();
 
+            for attack in &mut meta.attacks {
+                if let Some(item) = &attack.item {
+                    let (item_path, item_handle) =
+                        get_relative_asset(load_context, self_path, item);
+
+                    dependencies.push(item_path);
+
+                    attack.item_handle = item_handle;
+                }
+            }
+
             let (portrait_path, portrait_handle) =
                 get_relative_asset(load_context, self_path, &meta.hud.portrait.image);
             dependencies.push(portrait_path);

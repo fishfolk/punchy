@@ -97,5 +97,3 @@ items:
     location: [30, 60, 0]
   - item: &musket /items/musket/musket.item.yaml
     location: [-20, -20, 0]
-  - item: &bomb /items/bomb/bomb.item.yaml
-    location: [-200, -200, 0]

@@ -64,6 +64,7 @@ attacks:
       size: [96, 32]
       offset: [0, 0]
     hitstun_duration: 0.2
+    item: /items/bomb/bomb.item.yaml
 
 audio:
   effects:

@@ -8,7 +8,7 @@ use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
     fighter::AvailableAttacks,
-    item::Drop,
+    item::{Drop, Explodable},
     GameState,
 };
 

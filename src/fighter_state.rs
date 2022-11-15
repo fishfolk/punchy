@@ -1082,17 +1082,18 @@ fn bomb_throw(
             if attack.name != "bomb_throw" {
                 unreachable!()
             }
+            let item = item_assets
+                .get(&attack.item_handle)
+                .expect("Fighter has no item");
 
             let (mut sprite, mut frames) = (None, None);
-            for (_, item) in item_assets.iter() {
-                if let ItemKind::Bomb {
-                    attack_frames,
-                    spritesheet,
-                } = &item.kind
-                {
-                    sprite = Some(spritesheet);
-                    frames = Some(attack_frames);
-                }
+            if let ItemKind::Bomb {
+                attack_frames,
+                spritesheet,
+            } = &item.kind
+            {
+                sprite = Some(spritesheet);
+                frames = Some(attack_frames);
             }
             let (spritesheet, attack_frames) = (
                 sprite.expect("No bomb item found."),
