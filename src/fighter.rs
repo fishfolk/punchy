@@ -45,6 +45,8 @@ pub struct ActiveFighterBundle {
     pub available_attacks: AvailableAttacks,
 }
 
+/// Component that defines the currently available attacks on a fighter, modified at runtime when
+/// picking up and dropping items, or potentially on other conditions.
 #[derive(Component)]
 pub struct AvailableAttacks(pub Vec<AttackMeta>);
 
