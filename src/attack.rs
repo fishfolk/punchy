@@ -72,6 +72,7 @@ impl Breakable {
 pub struct BrokeEvent {
     pub drop: Option<Drop>,
     pub transform: Option<Transform>,
+    pub explodable: Option<Explodable>,
 }
 
 /// A component identifying the attacks active collision frames.
@@ -89,6 +90,7 @@ pub struct AttackFrames {
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
     fighter_query: Query<(&Animation, &AvailableAttacks)>,
+    explodable_query: Query<(&Animation, &Explodable)>,
     mut commands: Commands,
 ) {
     for (entity, attack_frames, parent) in attack_query.iter() {
@@ -102,6 +104,16 @@ fn activate_hitbox(
                         attack.hitbox.size.y / 2.,
                     ));
                 }
+            }
+        }
+        if let Ok((animation, explodable)) = explodable_query.get(**parent) {
+            if animation.current_frame >= attack_frames.startup
+                && animation.current_frame <= attack_frames.active
+            {
+                commands.entity(entity).insert(Collider::cuboid(
+                    explodable.attack.hitbox.size.x / 2.,
+                    explodable.attack.hitbox.size.y / 2.,
+                ));
             }
         }
     }
@@ -170,6 +182,7 @@ fn breakable_system(
         Option<&Drop>,
         Option<&Transform>,
         Option<&Parent>,
+        Option<&Explodable>,
     )>,
     mut commands: Commands,
     mut event_writer: EventWriter<BrokeEvent>,
@@ -177,13 +190,16 @@ fn breakable_system(
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
-                if let Ok((mut breakable, drop, transform, parent)) = despawn_query.get_mut(**e) {
+                if let Ok((mut breakable, drop, transform, parent, explodable)) =
+                    despawn_query.get_mut(**e)
+                {
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
                     } else {
                         event_writer.send(BrokeEvent {
                             drop: drop.cloned(),
                             transform: transform.cloned(),
+                            explodable: explodable.cloned(),
                         });
                         commands.entity(**e).despawn_recursive();
 

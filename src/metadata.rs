@@ -168,6 +168,10 @@ pub enum ItemKind {
         #[serde(skip)]
         script_handle: Handle<JsScript>,
     },
+    Bomb {
+        spritesheet: FighterSpritesheetMeta,
+        attack_frames: AttackFrames,
+    },
 }
 
 #[derive(Deserialize, Clone, Debug)]

@@ -17,7 +17,10 @@ use crate::{
     enemy_ai,
     fighter::{Attached, AvailableAttacks, Inventory},
     input::PlayerAction,
-    item::{Drop, Item, ItemBundle, Projectile, ScriptItemGrabEvent, ScriptItemThrowEvent},
+    item::{
+        AnimatedProjectile, Drop, Explodable, Item, ItemBundle, Projectile, ScriptItemGrabEvent,
+        ScriptItemThrowEvent,
+    },
     lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::LinearVelocity,
@@ -63,6 +66,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_hitstun)
                     .with_system(transition_from_melee_attacking)
                     .with_system(transition_from_shooting)
+                    .with_system(transition_from_bomb_throw)
                     .into(),
             )
             // State handler systems
@@ -82,6 +86,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(holding)
                     .with_system(melee_attacking)
                     .with_system(shooting)
+                    .with_system(bomb_throw)
                     .into(),
             );
     }
@@ -246,6 +251,18 @@ impl GroundSlam {
     pub const PRIORITY: i32 = 30;
     //TODO: return to change assets and this to "ground_slam"?
     pub const ANIMATION: &'static str = "attacking";
+}
+
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct BossBombThrow {
+    pub has_started: bool,
+    pub is_finished: bool,
+    pub thrown: bool,
+}
+impl BossBombThrow {
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "bomb_throw";
 }
 
 #[derive(Component, Reflect, Default, Debug)]
@@ -543,6 +560,35 @@ fn transition_from_ground_slam(
             commands
                 .entity(entity)
                 .remove::<GroundSlam>()
+                .insert(Idling);
+        }
+    }
+}
+
+fn transition_from_bomb_throw(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &BossBombThrow)>,
+) {
+    'entity: for (entity, mut transition_intents, bomb_throw) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<BossBombThrow>(
+                entity,
+                BossBombThrow::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done flopping
+        if bomb_throw.is_finished {
+            // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<BossBombThrow>()
                 .insert(Idling);
         }
     }
@@ -1011,6 +1057,106 @@ fn ground_slam(
     }
 }
 
+fn bomb_throw(
+    mut commands: Commands,
+    mut fighters: Query<
+        (
+            &mut Animation,
+            &mut LinearVelocity,
+            &Facing,
+            &Transform,
+            &Handle<FighterMeta>,
+            &mut BossBombThrow,
+        ),
+        With<Boss>,
+    >,
+    fighter_assets: Res<Assets<FighterMeta>>,
+    item_assets: Res<Assets<ItemMeta>>,
+) {
+    for (mut animation, mut velocity, facing, transform, meta_handle, mut bomb_throw) in
+        &mut fighters
+    {
+        // Start the attack
+        if let Some(fighter) = fighter_assets.get(meta_handle) {
+            let attack = fighter.attacks.last().expect("Fighter has no attacks");
+            if attack.name != "bomb_throw" {
+                unreachable!()
+            }
+
+            let (mut sprite, mut frames) = (None, None);
+            for (_, item) in item_assets.iter() {
+                if let ItemKind::Bomb {
+                    attack_frames,
+                    spritesheet,
+                } = &item.kind
+                {
+                    sprite = Some(spritesheet);
+                    frames = Some(attack_frames);
+                }
+            }
+            let (spritesheet, attack_frames) = (
+                sprite.expect("No bomb item found."),
+                frames.expect("No bomb item found;."),
+            );
+
+            let mut translation = transform.translation;
+            translation.z += 0.2; // Get above boss
+            translation.x +=
+                (spritesheet.tile_size.x / 3) as f32 * if facing.is_left() { -1. } else { 1. };
+            translation.y += (spritesheet.tile_size.y / 2) as f32;
+            let mut animated_sprite = AnimatedSpriteSheetBundle {
+                sprite_sheet: SpriteSheetBundle {
+                    texture_atlas: spritesheet.atlas_handle[0].clone(),
+                    transform: Transform::from_translation(translation),
+                    ..Default::default()
+                },
+                animation: Animation::new(
+                    spritesheet.animation_fps,
+                    spritesheet.animations.clone(),
+                ),
+            };
+            animated_sprite.animation.current_animation = Some("bomb".to_string());
+
+            let mut offset = attack.hitbox.offset;
+            if facing.is_left() {
+                offset.x *= -1.0
+            }
+            offset.y += fighter.collision_offset;
+
+            if !bomb_throw.has_started {
+                bomb_throw.has_started = true;
+
+                // Start the attack  from the beginning
+                animation.play(BossBombThrow::ANIMATION, false);
+            }
+
+            if !animation.is_finished() {
+                // Frames that each bomb is thrown
+                if (animation.current_frame == attack.frames.startup && !bomb_throw.thrown)
+                    || (animation.current_frame == attack.frames.active && bomb_throw.thrown)
+                {
+                    // Spawn bomb
+                    commands
+                        .spawn_bundle(AnimatedProjectile::new(0, facing, animated_sprite.clone()))
+                        .insert(Explodable {
+                            attack: attack.clone(),
+                            timer: Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false),
+                            fusing: false,
+                            animated_sprite,
+                            explosion_frames: *attack_frames,
+                        });
+                    bomb_throw.thrown = !bomb_throw.thrown;
+                }
+            } else if animation.is_finished() {
+                bomb_throw.is_finished = true;
+            }
+
+            // Stop boss
+            **velocity = Vec2::ZERO;
+        }
+    }
+}
+
 /// Handle fighter moving state
 fn moving(
     mut commands: Commands,
@@ -1218,6 +1364,9 @@ fn throwing(
                         }
                     }
                 }
+                ItemKind::Bomb { .. } => {
+                    panic!("Can't throw bomb")
+                }
             }
         }
 
@@ -1409,6 +1558,9 @@ fn grabbing(
                                     .insert(Facing::default())
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
+                            }
+                            ItemKind::Bomb { .. } => {
+                                panic!("Can't pick up bomb")
                             }
                         }
                     }
