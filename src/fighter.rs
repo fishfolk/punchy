@@ -21,7 +21,8 @@ pub struct FighterPlugin;
 
 impl Plugin for FighterPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(CoreStage::PostUpdate, attachment_system);
+        app.register_type::<AvailableAttacks>()
+            .add_system_to_stage(CoreStage::PostUpdate, attachment_system);
     }
 }
 
@@ -47,7 +48,8 @@ pub struct ActiveFighterBundle {
 
 /// Component that defines the currently available attacks on a fighter, modified at runtime when
 /// picking up and dropping items, or potentially on other conditions.
-#[derive(Component)]
+#[derive(Component, Reflect, Clone, Default)]
+#[reflect(Component)]
 pub struct AvailableAttacks(pub Vec<AttackMeta>);
 
 #[derive(Component, Deserialize, Clone, Debug, Reflect)]
