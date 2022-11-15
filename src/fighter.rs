@@ -50,7 +50,15 @@ pub struct ActiveFighterBundle {
 /// picking up and dropping items, or potentially on other conditions.
 #[derive(Component, Reflect, Clone, Default)]
 #[reflect(Component)]
-pub struct AvailableAttacks(pub Vec<AttackMeta>);
+pub struct AvailableAttacks {
+    pub attacks: Vec<AttackMeta>,
+}
+
+impl AvailableAttacks {
+    pub fn current_attack(&self) -> &AttackMeta {
+        self.attacks.last().expect("No attacks available")
+    }
+}
 
 #[derive(Component, Deserialize, Clone, Debug, Reflect)]
 #[reflect(Component)]
@@ -129,7 +137,9 @@ impl ActiveFighterBundle {
             // ysort: YSort(fighter.spritesheet.tile_size.y as f32 / 2.),
             ysort: YSort(consts::FIGHTERS_Z),
             velocity: default(),
-            available_attacks: AvailableAttacks(fighter.attacks.clone()),
+            available_attacks: AvailableAttacks {
+                attacks: fighter.attacks.clone(),
+            },
         };
         let hurtbox = commands
             .spawn_bundle(PhysicsBundle::new(&fighter.hurtbox, body_layers))

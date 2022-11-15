@@ -101,12 +101,11 @@ fn activate_hitbox(
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
-                if let Some(attack) = available_attacks.0.last() {
-                    commands.entity(entity).insert(Collider::cuboid(
-                        attack.hitbox.size.x / 2.,
-                        attack.hitbox.size.y / 2.,
-                    ));
-                }
+                let attack = available_attacks.current_attack();
+                commands.entity(entity).insert(Collider::cuboid(
+                    attack.hitbox.size.x / 2.,
+                    attack.hitbox.size.y / 2.,
+                ));
             }
         }
     }
