@@ -12,9 +12,11 @@ use serde::Deserialize;
 use crate::{
     animation::Animation,
     damage::{DamageEvent, Damageable, Health},
-    fighter::AvailableAttacks,
+    enemy::Enemy,
+    fighter_state::MeleeWeapon,
     item::Drop,
     metadata::ColliderMeta,
+    player::Player,
     GameState,
 };
 
@@ -100,7 +102,7 @@ pub struct AttackFrames {
 //TODO: is there a way we can move the adding of collision layers here as well?
 fn activate_hitbox(
     attack_query: Query<(Entity, &Attack, &AttackFrames, &Parent), Without<Collider>>,
-    parent_query: Query<&Animation, With<AvailableAttacks>>,
+    parent_query: Query<&Animation, Or<(With<Player>, With<Enemy>, With<MeleeWeapon>)>>,
     mut commands: Commands,
 ) {
     for (entity, attack, attack_frames, parent) in attack_query.iter() {
