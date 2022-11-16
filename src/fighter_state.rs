@@ -2,7 +2,7 @@ use std::{collections::VecDeque, time::Duration};
 
 use bevy::{prelude::*, reflect::FromType, utils::HashSet};
 use bevy_mod_js_scripting::ActiveScripts;
-use bevy_rapier2d::prelude::{ActiveCollisionTypes, ActiveEvents, CollisionGroups, Sensor};
+use bevy_rapier2d::prelude::CollisionGroups;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
@@ -705,9 +705,6 @@ fn flopping(
                     .spawn_bundle(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                     .insert(CollisionGroups::new(
                         if is_player {
                             BodyLayers::PLAYER_ATTACK
@@ -728,6 +725,7 @@ fn flopping(
                             Vec2::X
                         } * attack.velocity.unwrap_or(Vec2::ZERO),
                         hitstun_duration: attack.hitstun_duration,
+                        hitbox_meta: Some(attack.hitbox),
                     })
                     .insert(attack_frames)
                     .id();
@@ -831,9 +829,6 @@ fn punching(
                     .spawn_bundle(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                     .insert(CollisionGroups::new(
                         if is_player {
                             BodyLayers::PLAYER_ATTACK
@@ -854,6 +849,7 @@ fn punching(
                             Vec2::X
                         } * attack.velocity.unwrap_or(Vec2::ZERO),
                         hitstun_duration: attack.hitstun_duration,
+                        hitbox_meta: Some(attack.hitbox),
                     })
                     .insert(attack_frames)
                     .id();
@@ -928,9 +924,6 @@ fn ground_slam(
                     .spawn_bundle(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                     .insert(CollisionGroups::new(
                         BodyLayers::ENEMY_ATTACK,
                         BodyLayers::PLAYER,
@@ -943,6 +936,7 @@ fn ground_slam(
                             Vec2::X
                         } * attack.velocity.unwrap_or(Vec2::ZERO),
                         hitstun_duration: attack.hitstun_duration,
+                        hitbox_meta: Some(attack.hitbox),
                     })
                     .insert(attack_frames)
                     .id();
@@ -1510,11 +1504,6 @@ fn melee_attacking(
                         .spawn_bundle(TransformBundle::from_transform(
                             Transform::from_translation(offset.extend(0.0)),
                         ))
-                        .insert(Sensor)
-                        .insert(ActiveEvents::COLLISION_EVENTS)
-                        .insert(
-                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
-                        )
                         .insert(CollisionGroups::new(
                             if is_player {
                                 BodyLayers::PLAYER_ATTACK
@@ -1535,6 +1524,7 @@ fn melee_attacking(
                                 Vec2::X
                             } * attack.velocity.unwrap_or(Vec2::ZERO),
                             hitstun_duration: attack.hitstun_duration,
+                            hitbox_meta: Some(attack.hitbox),
                         })
                         .insert(attack_frames)
                         .id();
@@ -1663,11 +1653,6 @@ fn shooting(
                                 (attack.hitbox.offset * direction_mul).extend(0.0),
                             ),
                         ))
-                        .insert(Sensor)
-                        .insert(ActiveEvents::COLLISION_EVENTS)
-                        .insert(
-                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
-                        )
                         .insert(CollisionGroups::new(
                             BodyLayers::PLAYER_ATTACK,
                             BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
@@ -1676,6 +1661,7 @@ fn shooting(
                             damage: attack.damage,
                             velocity: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
                             hitstun_duration: attack.hitstun_duration,
+                            hitbox_meta: None,
                         })
                         .insert(Breakable::new(0, true))
                         .insert(Collider::cuboid(

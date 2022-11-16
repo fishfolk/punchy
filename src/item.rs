@@ -146,6 +146,7 @@ impl Projectile {
                 },
                 velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
+                hitbox_meta: None,
             },
             velocity: LinearVelocity(consts::THROW_ITEM_SPEED * direction_mul),
             // Gravity

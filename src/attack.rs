@@ -14,6 +14,7 @@ use crate::{
     damage::{DamageEvent, Damageable, Health},
     fighter::AvailableAttacks,
     item::Drop,
+    metadata::ColliderMeta,
     GameState,
 };
 
@@ -44,10 +45,13 @@ impl Plugin for AttackPlugin {
 #[derive(Component, Clone, Copy, Default, Reflect)]
 #[reflect(Component)]
 pub struct Attack {
+    //maybe just replace all fields with AttackMeta
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.
     pub velocity: Vec2,
     pub hitstun_duration: f32,
+    /// add this for attacks that are not immediately active, used in activate_hitbox
+    pub hitbox_meta: Option<ColliderMeta>,
 }
 
 #[derive(Component)]
@@ -91,21 +95,32 @@ pub struct AttackFrames {
     pub recovery: usize,
 }
 
+/// Activates inactive attacks after the animation on the attack reaches the active frames by
+/// adding a collider to the attack entity.
+//TODO: is there a way we can move the adding of collision layers here as well?
 fn activate_hitbox(
-    attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
-    fighter_query: Query<(&Animation, &AvailableAttacks)>,
+    attack_query: Query<(Entity, &Attack, &AttackFrames, &Parent), Without<Collider>>,
+    parent_query: Query<&Animation, With<AvailableAttacks>>,
     mut commands: Commands,
 ) {
-    for (entity, attack_frames, parent) in attack_query.iter() {
-        if let Ok((animation, available_attacks)) = fighter_query.get(**parent) {
+    for (entity, attack, attack_frames, parent) in attack_query.iter() {
+        if let Ok(animation) = parent_query.get(**parent) {
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
-                let attack = available_attacks.current_attack();
-                commands.entity(entity).insert(Collider::cuboid(
-                    attack.hitbox.size.x / 2.,
-                    attack.hitbox.size.y / 2.,
-                ));
+                if let Some(hitbox_meta) = attack.hitbox_meta {
+                    commands
+                        .entity(entity)
+                        .insert(Sensor)
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(Collider::cuboid(
+                            hitbox_meta.size.x / 2.,
+                            hitbox_meta.size.y / 2.,
+                        ));
+                }
             }
         }
     }
