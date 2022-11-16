@@ -361,13 +361,7 @@ fn collect_player_actions(
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
-            match available_attacks
-                .0
-                .last()
-                .expect("Attack not loaded")
-                .name
-                .as_str()
-            {
+            match available_attacks.current_attack().name.as_str() {
                 "punch" => transition_intents.push_back(StateTransition::new(
                     Flopping::default(),
                     Flopping::PRIORITY,
@@ -735,7 +729,7 @@ fn flopping(
             continue;
         }
 
-        let attack = available_attacks.0.last().expect("Attack not loaded");
+        let attack = available_attacks.current_attack();
         if let Some(fighter) = fighter_assets.get(meta_handle) {
             // Start the attack
             if !flopping.has_started {
@@ -864,7 +858,7 @@ fn punching(
             continue;
         }
 
-        let attack = available_attacks.0.last().expect("Attack not loaded");
+        let attack = available_attacks.current_attack();
         if let Some(fighter) = fighter_assets.get(meta_handle) {
             if !punching.has_started {
                 punching.has_started = true;
@@ -960,7 +954,7 @@ fn ground_slam(
     ) in &mut fighters
     {
         // Start the attack
-        let attack = available_attacks.0.last().expect("Attack not loaded");
+        let attack = available_attacks.current_attack();
         if let Some(fighter) = fighter_assets.get(meta_handle) {
             let mut offset = attack.hitbox.offset;
             if facing.is_left() {
@@ -1332,7 +1326,7 @@ fn throwing(
                     );
 
                     if let Some(mut available_attacks) = available_attacks {
-                        available_attacks.0.pop();
+                        available_attacks.attacks.pop();
                     }
 
                     // Despawn weapon sprite
@@ -1360,7 +1354,7 @@ fn throwing(
                     );
 
                     if let Some(mut available_attacks) = available_attacks {
-                        available_attacks.0.pop();
+                        available_attacks.attacks.pop();
                     }
 
                     // Despawn weapon sprite
@@ -1464,7 +1458,7 @@ fn grabbing(
                                 commands.entity(item_ent).despawn_recursive();
 
                                 if let Some(mut available_attacks) = available_attacks {
-                                    available_attacks.0.push(attack.clone())
+                                    available_attacks.attacks.push(attack.clone())
                                 }
 
                                 //Spawn weapon sprite on Player
@@ -1491,6 +1485,11 @@ fn grabbing(
                                     .insert(MeleeWeapon {
                                         audio: audio.clone(),
                                         attack: attack.clone(),
+                                    })
+                                    //need this because of hierarchy check in hitbox activation system,
+                                    //consider rearchitecting
+                                    .insert(AvailableAttacks {
+                                        attacks: vec![attack.clone()],
                                     })
                                     .insert_bundle(animated_sprite)
                                     .insert(Attached {
@@ -1519,7 +1518,7 @@ fn grabbing(
                                 commands.entity(item_ent).despawn_recursive();
 
                                 if let Some(mut available_attacks) = available_attacks {
-                                    available_attacks.0.push(attack.clone())
+                                    available_attacks.attacks.push(attack.clone())
                                 }
 
                                 //Spawn weapon sprite on Player
@@ -1660,7 +1659,7 @@ fn melee_attacking(
                     // Start the attack from the beginning
                     animation.play("slashing", false);
 
-                    let attack = available_attacks.0.last().expect("Attack not loaded");
+                    let attack = available_attacks.current_attack();
 
                     let offset = attack.hitbox.offset;
                     let attack_frames = attack.frames;
@@ -1762,7 +1761,7 @@ fn shooting(
 
             //Check if it's attacking
             if let Some(mut shooting) = shooting {
-                let attack = available_attacks.0.last().expect("Attack not loaded");
+                let attack = available_attacks.current_attack();
 
                 if !shooting.has_started && weapon.ammo > 0 && weapon.shoot_delay.finished() {
                     shooting.has_started = true;
