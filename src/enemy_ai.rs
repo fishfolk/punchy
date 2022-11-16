@@ -8,7 +8,7 @@ use crate::{
     consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
     enemy::{Boss, Enemy, TripPointX},
     fighter_state::{
-        GroundSlam, Idling, Moving, Punching, StateTransition, StateTransitionIntents,
+        BossBombThrow, Idling, Moving, Punching, StateTransition, StateTransitionIntents,
     },
     player::Player,
     Stats,
@@ -142,9 +142,10 @@ pub fn emit_enemy_intents(
             // make them attack with their first available attack??
             // And attack!
             if maybe_boss.is_some() {
+                // TODO Add some proper ai for the bomb throw
                 intents.push_back(StateTransition::new(
-                    GroundSlam::default(),
-                    GroundSlam::PRIORITY,
+                    BossBombThrow::default(),
+                    BossBombThrow::PRIORITY,
                     false,
                 ))
             } else {

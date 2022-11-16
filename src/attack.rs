@@ -14,7 +14,7 @@ use crate::{
     damage::{DamageEvent, Damageable, Health},
     enemy::Enemy,
     fighter_state::MeleeWeapon,
-    item::Drop,
+    item::{Drop, Explodable},
     metadata::ColliderMeta,
     player::Player,
     GameState,
@@ -83,6 +83,7 @@ impl Breakable {
 pub struct BrokeEvent {
     pub drop: Option<Drop>,
     pub transform: Option<Transform>,
+    pub explodable: Option<Explodable>,
 }
 
 /// A component identifying the attacks active collision frames.
@@ -102,7 +103,15 @@ pub struct AttackFrames {
 //TODO: is there a way we can move the adding of collision layers here as well?
 fn activate_hitbox(
     attack_query: Query<(Entity, &Attack, &AttackFrames, &Parent), Without<Collider>>,
-    parent_query: Query<&Animation, Or<(With<Player>, With<Enemy>, With<MeleeWeapon>)>>,
+    parent_query: Query<
+        &Animation,
+        Or<(
+            With<Player>,
+            With<Enemy>,
+            With<MeleeWeapon>,
+            With<Explodable>,
+        )>,
+    >,
     mut commands: Commands,
 ) {
     for (entity, attack, attack_frames, parent) in attack_query.iter() {
@@ -191,6 +200,7 @@ fn breakable_system(
         Option<&Drop>,
         Option<&Transform>,
         Option<&Parent>,
+        Option<&Explodable>,
     )>,
     mut commands: Commands,
     mut event_writer: EventWriter<BrokeEvent>,
@@ -198,13 +208,16 @@ fn breakable_system(
     for ev in events.iter() {
         if let CollisionEvent::Started(e1, e2, _flags) = ev {
             for e in [e1, e2].iter() {
-                if let Ok((mut breakable, drop, transform, parent)) = despawn_query.get_mut(**e) {
+                if let Ok((mut breakable, drop, transform, parent, explodable)) =
+                    despawn_query.get_mut(**e)
+                {
                     if breakable.hit_count < breakable.hit_tolerance {
                         breakable.hit_count += 1;
                     } else {
                         event_writer.send(BrokeEvent {
                             drop: drop.cloned(),
                             transform: transform.cloned(),
+                            explodable: explodable.cloned(),
                         });
                         commands.entity(**e).despawn_recursive();
 

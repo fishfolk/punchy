@@ -267,6 +267,17 @@ impl AssetLoader for FighterLoader {
             let self_path = load_context.path();
             let mut dependencies = Vec::new();
 
+            for attack in &mut meta.attacks {
+                if let Some(item) = &attack.item {
+                    let (item_path, item_handle) =
+                        get_relative_asset(load_context, self_path, item);
+
+                    dependencies.push(item_path);
+
+                    attack.item_handle = item_handle;
+                }
+            }
+
             let (portrait_path, portrait_handle) =
                 get_relative_asset(load_context, self_path, &meta.hud.portrait.image);
             dependencies.push(portrait_path);
@@ -423,6 +434,24 @@ impl AssetLoader for ItemLoader {
                         get_relative_asset(load_context, load_context.path(), script);
                     dependencies.push(script_path);
                     *script_handle = loaded_script_handle;
+                }
+                ItemKind::Bomb { spritesheet, .. } => {
+                    for (index, image) in spritesheet.image.iter().enumerate() {
+                        let (texture_path, texture_handle) =
+                            get_relative_asset(load_context, load_context.path(), image);
+
+                        let atlas_handle = load_context.set_labeled_asset(
+                            format!("atlas_{}", index).as_str(),
+                            LoadedAsset::new(TextureAtlas::from_grid(
+                                texture_handle,
+                                spritesheet.tile_size.as_vec2(),
+                                spritesheet.columns,
+                                spritesheet.rows,
+                            ))
+                            .with_dependency(texture_path),
+                        );
+                        spritesheet.atlas_handle.push(atlas_handle);
+                    }
                 }
                 _ => {}
             }

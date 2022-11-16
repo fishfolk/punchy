@@ -40,6 +40,8 @@ spritesheet:
       repeat: false
     attacking:
       frames: [30, 44]
+    bomb_throw:
+      frames: [45, 51]
 
 attacks:
   - name: "ground_slam"
@@ -52,6 +54,17 @@ attacks:
       size: [96, 32]
       offset: [0, -69]
     hitstun_duration: 0.2
+  - name: "bomb_throw"
+    damage: 100
+    frames:
+      startup: 5
+      active: 6
+      recovery: 6
+    hitbox:
+      size: [96, 32]
+      offset: [0, 0]
+    hitstun_duration: 0.2
+    item: /items/bomb/bomb.item.yaml
 
 audio:
   effects:

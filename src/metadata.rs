@@ -121,6 +121,9 @@ pub struct AttackMeta {
     pub hitbox: ColliderMeta,
     pub hitstun_duration: f32,
     pub velocity: Option<Vec2>,
+    pub item: Option<String>,
+    #[serde(skip)]
+    pub item_handle: Handle<ItemMeta>,
 }
 
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
@@ -167,6 +170,10 @@ pub enum ItemKind {
         script: String,
         #[serde(skip)]
         script_handle: Handle<JsScript>,
+    },
+    Bomb {
+        spritesheet: FighterSpritesheetMeta,
+        attack_frames: AttackFrames,
     },
 }
 
