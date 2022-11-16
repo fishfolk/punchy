@@ -102,18 +102,22 @@ pub fn main_menu_sounds(
 ) {
     for event in &context.ctx_mut().output().events {
         if let OutputEvent::Clicked(info) = event {
-            if info.label.as_ref().unwrap() == "Start Game" {
-                //Play down_play_button
-                effects_channel.play(game.main_menu.play_button_sound_handle.clone_weak());
-            } else {
-                //Play one of the down button audios, except down_play_button
-                effects_channel.play(
-                    game.main_menu
-                        .button_sound_handles
-                        .choose(&mut thread_rng())
-                        .expect("No button sounds")
-                        .clone_weak(),
-                );
+            // if let Ok(info.label.as_ref()) {}
+            if let Some(label_ref) = info.label.as_ref() {
+                if label_ref == "Start Game" {
+                    // == "Start Game" {
+                    //Play down_play_button
+                    effects_channel.play(game.main_menu.play_button_sound_handle.clone_weak());
+                } else {
+                    //Play one of the down button audios, except down_play_button
+                    effects_channel.play(
+                        game.main_menu
+                            .button_sound_handles
+                            .choose(&mut thread_rng())
+                            .expect("No button sounds")
+                            .clone_weak(),
+                    );
+                }
             }
         }
     }
