@@ -95,7 +95,6 @@ pub struct AttackFrames {
 fn activate_hitbox(
     attack_query: Query<(Entity, &AttackFrames, &Parent), Without<Collider>>,
     fighter_query: Query<(&Animation, &AvailableAttacks)>,
-    explodable_query: Query<(&Animation, &Explodable)>,
     mut commands: Commands,
 ) {
     for (entity, attack_frames, parent) in attack_query.iter() {
@@ -107,16 +106,6 @@ fn activate_hitbox(
                 commands.entity(entity).insert(Collider::cuboid(
                     attack.hitbox.size.x / 2.,
                     attack.hitbox.size.y / 2.,
-                ));
-            }
-        }
-        if let Ok((animation, explodable)) = explodable_query.get(**parent) {
-            if animation.current_frame >= attack_frames.startup
-                && animation.current_frame <= attack_frames.active
-            {
-                commands.entity(entity).insert(Collider::cuboid(
-                    explodable.attack.hitbox.size.x / 2.,
-                    explodable.attack.hitbox.size.y / 2.,
                 ));
             }
         }

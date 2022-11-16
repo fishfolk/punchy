@@ -8,6 +8,7 @@ use crate::{
     attack::{Attack, AttackFrames, Breakable, BrokeEvent},
     collision::{BodyLayers, PhysicsBundle},
     consts,
+    fighter::AvailableAttacks,
     lifetime::{Lifetime, LifetimeExpired},
     metadata::{AttackMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
@@ -312,7 +313,9 @@ fn explodable_system(
         commands
             .spawn_bundle(animated_sprite)
             .insert(Lifetime(Timer::from_seconds(seconds, false)))
-            .insert(explodable)
+            .insert(AvailableAttacks {
+                attacks: vec![explodable.attack],
+            })
             .push_children(&[attack_ent]);
     }
 }

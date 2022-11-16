@@ -1080,7 +1080,7 @@ fn bomb_throw(
     {
         // Start the attack
         if let Some(fighter) = fighter_assets.get(meta_handle) {
-            let attack = available_attacks.0.last().expect("No attack found");
+            let attack = available_attacks.current_attack();
             let item = item_assets
                 .get(&attack.item_handle)
                 .expect("Fighter has no item");
