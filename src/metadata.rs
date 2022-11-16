@@ -277,7 +277,7 @@ impl From<ParallaxLayerMeta> for LayerData {
     }
 }
 
-#[derive(HasLoadProgress, Deserialize, Clone, Debug, Reflect, FromReflect)]
+#[derive(HasLoadProgress, Deserialize, Default, Copy, Clone, Debug, Reflect, FromReflect)]
 #[serde(deny_unknown_fields)]
 pub struct ColliderMeta {
     //TODO: Add type of collider with different properties.
