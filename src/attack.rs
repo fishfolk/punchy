@@ -97,7 +97,7 @@ pub struct AttackFrames {
 
 /// Activates inactive attacks after the animation on the attack reaches the active frames by
 /// adding a collider to the attack entity.
-//TODO: move more of the collision spawning code here, sensor, probably cant for colission layers
+//TODO: is there a way we can move the adding of collision layers here as well?
 fn activate_hitbox(
     attack_query: Query<(Entity, &Attack, &AttackFrames, &Parent), Without<Collider>>,
     parent_query: Query<&Animation, With<AvailableAttacks>>,
@@ -109,10 +109,17 @@ fn activate_hitbox(
                 && animation.current_frame <= attack_frames.active
             {
                 if let Some(hitbox_meta) = attack.hitbox_meta {
-                    commands.entity(entity).insert(Collider::cuboid(
-                        hitbox_meta.size.x / 2.,
-                        hitbox_meta.size.y / 2.,
-                    ));
+                    commands
+                        .entity(entity)
+                        .insert(Sensor)
+                        .insert(ActiveEvents::COLLISION_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                        )
+                        .insert(Collider::cuboid(
+                            hitbox_meta.size.x / 2.,
+                            hitbox_meta.size.y / 2.,
+                        ));
                 }
             }
         }

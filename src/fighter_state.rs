@@ -2,7 +2,7 @@ use std::{collections::VecDeque, time::Duration};
 
 use bevy::{prelude::*, reflect::FromType, utils::HashSet};
 use bevy_mod_js_scripting::ActiveScripts;
-use bevy_rapier2d::prelude::{ActiveCollisionTypes, ActiveEvents, CollisionGroups, Sensor};
+use bevy_rapier2d::prelude::CollisionGroups;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
 
@@ -705,9 +705,6 @@ fn flopping(
                     .spawn_bundle(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                     .insert(CollisionGroups::new(
                         if is_player {
                             BodyLayers::PLAYER_ATTACK
@@ -832,9 +829,6 @@ fn punching(
                     .spawn_bundle(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                     .insert(CollisionGroups::new(
                         if is_player {
                             BodyLayers::PLAYER_ATTACK
@@ -930,9 +924,6 @@ fn ground_slam(
                     .spawn_bundle(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
-                    .insert(Sensor)
-                    .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
                     .insert(CollisionGroups::new(
                         BodyLayers::ENEMY_ATTACK,
                         BodyLayers::PLAYER,
@@ -1513,11 +1504,6 @@ fn melee_attacking(
                         .spawn_bundle(TransformBundle::from_transform(
                             Transform::from_translation(offset.extend(0.0)),
                         ))
-                        .insert(Sensor)
-                        .insert(ActiveEvents::COLLISION_EVENTS)
-                        .insert(
-                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
-                        )
                         .insert(CollisionGroups::new(
                             if is_player {
                                 BodyLayers::PLAYER_ATTACK
@@ -1667,11 +1653,6 @@ fn shooting(
                                 (attack.hitbox.offset * direction_mul).extend(0.0),
                             ),
                         ))
-                        .insert(Sensor)
-                        .insert(ActiveEvents::COLLISION_EVENTS)
-                        .insert(
-                            ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
-                        )
                         .insert(CollisionGroups::new(
                             BodyLayers::PLAYER_ATTACK,
                             BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
