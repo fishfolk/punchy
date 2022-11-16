@@ -728,6 +728,7 @@ fn flopping(
                             Vec2::X
                         } * attack.velocity.unwrap_or(Vec2::ZERO),
                         hitstun_duration: attack.hitstun_duration,
+                        hitbox_meta: Some(attack.hitbox),
                     })
                     .insert(attack_frames)
                     .id();
@@ -854,6 +855,7 @@ fn punching(
                             Vec2::X
                         } * attack.velocity.unwrap_or(Vec2::ZERO),
                         hitstun_duration: attack.hitstun_duration,
+                        hitbox_meta: Some(attack.hitbox),
                     })
                     .insert(attack_frames)
                     .id();
@@ -943,6 +945,7 @@ fn ground_slam(
                             Vec2::X
                         } * attack.velocity.unwrap_or(Vec2::ZERO),
                         hitstun_duration: attack.hitstun_duration,
+                        hitbox_meta: Some(attack.hitbox),
                     })
                     .insert(attack_frames)
                     .id();
@@ -1535,6 +1538,7 @@ fn melee_attacking(
                                 Vec2::X
                             } * attack.velocity.unwrap_or(Vec2::ZERO),
                             hitstun_duration: attack.hitstun_duration,
+                            hitbox_meta: Some(attack.hitbox),
                         })
                         .insert(attack_frames)
                         .id();
@@ -1676,6 +1680,7 @@ fn shooting(
                             damage: attack.damage,
                             velocity: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
                             hitstun_duration: attack.hitstun_duration,
+                            hitbox_meta: None,
                         })
                         .insert(Breakable::new(0, true))
                         .insert(Collider::cuboid(
