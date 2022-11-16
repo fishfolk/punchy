@@ -8,7 +8,6 @@ use crate::{
     attack::{Attack, AttackFrames, Breakable, BrokeEvent},
     collision::{BodyLayers, PhysicsBundle},
     consts,
-    fighter::AvailableAttacks,
     lifetime::{Lifetime, LifetimeExpired},
     metadata::{AttackMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
@@ -306,6 +305,7 @@ fn explodable_system(
                 damage: attack.damage,
                 velocity: attack.velocity.unwrap_or(Vec2::ZERO),
                 hitstun_duration: attack.hitstun_duration,
+                hitbox_meta: Some(explodable.attack.hitbox),
             })
             .insert(explodable.explosion_frames)
             .insert(transform)
@@ -314,9 +314,7 @@ fn explodable_system(
         commands
             .spawn_bundle(animated_sprite)
             .insert(Lifetime(Timer::from_seconds(seconds, false)))
-            .insert(AvailableAttacks {
-                attacks: vec![explodable.attack],
-            })
+            .insert(explodable)
             .push_children(&[attack_ent]);
     }
 }
@@ -352,6 +350,7 @@ impl AnimatedProjectile {
                 damage,
                 velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
+                hitbox_meta: None,
             },
             velocity: LinearVelocity(
                 consts::THROW_ITEM_SPEED * direction_mul * rng.gen_range(0.8..1.2),
