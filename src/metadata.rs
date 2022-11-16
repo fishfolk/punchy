@@ -1,7 +1,7 @@
 use bevy::{
     math::{UVec2, Vec2, Vec3},
     prelude::{Color, Component, Handle, Image},
-    reflect::TypeUuid,
+    reflect::{FromReflect, Reflect, TypeUuid},
     sprite::TextureAtlas,
     utils::HashMap,
 };
@@ -111,7 +111,7 @@ pub struct FighterMeta {
     pub attachment: Option<FighterSpritesheetMeta>,
 }
 
-#[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
+#[derive(TypeUuid, Deserialize, Clone, Debug, Component, Reflect, FromReflect)]
 #[serde(deny_unknown_fields)]
 #[uuid = "45a912f4-ea5c-4eba-9ba9-f1a726140f28"]
 pub struct AttackMeta {
@@ -270,7 +270,7 @@ impl From<ParallaxLayerMeta> for LayerData {
     }
 }
 
-#[derive(HasLoadProgress, Deserialize, Clone, Debug)]
+#[derive(HasLoadProgress, Deserialize, Clone, Debug, Reflect, FromReflect)]
 #[serde(deny_unknown_fields)]
 pub struct ColliderMeta {
     //TODO: Add type of collider with different properties.

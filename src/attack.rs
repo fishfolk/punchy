@@ -1,4 +1,9 @@
-use bevy::{hierarchy::DespawnRecursiveExt, math::Vec2, prelude::*, reflect::Reflect};
+use bevy::{
+    hierarchy::DespawnRecursiveExt,
+    math::Vec2,
+    prelude::*,
+    reflect::{FromReflect, Reflect},
+};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -79,7 +84,7 @@ pub struct BrokeEvent {
 /// Must be added to an entity that is a child of an entity with an [`Animation`] and an [`Attack`]
 /// and will be used to spawn a collider for that attack during the `active` frames.
 /// Each field is an index refering to an animation frame
-#[derive(Component, Debug, Clone, Copy, Deserialize)]
+#[derive(Component, Debug, Clone, Copy, Deserialize, Reflect, FromReflect)]
 pub struct AttackFrames {
     pub startup: usize,
     pub active: usize,
@@ -96,12 +101,11 @@ fn activate_hitbox(
             if animation.current_frame >= attack_frames.startup
                 && animation.current_frame <= attack_frames.active
             {
-                if let Some(attack) = available_attacks.0.last() {
-                    commands.entity(entity).insert(Collider::cuboid(
-                        attack.hitbox.size.x / 2.,
-                        attack.hitbox.size.y / 2.,
-                    ));
-                }
+                let attack = available_attacks.current_attack();
+                commands.entity(entity).insert(Collider::cuboid(
+                    attack.hitbox.size.x / 2.,
+                    attack.hitbox.size.y / 2.,
+                ));
             }
         }
     }
