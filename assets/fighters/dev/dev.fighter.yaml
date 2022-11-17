@@ -35,10 +35,12 @@ spritesheet:
       frames: [71, 76]
     dying:
       frames: [71, 76]
-    #spritesheet does not contain unique attack animation
     attacking:
       frames: [85, 90]
+    chaining:
+      frames: [126, 131]
 
+        # attacks need longer recovery vs startup
 attacks:
   - name: "punch"
     damage: 35
@@ -50,6 +52,30 @@ attacks:
       size: [32, 32]
       offset: [32, 0]
     hitstun_duration: 0.2
+
+  - name: "flop"
+    damage: 50
+    frames:
+      startup: 1
+      active: 2
+      recovery: 4
+    hitbox:
+      size: [32, 32]
+      offset: [32, 0]
+    hitstun_duration: 0.2
+
+  - name: "chain"
+    damage: 35
+    frames:
+      startup: 1
+      active: 2
+      recovery: 4
+    hitbox:
+      size: [32, 32]
+      offset: [32, 0]
+    hitstun_duration: 0.2
+
+
 
 audio:
   effects:
