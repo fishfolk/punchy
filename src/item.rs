@@ -121,7 +121,12 @@ pub struct Projectile {
 }
 
 impl Projectile {
-    pub fn from_thrown_item(translation: Vec3, item_meta: &ItemMeta, facing: &Facing) -> Self {
+    pub fn from_thrown_item(
+        translation: Vec3,
+        item_meta: &ItemMeta,
+        facing: &Facing,
+        enemy: bool,
+    ) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
@@ -164,8 +169,16 @@ impl Projectile {
             //TODO: define collision layer based on the fighter shooting projectile, load for asset
             //files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(
-                BodyLayers::PLAYER_ATTACK,
-                BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
+                if enemy {
+                    BodyLayers::ENEMY_ATTACK
+                } else {
+                    BodyLayers::PLAYER_ATTACK
+                },
+                if enemy {
+                    BodyLayers::PLAYER
+                } else {
+                    BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                },
             ),
             lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
             breakable: Breakable::new(0, false),

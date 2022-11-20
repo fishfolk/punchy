@@ -45,18 +45,19 @@ spritesheet:
       repeat: false
     attacking:
       frames: [14, 18]
-# this should be changed to a ranged attack
+
 attacks:
-  - name: "punch"
+  - name: "projectile"
     damage: 7
     frames:
-      startup: 1
-      active: 2
-      recovery: 3
+      startup: 4
+      active: 4
+      recovery: 4
     hitbox:
       size: [36, 24]
       offset: [24, 0]
     hitstun_duration: 0.2
+    item: /items/rock/rock.item.yaml
 
 audio:
   effects: {}
