@@ -978,14 +978,8 @@ fn projectile_attacking(
     >,
     item_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (
-        mut animation,
-        mut velocity,
-        facing,
-        transform,
-        mut proj_attacking,
-        available_attacks,
-    ) in &mut fighters
+    for (mut animation, mut velocity, facing, transform, mut proj_attacking, available_attacks) in
+        &mut fighters
     {
         // Start the attack
         let attack = available_attacks.current_attack();
