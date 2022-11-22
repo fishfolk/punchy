@@ -138,14 +138,16 @@ impl Projectile {
                 damage,
                 gravity,
                 throw_velocity,
+                lifetime,
                 ..
             }
             | crate::metadata::ItemKind::BreakableBox {
                 damage,
                 gravity,
                 throw_velocity,
+                lifetime,
                 ..
-            } => Some((damage, gravity, throw_velocity)),
+            } => Some((damage, gravity, throw_velocity, lifetime)),
             _ => None,
         }
         .expect("Non throwable item");
@@ -184,7 +186,7 @@ impl Projectile {
                     BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                 },
             ),
-            lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
+            lifetime: Lifetime(Timer::from_seconds(item_vars.3, false)),
             breakable: Breakable::new(0, false),
         }
     }

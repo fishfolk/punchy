@@ -10,6 +10,7 @@ kind: !BreakableBox
     damage: 20
     gravity: 1200
     throw_velocity: [200, 300]
+    lifetime: 0.64
 
     hurtbox:
         size: [36, 52]

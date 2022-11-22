@@ -8,3 +8,4 @@ kind: !Throwable
     damage: 10
     gravity: 1200
     throw_velocity: [200, 300]
+    lifetime: 0.64
