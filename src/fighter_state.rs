@@ -1514,7 +1514,7 @@ fn grabbing(
                                 });
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::Throwable { damage: _ } => {
+                            ItemKind::Throwable { damage: _, .. } => {
                                 // If its throwable, pick up the item
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =

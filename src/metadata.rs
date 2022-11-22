@@ -140,9 +140,13 @@ pub struct ItemMeta {
 pub enum ItemKind {
     Throwable {
         damage: i32,
+        gravity: f32,
+        throw_velocity: Vec2,
     },
     BreakableBox {
         damage: i32,
+        gravity: f32,
+        throw_velocity: Vec2,
         hurtbox: ColliderMeta,
         hits: i32,
         item: String,
