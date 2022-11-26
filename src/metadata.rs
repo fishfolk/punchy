@@ -126,10 +126,6 @@ pub struct AttackMeta {
     pub item_handle: Handle<ItemMeta>,
 }
 
-// pub struct AttackChainMeta {
-// pub attacks: AttackMeta
-// }
-
 #[derive(TypeUuid, Deserialize, Clone, Debug, Component)]
 #[serde(deny_unknown_fields)]
 #[uuid = "5e2db270-ec2e-013a-92a8-2cf05d71216b"]

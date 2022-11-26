@@ -291,6 +291,7 @@ pub struct Chaining {
 impl Chaining {
     pub const PRIORITY: i32 = 30;
     pub const ANIMATION: &'static str = "chaining";
+    pub const FOLLOWUP_ANIMATION: &'static str = "followup";
     pub const LENGTH: u32 = 2;
 }
 
@@ -923,19 +924,21 @@ fn chaining(
         if let Some(attack) = available_attacks
             .attacks
             .iter()
-            .filter(|a| a.name == "chain".to_string())
+            .filter(|a| a.name == *"chain")
             .last()
         {
             if let Some(fighter) = fighter_assets.get(meta_handle) {
                 //if we havent started the chain yet or if we have input during chain window
                 if !chaining.has_started || chaining.continue_chain && chaining.can_extend {
-                    chaining.has_started = true;
-                    chaining.can_extend = false;
+                    if !chaining.has_started {
+                        chaining.has_started = true;
+                        animation.play(Chaining::ANIMATION, false);
+                    }
                     // Start the attack  from the beginning
 
-                    animation.play(Chaining::ANIMATION, false);
                     //if we are on chain followup, skip the first frame of the animation
                     if chaining.continue_chain {
+                        animation.play(Chaining::FOLLOWUP_ANIMATION, false);
                         animation.current_frame = 2;
                         chaining.continue_chain = false;
                         chaining.link += 1;
@@ -943,13 +946,13 @@ fn chaining(
                             chaining.transition_to_final = true;
                         }
                     }
+                    chaining.can_extend = false;
 
                     let mut offset = attack.hitbox.offset;
                     if facing.is_left() {
                         offset.x *= -1.0
                     }
                     offset.y += fighter.collision_offset;
-                    // let attack_frames = attack.frames;
                     // Spawn the attack entity
                     let attack_entity = commands
                         .spawn_bundle(TransformBundle::from_transform(
@@ -990,8 +993,7 @@ fn chaining(
             // Reset velocity
             **velocity = Vec2::ZERO;
 
-            // Do a forward jump thing
-            //TODO: Fix hacky way to get a forward jump
+            //move forward a bit during active frames
             if animation.current_frame > attack.frames.startup
                 && animation.current_frame < attack.frames.recovery
             {
