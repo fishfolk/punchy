@@ -9,9 +9,10 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 
 ![EA469655-50B7-487F-84EA-A4A06938356A](https://user-images.githubusercontent.com/583842/161245719-7b587a2a-dd02-4edc-8640-b26ae6f7eafb.gif)
 
-https://user-images.githubusercontent.com/1379590/195199358-92d8e874-2eae-4e6b-84bd-fffb572efa9c.mp4
+https://user-images.githubusercontent.com/1379590/204110547-80312b22-db88-4ce0-be59-b4fff28f094f.mp4
 
 ## Web Build
+
 We keep our web build current with our [latest relese](https://github.com/fishfolks/punchy/releases/latest).
 
 https://fishfolks.github.io/punchy/player/latest/
