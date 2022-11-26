@@ -1,0 +1,17 @@
+name: Box
+
+image:
+    image: box.png
+    image_size: [32, 32]
+
+kind: !BreakableBox
+    hits: 1
+
+    damage: 20
+
+    hurtbox:
+        size: [36, 52]
+        offset: [0, 0]
+
+    item: &bottle /items/bottle/bottle.item.yaml
+            

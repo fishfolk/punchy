@@ -1,0 +1,8 @@
+name: Health
+
+image:
+  image: health.png
+  image_size: [22, 20]
+
+kind: !Script
+  script: ./health.ts

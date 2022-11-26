@@ -1,0 +1,25 @@
+name: Bomb
+
+image:
+  image: bomb_icon.png
+  image_size: [32, 32]
+
+kind: !Bomb
+  spritesheet:
+    image: [bomb_144_112.png]
+    tile_size: [144, 112]
+    columns: 11
+    rows: 3
+
+    animation_fps: 0.12
+    animations:
+      explosion:
+        frames: [0, 10]
+      bomb:
+        frames: [11, 11]
+      bomb_fuse:
+        frames: [22, 24]
+  attack_frames:
+    startup: 0
+    active: 3
+    recovery: 3
