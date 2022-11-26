@@ -65,10 +65,10 @@ attacks:
     hitstun_duration: 0.2
 
   - name: "chain"
-    damage: 35
+    damage: 20
     frames:
-      startup: 1
-      active: 2
+      startup: 2
+      active: 3
       recovery: 4
     hitbox:
       size: [32, 32]

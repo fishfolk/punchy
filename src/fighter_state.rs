@@ -281,20 +281,17 @@ impl Punching {
 #[derive(Component, Default, Reflect)]
 #[component(storage = "SparseSet")]
 pub struct Chaining {
-    // pub has_started: bool,
-    pub attacks: Vec<String>,
     pub has_started: bool,
     pub continue_chain: bool,
     pub can_extend: bool,
-    pub is_finished: bool,
-    //remove chain dont really need it, just pop from back
+    pub transition_to_final: bool,
+    pub transition_to_idle: bool,
+    pub link: u32,
 }
 impl Chaining {
     pub const PRIORITY: i32 = 30;
-    // this... cant really be const and needs to be different animations for each attack??
     pub const ANIMATION: &'static str = "chaining";
-    //TODO: impl new, takes self, any number of attacks as string name
-    // pub fn new(&self, )
+    pub const LENGTH: u32 = 2;
 }
 
 #[derive(Component, Reflect, Default, Debug)]
@@ -394,17 +391,7 @@ fn collect_player_actions(
                 match available_attacks.current_attack().name.as_str() {
                     "chain" => transition_intents.push_back(StateTransition::new(
                         //need to construct a chain with correct inputs
-                        Chaining {
-                            attacks: vec![
-                                "punch".to_string(),
-                                "punch".to_string(),
-                                "flop".to_string(),
-                            ],
-                            has_started: false,
-                            continue_chain: false,
-                            can_extend: false,
-                            is_finished: false,
-                        },
+                        Chaining::default(),
                         Chaining::PRIORITY,
                         false,
                     )),
@@ -433,9 +420,9 @@ fn collect_player_actions(
             //todo, change to pushing states and making it additive
             //move variable setting/continue_chain to exit condition
             } else if let Some(mut chaining) = chaining {
-                if chaining.can_extend {
-                    chaining.continue_chain = true;
-                }
+                // if chaining.can_extend {
+                chaining.continue_chain = true;
+                // }
             }
         }
 
@@ -602,8 +589,13 @@ fn transition_from_chain(
         }
 
         // If we're done attacking
-        if chain.is_finished {
+        if chain.transition_to_final {
             // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<Chaining>()
+                .insert(Flopping::default());
+        } else if chain.transition_to_idle {
             commands.entity(entity).remove::<Chaining>().insert(Idling);
         }
     }
@@ -931,24 +923,33 @@ fn chaining(
         if let Some(attack) = available_attacks
             .attacks
             .iter()
-            .filter(|a| a.name == *chaining.attacks.last().unwrap_or(&"punch".to_string()))
+            .filter(|a| a.name == "chain".to_string())
             .last()
         {
             if let Some(fighter) = fighter_assets.get(meta_handle) {
                 //if we havent started the chain yet or if we have input during chain window
-                if !chaining.has_started || chaining.continue_chain {
+                if !chaining.has_started || chaining.continue_chain && chaining.can_extend {
                     chaining.has_started = true;
-                    chaining.continue_chain = false;
                     chaining.can_extend = false;
                     // Start the attack  from the beginning
+
                     animation.play(Chaining::ANIMATION, false);
+                    //if we are on chain followup, skip the first frame of the animation
+                    if chaining.continue_chain {
+                        animation.current_frame = 2;
+                        chaining.continue_chain = false;
+                        chaining.link += 1;
+                        if chaining.link >= Chaining::LENGTH {
+                            chaining.transition_to_final = true;
+                        }
+                    }
 
                     let mut offset = attack.hitbox.offset;
                     if facing.is_left() {
                         offset.x *= -1.0
                     }
                     offset.y += fighter.collision_offset;
-                    let attack_frames = attack.frames;
+                    // let attack_frames = attack.frames;
                     // Spawn the attack entity
                     let attack_entity = commands
                         .spawn_bundle(TransformBundle::from_transform(
@@ -968,7 +969,7 @@ fn chaining(
                             hitstun_duration: attack.hitstun_duration,
                             hitbox_meta: Some(attack.hitbox),
                         })
-                        .insert(attack_frames)
+                        .insert(attack.frames)
                         .id();
                     commands.entity(entity).push_children(&[attack_entity]);
 
@@ -979,24 +980,31 @@ fn chaining(
                             effects.clone(),
                         );
                         commands.entity(entity).insert(fx_playback);
-
-                        //increment chain on animation finish
                     }
                 }
             }
+
             if animation.current_frame > attack.frames.active {
                 chaining.can_extend = true;
             }
-        }
-        //need to find some way to store attacks movement in attack meta
+            // Reset velocity
+            **velocity = Vec2::ZERO;
 
-        **velocity = Vec2::ZERO;
+            // Do a forward jump thing
+            //TODO: Fix hacky way to get a forward jump
+            if animation.current_frame > attack.frames.startup
+                && animation.current_frame < attack.frames.recovery
+            {
+                if facing.is_left() {
+                    velocity.x -= 100.0;
+                } else {
+                    velocity.x += 100.0;
+                }
+            }
+        }
 
         if animation.is_finished() {
-            //remove the last attack in chain
-            if chaining.attacks.pop().is_none() {
-                chaining.is_finished = true;
-            }
+            chaining.transition_to_idle = true;
         }
     }
 }
