@@ -13,11 +13,11 @@ https://user-images.githubusercontent.com/1379590/204110547-80312b22-db88-4ce0-b
 
 ## Web Build
 
-We keep our web build current with our [latest relese](https://github.com/fishfolks/punchy/releases/latest).
+We keep our web build current with our [latest relese](https://github.com/fishfolk/punchy/releases/latest).
 
-https://fishfolks.github.io/punchy/player/latest/
+https://fishfolk.github.io/punchy/player/latest/
 
-Previous versions of the web build can also be found linked on their [respective release pages](https://github.com/fishfolks/punchy/releases/).
+Previous versions of the web build can also be found linked on their [respective release pages](https://github.com/fishfolk/punchy/releases/).
 
 ## Building current development version
 If you wish to check out changes not yet made it into a release, you can build the game for yourself.
@@ -28,9 +28,9 @@ If you wish to check out changes not yet made it into a release, you can build t
 
 ## Contributing
 
-Anyone involved in the Fish Folk community must follow our [code of conduct](https://github.com/fishfolks/jumpy/blob/main/CODE_OF_CONDUCT.md).
+Anyone involved in the Fish Folk community must follow our [code of conduct](https://github.com/fishfolk/jumpy/blob/main/CODE_OF_CONDUCT.md).
 
-Punchy is currently at an early stage of development, if you want to contribute the best way to get started is to join us at the [Spicy Lobster Discord](https://discord.gg/4smxjcheE5) and check out our [help-wanted](https://github.com/fishfolks/punchy/labels/help%20wanted) issues.
+Punchy is currently at an early stage of development, if you want to contribute the best way to get started is to join us at the [Spicy Lobster Discord](https://discord.gg/4smxjcheE5) and check out our [help-wanted](https://github.com/fishfolk/punchy/labels/help%20wanted) issues.
 
 Before committing and opening a PR, please run the following commands and follow their instructions:
 
