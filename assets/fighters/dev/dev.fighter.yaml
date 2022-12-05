@@ -83,3 +83,7 @@ audio:
   effects:
     attacking:
       87: flop.ogg
+    chaining:
+      114: flop.ogg
+    followup:
+      129: flop.ogg

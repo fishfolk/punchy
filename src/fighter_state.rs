@@ -933,6 +933,15 @@ fn chaining(
                     if !chaining.has_started {
                         chaining.has_started = true;
                         animation.play(Chaining::ANIMATION, false);
+                        // Play attack sound effect
+                        if let Some(effects) = fighter.audio.effect_handles.get(Chaining::ANIMATION)
+                        {
+                            let fx_playback = AnimationAudioPlayback::new(
+                                Chaining::ANIMATION.to_owned(),
+                                effects.clone(),
+                            );
+                            commands.entity(entity).insert(fx_playback);
+                        }
                     }
                     // Start the attack  from the beginning
 
@@ -944,6 +953,18 @@ fn chaining(
                         chaining.link += 1;
                         if chaining.link >= Chaining::LENGTH {
                             chaining.transition_to_final = true;
+                        }
+                        // Play attack sound effect
+                        if let Some(effects) = fighter
+                            .audio
+                            .effect_handles
+                            .get(Chaining::FOLLOWUP_ANIMATION)
+                        {
+                            let fx_playback = AnimationAudioPlayback::new(
+                                Chaining::FOLLOWUP_ANIMATION.to_owned(),
+                                effects.clone(),
+                            );
+                            commands.entity(entity).insert(fx_playback);
                         }
                     }
                     chaining.can_extend = false;
@@ -975,15 +996,6 @@ fn chaining(
                         .insert(attack.frames)
                         .id();
                     commands.entity(entity).push_children(&[attack_entity]);
-
-                    // Play attack sound effect
-                    if let Some(effects) = fighter.audio.effect_handles.get(Chaining::ANIMATION) {
-                        let fx_playback = AnimationAudioPlayback::new(
-                            Chaining::ANIMATION.to_owned(),
-                            effects.clone(),
-                        );
-                        commands.entity(entity).insert(fx_playback);
-                    }
                 }
             }
 
