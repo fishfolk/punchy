@@ -91,6 +91,12 @@ items:
     location: [50, -70, 0]
   - item: &bottle /items/bottle/bottle.item.yaml
     location: [100, -20, 0]
+  - item: &fishfood /items/alternateHealth/fishfood/fishfood.item.yaml
+    location: [100, -70, 0]
+  - item: &pellets /items/alternateHealth/pellets/pellets.item.yaml
+    location: [200, -70, 0]
+  - item: &poison /items/poison/poison.item.yaml
+    location: [100, -50, 0]  
   - item: &sword /items/sword/sword.item.yaml
     location: [-100, -20, 0]
   - item: &box /items/box/box.item.yaml

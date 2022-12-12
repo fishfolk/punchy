@@ -1,0 +1,8 @@
+name: Pellets
+
+image:
+  image: pellets.png
+  image_size: [30, 20]
+
+kind: !Script
+  script: ./25percent.ts
