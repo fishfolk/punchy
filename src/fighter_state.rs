@@ -60,6 +60,7 @@ impl Plugin for FighterStatePlugin {
                     .after(FighterStateCollectSystems)
                     .run_in_state(GameState::InGame)
                     .with_system(transition_from_idle)
+                    .with_system(transition_from_chain)
                     .with_system(transition_from_flopping)
                     .with_system(transition_from_punching)
                     .with_system(transition_from_ground_slam)
@@ -76,6 +77,7 @@ impl Plugin for FighterStatePlugin {
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
                     .with_system(idling)
+                    .with_system(chaining)
                     .with_system(flopping)
                     .with_system(punching)
                     .with_system(ground_slam)
@@ -240,7 +242,7 @@ impl Flopping {
     pub const ANIMATION: &'static str = "attacking";
 }
 
-/// Component indicating the player is punching
+/// Component indicating the player is performing a groundslam
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
 pub struct GroundSlam {
@@ -276,6 +278,23 @@ pub struct Punching {
 impl Punching {
     pub const PRIORITY: i32 = 30;
     pub const ANIMATION: &'static str = "attacking";
+}
+
+#[derive(Component, Default, Reflect)]
+#[component(storage = "SparseSet")]
+pub struct Chaining {
+    pub has_started: bool,
+    pub continue_chain: bool,
+    pub can_extend: bool,
+    pub transition_to_final: bool,
+    pub transition_to_idle: bool,
+    pub link: u32,
+}
+impl Chaining {
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "chaining";
+    pub const FOLLOWUP_ANIMATION: &'static str = "followup";
+    pub const LENGTH: u32 = 2;
 }
 
 #[derive(Component, Reflect, Default, Debug)]
@@ -364,39 +383,61 @@ fn collect_player_actions(
             &Inventory,
             &Stats,
             Option<&Holding>,
+            Option<&mut Chaining>,
             &AvailableAttacks,
         ),
         With<Player>,
     >,
 ) {
-    for (action_state, mut transition_intents, inventory, stats, holding, available_attacks) in
-        &mut players
+    for (
+        action_state,
+        mut transition_intents,
+        inventory,
+        stats,
+        holding,
+        chaining,
+        available_attacks,
+    ) in &mut players
     {
         // Trigger attacks
         //TODO: can use flop attack again after input buffer/chaining
         if action_state.just_pressed(PlayerAction::Attack) && holding.is_none() {
-            match available_attacks.current_attack().name.as_str() {
-                "punch" => transition_intents.push_back(StateTransition::new(
-                    Flopping::default(),
-                    Flopping::PRIORITY,
-                    false,
-                )),
-                "flop" => transition_intents.push_back(StateTransition::new(
-                    Flopping::default(),
-                    Flopping::PRIORITY,
-                    false,
-                )),
-                "melee" => transition_intents.push_back(StateTransition::new(
-                    MeleeAttacking::default(),
-                    MeleeAttacking::PRIORITY,
-                    false,
-                )),
-                "projectile" => transition_intents.push_back(StateTransition::new(
-                    Shooting::default(),
-                    Shooting::PRIORITY,
-                    false,
-                )),
-                _ => {}
+            if chaining.is_none() {
+                match available_attacks.current_attack().name.as_str() {
+                    "chain" => transition_intents.push_back(StateTransition::new(
+                        //need to construct a chain with correct inputs
+                        Chaining::default(),
+                        Chaining::PRIORITY,
+                        false,
+                    )),
+                    "punch" => transition_intents.push_back(StateTransition::new(
+                        Punching::default(),
+                        Punching::PRIORITY,
+                        false,
+                    )),
+                    "flop" => transition_intents.push_back(StateTransition::new(
+                        Flopping::default(),
+                        Flopping::PRIORITY,
+                        false,
+                    )),
+                    "melee" => transition_intents.push_back(StateTransition::new(
+                        MeleeAttacking::default(),
+                        MeleeAttacking::PRIORITY,
+                        false,
+                    )),
+                    "projectile" => transition_intents.push_back(StateTransition::new(
+                        Shooting::default(),
+                        Shooting::PRIORITY,
+                        false,
+                    )),
+                    _ => {}
+                }
+            //todo, change to pushing states and making it additive
+            //move variable setting/continue_chain to exit condition
+            } else if let Some(mut chaining) = chaining {
+                // if chaining.can_extend {
+                chaining.continue_chain = true;
+                // }
             }
         }
 
@@ -540,6 +581,37 @@ fn transition_from_punching(
         if punching.is_finished {
             // Go back to idle
             commands.entity(entity).remove::<Punching>().insert(Idling);
+        }
+    }
+}
+
+fn transition_from_chain(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &mut Chaining)>,
+) {
+    'entity: for (entity, mut transition_intents, chain) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<Chaining>(
+                entity,
+                Chaining::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done attacking
+        if chain.transition_to_final {
+            // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<Chaining>()
+                .insert(Flopping::default());
+        } else if chain.transition_to_idle {
+            commands.entity(entity).remove::<Chaining>().insert(Idling);
         }
     }
 }
@@ -861,6 +933,135 @@ fn flopping(
                 // Set flopping to finished
                 flopping.is_finished = true;
             }
+        }
+    }
+}
+
+fn chaining(
+    mut commands: Commands,
+    mut fighters: Query<
+        (
+            Entity,
+            &mut Animation,
+            &mut LinearVelocity,
+            &Facing,
+            &Handle<FighterMeta>,
+            &AvailableAttacks,
+            &mut Chaining,
+        ),
+        With<Player>,
+    >,
+    fighter_assets: Res<Assets<FighterMeta>>,
+) {
+    for (
+        entity,
+        mut animation,
+        mut velocity,
+        facing,
+        meta_handle,
+        available_attacks,
+        mut chaining,
+    ) in &mut fighters
+    {
+        // this seems... potentially panicky
+        if let Some(attack) = available_attacks
+            .attacks
+            .iter()
+            .filter(|a| a.name == *"chain")
+            .last()
+        {
+            if let Some(fighter) = fighter_assets.get(meta_handle) {
+                //if we havent started the chain yet or if we have input during chain window
+                if !chaining.has_started || chaining.continue_chain && chaining.can_extend {
+                    if !chaining.has_started {
+                        chaining.has_started = true;
+                        animation.play(Chaining::ANIMATION, false);
+                        // Play attack sound effect
+                        if let Some(effects) = fighter.audio.effect_handles.get(Chaining::ANIMATION)
+                        {
+                            let fx_playback = AnimationAudioPlayback::new(
+                                Chaining::ANIMATION.to_owned(),
+                                effects.clone(),
+                            );
+                            commands.entity(entity).insert(fx_playback);
+                        }
+                    }
+                    // Start the attack  from the beginning
+
+                    //if we are on chain followup, skip the first frame of the animation
+                    if chaining.continue_chain {
+                        animation.play(Chaining::FOLLOWUP_ANIMATION, false);
+                        animation.current_frame = 2;
+                        chaining.continue_chain = false;
+                        chaining.link += 1;
+                        if chaining.link >= Chaining::LENGTH {
+                            chaining.transition_to_final = true;
+                        }
+                        // Play attack sound effect
+                        if let Some(effects) = fighter
+                            .audio
+                            .effect_handles
+                            .get(Chaining::FOLLOWUP_ANIMATION)
+                        {
+                            let fx_playback = AnimationAudioPlayback::new(
+                                Chaining::FOLLOWUP_ANIMATION.to_owned(),
+                                effects.clone(),
+                            );
+                            commands.entity(entity).insert(fx_playback);
+                        }
+                    }
+                    chaining.can_extend = false;
+
+                    let mut offset = attack.hitbox.offset;
+                    if facing.is_left() {
+                        offset.x *= -1.0
+                    }
+                    offset.y += fighter.collision_offset;
+                    // Spawn the attack entity
+                    let attack_entity = commands
+                        .spawn_bundle(TransformBundle::from_transform(
+                            Transform::from_translation(offset.extend(0.0)),
+                        ))
+                        .insert(CollisionGroups::new(
+                            BodyLayers::PLAYER_ATTACK,
+                            BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
+                        ))
+                        .insert(Attack {
+                            damage: attack.damage,
+                            velocity: if facing.is_left() {
+                                Vec2::NEG_X
+                            } else {
+                                Vec2::X
+                            } * attack.velocity.unwrap_or(Vec2::ZERO),
+                            hitstun_duration: attack.hitstun_duration,
+                            hitbox_meta: Some(attack.hitbox),
+                        })
+                        .insert(attack.frames)
+                        .id();
+                    commands.entity(entity).push_children(&[attack_entity]);
+                }
+            }
+
+            if animation.current_frame > attack.frames.active {
+                chaining.can_extend = true;
+            }
+            // Reset velocity
+            **velocity = Vec2::ZERO;
+
+            //move forward a bit during active frames
+            if animation.current_frame > attack.frames.startup
+                && animation.current_frame < attack.frames.recovery
+            {
+                if facing.is_left() {
+                    velocity.x -= 100.0;
+                } else {
+                    velocity.x += 100.0;
+                }
+            }
+        }
+
+        if animation.is_finished() {
+            chaining.transition_to_idle = true;
         }
     }
 }
