@@ -73,7 +73,6 @@ pub fn set_target_near_player(
                         if let ItemKind::Throwable {
                             lifetime,
                             throw_velocity,
-                            gravity,
                             ..
                         } = item.kind
                         {
