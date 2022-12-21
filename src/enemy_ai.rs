@@ -5,16 +5,14 @@ use rand::Rng;
 
 use crate::{
     animation::Facing,
-    consts::{
-        self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_PROJ_ATTACK_DIST,
-        ENEMY_TARGET_MAX_OFFSET,
-    },
+    consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
     enemy::{Boss, Enemy, TripPointX},
     fighter::AvailableAttacks,
     fighter_state::{
         BossBombThrow, Idling, Moving, ProjectileAttacking, Punching, StateTransition,
         StateTransitionIntents,
     },
+    metadata::{ItemKind, ItemMeta},
     player::Player,
     Stats,
 };
@@ -45,6 +43,7 @@ pub fn set_target_near_player(
         (With<Enemy>, With<Idling>, Without<EnemyTarget>),
     >,
     player_query: Query<&Transform, With<Player>>,
+    items_assets: Res<Assets<ItemMeta>>,
 ) {
     let mut rng = rand::thread_rng();
     let p_transforms = player_query.iter().collect::<Vec<_>>();
@@ -65,10 +64,28 @@ pub fn set_target_near_player(
                         rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
                     let y_offset = rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
 
-                    if available_attacks.current_attack().name.as_str() == "projectile" {
-                        // TODO Calculate this with the item data (gravity, lifetime, velocity)
-                        x_offset += ENEMY_PROJ_ATTACK_DIST
-                            * (e_transform.translation.x - p_transform.translation.x).signum();
+                    let cur_attack = available_attacks.current_attack();
+                    if cur_attack.name.as_str() == "projectile" {
+                        let item = items_assets
+                            .get(&cur_attack.item_handle)
+                            .expect("No item found.");
+
+                        if let ItemKind::Throwable {
+                            lifetime,
+                            throw_velocity,
+                            gravity,
+                            ..
+                        } = item.kind
+                        {
+                            //Change target offset to aim on player
+                            x_offset += throw_velocity.x
+                                * (lifetime * 0.65)
+                                * if e_transform.translation.x > p_transform.translation.x {
+                                    1.
+                                } else {
+                                    -1.
+                                };
+                        }
                     }
 
                     let attack_distance =
