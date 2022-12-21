@@ -5,7 +5,10 @@ use rand::Rng;
 
 use crate::{
     animation::Facing,
-    consts::{self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_TARGET_MAX_OFFSET},
+    consts::{
+        self, ENEMY_MAX_ATTACK_DISTANCE, ENEMY_MIN_ATTACK_DISTANCE, ENEMY_PROJ_ATTACK_DIST,
+        ENEMY_TARGET_MAX_OFFSET,
+    },
     enemy::{Boss, Enemy, TripPointX},
     fighter::AvailableAttacks,
     fighter_state::{
@@ -38,7 +41,7 @@ pub struct EnemyTarget {
 pub fn set_target_near_player(
     mut commands: Commands,
     mut enemies_query: Query<
-        (Entity, &mut TripPointX, &Transform),
+        (Entity, &mut TripPointX, &Transform, &AvailableAttacks),
         (With<Enemy>, With<Idling>, Without<EnemyTarget>),
     >,
     player_query: Query<&Transform, With<Player>>,
@@ -51,13 +54,22 @@ pub fn set_target_near_player(
         .max_by(f32::total_cmp);
 
     if let Some(max_player_x) = max_player_x {
-        for (e_entity, mut e_trip_point_x, e_transform) in enemies_query.iter_mut() {
+        for (e_entity, mut e_trip_point_x, e_transform, available_attacks) in
+            enemies_query.iter_mut()
+        {
             if let Some(p_transform) = choose_player(&p_transforms, e_transform) {
                 if max_player_x > e_trip_point_x.0 {
                     e_trip_point_x.0 = f32::MIN;
 
-                    let x_offset = rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
+                    let mut x_offset =
+                        rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
                     let y_offset = rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
+
+                    if available_attacks.current_attack().name.as_str() == "projectile" {
+                        // TODO Calculate this with the item data (gravity, lifetime, velocity)
+                        x_offset += ENEMY_PROJ_ATTACK_DIST
+                            * (e_transform.translation.x - p_transform.translation.x).signum();
+                    }
 
                     let attack_distance =
                         rng.gen_range(ENEMY_MIN_ATTACK_DISTANCE..ENEMY_MAX_ATTACK_DISTANCE);

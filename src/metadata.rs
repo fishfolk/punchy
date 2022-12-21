@@ -142,7 +142,7 @@ pub enum ItemKind {
         damage: i32,
         gravity: f32,
         throw_velocity: Vec2,
-        lifetime: f32
+        lifetime: f32,
     },
     BreakableBox {
         damage: i32,
