@@ -120,7 +120,7 @@ impl JsRuntimeOp for ItemGetGrabEvents {
                     .collect::<Vec<_>>();
 
                 // Return the list of events to JS
-                Ok(serde_json::to_value(&events)?)
+                Ok(serde_json::to_value(events)?)
             }
         )
     }
