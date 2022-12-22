@@ -62,7 +62,7 @@ pub fn set_target_near_player(
 
                     let mut x_offset =
                         rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
-                    let y_offset = rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
+                    let mut y_offset = rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
 
                     let cur_attack = available_attacks.current_attack();
                     if cur_attack.name.as_str() == "projectile" {
@@ -73,6 +73,7 @@ pub fn set_target_near_player(
                         if let ItemKind::Throwable {
                             lifetime,
                             throw_velocity,
+                            gravity,
                             ..
                         } = item.kind
                         {
@@ -84,6 +85,8 @@ pub fn set_target_near_player(
                                 } else {
                                     -1.
                                 };
+
+                            y_offset += (throw_velocity.y + gravity) * (lifetime * 0.65);
                         }
                     }
 
