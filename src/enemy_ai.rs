@@ -62,7 +62,8 @@ pub fn set_target_near_player(
 
                     let mut x_offset =
                         rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
-                    let mut y_offset = rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
+                    let mut y_offset =
+                        rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
 
                     let cur_attack = available_attacks.current_attack();
                     if cur_attack.name.as_str() == "projectile" {
@@ -80,10 +81,10 @@ pub fn set_target_near_player(
                             //Change target offset to aim on player
                             x_offset += throw_velocity.x
                                 * (lifetime * 0.65)
-                                * if e_transform.translation.x > p_transform.translation.x {
-                                    1.
-                                } else {
+                                * if p_transform.translation.x > e_transform.translation.x {
                                     -1.
+                                } else {
+                                    1.
                                 };
 
                             y_offset += (throw_velocity.y + gravity) * (lifetime * 0.65);
