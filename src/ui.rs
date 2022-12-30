@@ -1,10 +1,14 @@
 use bevy::{prelude::*, utils::HashMap, window::WindowId};
-use bevy_egui::{egui, EguiContext, EguiInput, EguiPlugin, EguiSettings};
+use bevy_egui::{egui, EguiContext, EguiPlugin, EguiRenderInputContainer, EguiSettings};
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-    assets::EguiFont, audio, config::ENGINE_CONFIG, input::MenuAction, metadata::GameMeta,
+    assets::{EguiFont, EguiFontDefinitions},
+    audio,
+    config::ENGINE_CONFIG,
+    input::MenuAction,
+    metadata::GameMeta,
     GameState,
 };
 
@@ -79,7 +83,7 @@ fn unpause(mut commands: Commands, input: Query<&ActionState<MenuAction>>) {
 ///
 /// This is used to figure out which widget to focus on next when you press a direction on the
 /// gamepad, for instance.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Resource)]
 pub struct WidgetAdjacencies(HashMap<egui::Id, WidgetAdjacency>);
 
 impl std::ops::Deref for WidgetAdjacencies {
@@ -149,11 +153,10 @@ impl<'a> WidgetAdjacencyEntry<'a> {
 fn handle_menu_input(
     mut windows: ResMut<Windows>,
     input: Query<&ActionState<MenuAction>>,
-    mut egui_inputs: ResMut<HashMap<WindowId, EguiInput>>,
+    mut egui_inputs: ResMut<EguiRenderInputContainer>,
     adjacencies: Res<WidgetAdjacencies>,
     mut egui_ctx: ResMut<EguiContext>,
 ) {
-    use bevy::window::WindowMode;
     let input = input.single();
 
     // Handle fullscreen toggling
@@ -166,11 +169,7 @@ fn handle_menu_input(
         }
     }
 
-    let events = &mut egui_inputs
-        .get_mut(&WindowId::primary())
-        .unwrap()
-        .raw_input
-        .events;
+    let events = &mut egui_inputs.get_mut(&WindowId::primary()).unwrap().0.events;
 
     if input.just_pressed(MenuAction::Confirm) {
         events.push(egui::Event::Key {
@@ -235,7 +234,7 @@ fn handle_menu_input(
 fn update_egui_fonts(
     mut font_queue: Local<Vec<Handle<EguiFont>>>,
     mut egui_ctx: ResMut<EguiContext>,
-    egui_font_definitions: Option<ResMut<egui::FontDefinitions>>,
+    egui_font_definitions: Option<ResMut<EguiFontDefinitions>>,
     game: Option<Res<GameMeta>>,
     mut events: EventReader<AssetEvent<EguiFont>>,
     assets: Res<Assets<EguiFont>>,
@@ -279,7 +278,7 @@ fn update_egui_fonts(
                         .unwrap()
                         .push(font_name);
 
-                    ctx.set_fonts(egui_font_definitions.clone());
+                    ctx.set_fonts(egui_font_definitions.get_fonts().clone());
                 }
             }
         }

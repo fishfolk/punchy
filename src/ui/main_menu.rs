@@ -1,6 +1,7 @@
 use bevy::{app::AppExit, ecs::system::SystemParam, prelude::*};
 use bevy_egui::{egui::style::Margin, *};
 use bevy_fluent::Localization;
+use egui_extras::Column;
 use iyes_loopless::state::NextState;
 use leafwing_input_manager::{
     axislike::SingleAxis, prelude::ActionState, user_input::InputKind, Actionlike,
@@ -10,7 +11,7 @@ use crate::{
     config::ENGINE_CONFIG,
     input::MenuAction,
     localization::LocalizationExt,
-    metadata::{ButtonStyle, FontStyle, GameMeta, Settings},
+    metadata::{ButtonStyle, FontStyle, GameMeta, LevelHandle, Settings},
     platform::Storage,
     GameState,
 };
@@ -36,7 +37,7 @@ pub fn spawn_main_menu_background(
     let height = window.height();
     let width = height * ratio;
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: bg_handle,
             sprite: Sprite {
                 custom_size: Some(Vec2::new(width, height)),
@@ -187,7 +188,7 @@ fn main_menu_ui(params: &mut MenuSystemParams, ui: &mut egui::Ui) {
         .focus_by_default(ui);
 
         if start_button.clicked() || ENGINE_CONFIG.auto_start {
-            commands.insert_resource(game.start_level_handle.clone());
+            commands.insert_resource(LevelHandle(game.start_level_handle.clone()));
             commands.insert_resource(NextState(GameState::LoadingLevel));
         }
 
@@ -376,8 +377,6 @@ fn controls_settings_ui(
     settings_tabs: &[egui::Response],
     bottom_buttons: &[egui::Response],
 ) {
-    use egui_extras::Size;
-
     let ui_theme = &params.game.ui_theme;
 
     // Reset the settings when reset button is clicked
@@ -477,10 +476,10 @@ fn controls_settings_ui(
         .cell_layout(egui::Layout::centered_and_justified(
             egui::Direction::LeftToRight,
         ))
-        .column(Size::exact(label_font.size * 7.0))
-        .column(Size::remainder())
-        .column(Size::remainder())
-        .column(Size::remainder())
+        .column(Column::exact(label_font.size * 7.0))
+        .column(Column::remainder())
+        .column(Column::remainder())
+        .column(Column::remainder())
         .header(bigger_font.size * 1.5, |mut row| {
             row.col(|ui| {
                 ui.themed_label(&bigger_font, &params.localization.get("action"));

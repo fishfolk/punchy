@@ -311,6 +311,8 @@ impl AssetLoader for FighterLoader {
                         meta.spritesheet.tile_size.as_vec2(),
                         meta.spritesheet.columns,
                         meta.spritesheet.rows,
+                        None,
+                        None,
                     ))
                     .with_dependency(texture_path),
                 );
@@ -331,6 +333,8 @@ impl AssetLoader for FighterLoader {
                             attachment.tile_size.as_vec2(),
                             attachment.columns,
                             attachment.rows,
+                            None,
+                            None,
                         ))
                         .with_dependency(texture_path),
                     );
@@ -420,6 +424,8 @@ impl AssetLoader for ItemLoader {
                                 spritesheet.tile_size.as_vec2(),
                                 spritesheet.columns,
                                 spritesheet.rows,
+                                None,
+                                None,
                             ))
                             .with_dependency(texture_path),
                         );
@@ -447,6 +453,8 @@ impl AssetLoader for ItemLoader {
                                 spritesheet.tile_size.as_vec2(),
                                 spritesheet.columns,
                                 spritesheet.rows,
+                                None,
+                                None,
                             ))
                             .with_dependency(texture_path),
                         );
@@ -492,5 +500,14 @@ impl AssetLoader for EguiFontLoader {
 
     fn extensions(&self) -> &[&str] {
         &["ttf"]
+    }
+}
+
+#[derive(Debug, Clone, Resource, Deref, DerefMut)]
+pub struct EguiFontDefinitions(pub egui::FontDefinitions);
+
+impl EguiFontDefinitions {
+    pub fn get_fonts(&self) -> &egui::FontDefinitions {
+        &self.0
     }
 }
