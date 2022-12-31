@@ -49,7 +49,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(collect_hitstuns)
                     .with_system(collect_player_actions)
                     .with_system(
-                        enemy_ai::set_target_near_player.chain(enemy_ai::emit_enemy_intents),
+                        enemy_ai::set_move_target_near_player.chain(enemy_ai::emit_enemy_intents),
                     )
                     .into(),
             )

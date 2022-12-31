@@ -49,7 +49,7 @@ use animation::*;
 use attack::AttackPlugin;
 use audio::*;
 use camera::*;
-use enemy_ai::EnemyTarget;
+use enemy_ai::WalkTarget;
 use metadata::GameMeta;
 use ui::UIPlugin;
 use utils::ResetController;
@@ -148,7 +148,7 @@ fn main() {
         );
 
     // Register reflect types that don't come from plugins
-    app.register_type::<Stats>().register_type::<EnemyTarget>();
+    app.register_type::<Stats>().register_type::<WalkTarget>();
 
     // Add debug plugins if enabled
     if engine_config.debug_tools {

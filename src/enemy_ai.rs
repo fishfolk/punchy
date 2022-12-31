@@ -27,20 +27,21 @@ use crate::{
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 #[component(storage = "SparseSet")]
-pub struct EnemyTarget {
+pub struct WalkTarget {
     pub position: Vec2,
     pub attack_distance: f32,
+    pub player_pos: Vec2,
 }
 
 // For enemys without current target, pick a new spot near the player as target
 ///
 /// This is added to the [`crate::fighter_state::FighterStateCollectSystems`] to collect figher
 /// actions for enemies.
-pub fn set_target_near_player(
+pub fn set_move_target_near_player(
     mut commands: Commands,
     mut enemies_query: Query<
         (Entity, &mut TripPointX, &Transform, &AvailableAttacks),
-        (With<Enemy>, With<Idling>, Without<EnemyTarget>),
+        (With<Enemy>, With<Idling>, Without<WalkTarget>),
     >,
     player_query: Query<&Transform, With<Player>>,
     items_assets: Res<Assets<ItemMeta>>,
@@ -94,13 +95,14 @@ pub fn set_target_near_player(
                     let attack_distance =
                         rng.gen_range(ENEMY_MIN_ATTACK_DISTANCE..ENEMY_MAX_ATTACK_DISTANCE);
 
-                    commands.entity(e_entity).insert(EnemyTarget {
+                    commands.entity(e_entity).insert(WalkTarget {
                         position: Vec2::new(
                             p_transform.translation.x + x_offset,
                             (p_transform.translation.y + y_offset)
                                 .clamp(consts::MIN_Y, consts::MAX_Y),
                         ),
                         attack_distance,
+                        player_pos: p_transform.translation.truncate(),
                     });
                 }
             }
@@ -144,7 +146,7 @@ pub fn emit_enemy_intents(
             Entity,
             &Transform,
             &Stats,
-            &EnemyTarget,
+            &WalkTarget,
             &mut Facing,
             &mut StateTransitionIntents,
             Option<&Boss>,
@@ -175,7 +177,7 @@ pub fn emit_enemy_intents(
             // player.
 
             // Remove the target
-            commands.entity(entity).remove::<EnemyTarget>();
+            commands.entity(entity).remove::<WalkTarget>();
 
             // Face the target position
             *facing = if target.position.x > position.x {
@@ -199,17 +201,26 @@ pub fn emit_enemy_intents(
                         Punching::PRIORITY,
                         false,
                     )),
-                    "projectile" => intents.push_back(StateTransition::new(
-                        ProjectileAttacking::default(),
-                        ProjectileAttacking::PRIORITY,
-                        false,
-                    )),
+                    "projectile" => {
+                        // Face the player
+                        *facing = if target.player_pos.x > position.x {
+                            Facing::Right
+                        } else {
+                            Facing::Left
+                        };
+
+                        intents.push_back(StateTransition::new(
+                            ProjectileAttacking::default(),
+                            ProjectileAttacking::PRIORITY,
+                            false,
+                        ));
+                    }
                     _ => {}
                 }
             }
         // If we aren't near our target yet
         } else {
-            // Face the cirection we're moving
+            // Face the direction we're moving
             *facing = if velocity.x < 0.0 {
                 Facing::Left
             } else {
