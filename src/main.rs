@@ -78,14 +78,16 @@ fn main() {
         let mut builder = DefaultPlugins.build();
 
         // Configure Window
-        builder = builder.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "Fish Folk Punchy".to_string(),
-                scale_factor_override: Some(1.0),
+        builder = builder
+            .set(WindowPlugin {
+                window: WindowDescriptor {
+                    title: "Fish Folk Punchy".to_string(),
+                    scale_factor_override: Some(1.0),
+                    ..default()
+                },
                 ..default()
-            },
-            ..default()
-        });
+            })
+            .set(ImagePlugin::default_nearest());
 
         // Configure asset server
         let mut asset_plugin = AssetPlugin {
