@@ -49,7 +49,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(collect_hitstuns)
                     .with_system(collect_player_actions)
                     .with_system(
-                        enemy_ai::set_move_target_near_player.chain(enemy_ai::emit_enemy_intents),
+                        enemy_ai::set_move_target_near_player.pipe(enemy_ai::emit_enemy_intents),
                     )
                     .into(),
             )
@@ -491,7 +491,7 @@ fn collect_hitstuns(
                 HitStun {
                     //Hit stun velocity feels strange right now
                     velocity: event.damage_velocity,
-                    timer: Timer::from_seconds(event.hitstun_duration, false),
+                    timer: Timer::from_seconds(event.hitstun_duration, TimerMode::Once),
                 },
                 HitStun::PRIORITY,
                 false,
@@ -863,7 +863,7 @@ fn flopping(
 
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
+                    .spawn(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
                     .insert(CollisionGroups::new(
@@ -1019,7 +1019,7 @@ fn chaining(
                     offset.y += fighter.collision_offset;
                     // Spawn the attack entity
                     let attack_entity = commands
-                        .spawn_bundle(TransformBundle::from_transform(
+                        .spawn(TransformBundle::from_transform(
                             Transform::from_translation(offset.extend(0.0)),
                         ))
                         .insert(CollisionGroups::new(
@@ -1116,7 +1116,7 @@ fn punching(
                 let attack_frames = attack.frames;
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
+                    .spawn(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
                     .insert(CollisionGroups::new(
@@ -1261,7 +1261,7 @@ fn ground_slam(
 
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
+                    .spawn(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
                     .insert(CollisionGroups::new(
@@ -1425,10 +1425,13 @@ fn bomb_throw(
                 {
                     // Spawn bomb
                     commands
-                        .spawn_bundle(AnimatedProjectile::new(0, facing, animated_sprite.clone()))
+                        .spawn(AnimatedProjectile::new(0, facing, animated_sprite.clone()))
                         .insert(Explodable {
                             attack: attack.clone(),
-                            timer: Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false),
+                            timer: Timer::from_seconds(
+                                consts::THROW_ITEM_LIFETIME,
+                                TimerMode::Once,
+                            ),
                             fusing: false,
                             animated_sprite,
                             explosion_frames: *attack_frames,
@@ -1560,7 +1563,7 @@ fn throwing(
             match &item_meta.kind {
                 ItemKind::Throwable { .. } => {
                     // Throw the item!
-                    commands.spawn_bundle(Projectile::from_thrown_item(
+                    commands.spawn(Projectile::from_thrown_item(
                         fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                         &item_meta,
                         facing,
@@ -1577,7 +1580,7 @@ fn throwing(
                     ref item_handle, ..
                 } => {
                     commands
-                        .spawn_bundle(Projectile::from_thrown_item(
+                        .spawn(Projectile::from_thrown_item(
                             fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                             &item_meta,
                             facing,
@@ -1607,7 +1610,7 @@ fn throwing(
                         item: String::new(),
                         item_handle: items_assets.add(item_meta.clone()),
                     };
-                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    let item_commands = commands.spawn(ItemBundle::new(&item_spawn_meta));
                     ItemBundle::spawn(
                         item_commands,
                         &item_spawn_meta,
@@ -1635,7 +1638,7 @@ fn throwing(
                         item: String::new(),
                         item_handle: items_assets.add(item_meta.clone()),
                     };
-                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    let item_commands = commands.spawn(ItemBundle::new(&item_spawn_meta));
                     ItemBundle::spawn(
                         item_commands,
                         &item_spawn_meta,
@@ -1771,23 +1774,24 @@ fn grabbing(
                                     Some("idle".to_string());
 
                                 let weapon = commands
-                                    .spawn()
-                                    .insert(MeleeWeapon {
-                                        audio: audio.clone(),
-                                        attack: attack.clone(),
-                                    })
-                                    //need this because of hierarchy check in hitbox activation system,
-                                    //consider rearchitecting
-                                    .insert(AvailableAttacks {
-                                        attacks: vec![attack.clone()],
-                                    })
-                                    .insert_bundle(animated_sprite)
-                                    .insert(Attached {
-                                        position_face: true,
-                                        sync_facing: true,
-                                        sync_animation: false,
-                                    })
-                                    .insert(Facing::default())
+                                    .spawn((
+                                        MeleeWeapon {
+                                            audio: audio.clone(),
+                                            attack: attack.clone(),
+                                        },
+                                        //need this because of hierarchy check in hitbox activation system,
+                                        //consider rearchitecting
+                                        AvailableAttacks {
+                                            attacks: vec![attack.clone()],
+                                        },
+                                        animated_sprite,
+                                        Attached {
+                                            position_face: true,
+                                            sync_facing: true,
+                                            sync_animation: false,
+                                        },
+                                        Facing::default(),
+                                    ))
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1830,27 +1834,29 @@ fn grabbing(
                                 animated_sprite.animation.current_animation =
                                     Some("idle".to_string());
 
-                                let mut shoot_timer = Timer::from_seconds(*shoot_delay, false);
+                                let mut shoot_timer =
+                                    Timer::from_seconds(*shoot_delay, TimerMode::Once);
                                 shoot_timer.set_elapsed(Duration::from_secs_f32(*shoot_delay));
 
                                 let weapon = commands
-                                    .spawn()
-                                    .insert(ProjectileWeapon {
-                                        attack: attack.clone(),
-                                        animated_sprite: animated_sprite.clone(),
-                                        audio: audio.clone(),
-                                        bullet_velocity: *bullet_velocity,
-                                        bullet_lifetime: *bullet_lifetime,
-                                        ammo: *ammo,
-                                        shoot_delay: shoot_timer,
-                                    })
-                                    .insert_bundle(animated_sprite)
-                                    .insert(Attached {
-                                        position_face: true,
-                                        sync_facing: true,
-                                        sync_animation: false,
-                                    })
-                                    .insert(Facing::default())
+                                    .spawn((
+                                        ProjectileWeapon {
+                                            attack: attack.clone(),
+                                            animated_sprite: animated_sprite.clone(),
+                                            audio: audio.clone(),
+                                            bullet_velocity: *bullet_velocity,
+                                            bullet_lifetime: *bullet_lifetime,
+                                            ammo: *ammo,
+                                            shoot_delay: shoot_timer,
+                                        },
+                                        animated_sprite,
+                                        Attached {
+                                            position_face: true,
+                                            sync_facing: true,
+                                            sync_animation: false,
+                                        },
+                                        Facing::default(),
+                                    ))
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1893,17 +1899,18 @@ fn holding(
                 .image;
 
             let child = commands
-                .spawn()
-                .insert_bundle(SpriteBundle {
-                    texture: image.image_handle.clone(),
-                    transform: Transform::from_xyz(
-                        0.,
-                        consts::THROW_ITEM_OFFSET.y + image.image_size.y,
-                        consts::PROJECTILE_Z,
-                    ),
-                    ..default()
-                })
-                .insert(BeingHeld)
+                .spawn((
+                    SpriteBundle {
+                        texture: image.image_handle.clone(),
+                        transform: Transform::from_xyz(
+                            0.,
+                            consts::THROW_ITEM_OFFSET.y + image.image_size.y,
+                            consts::PROJECTILE_Z,
+                        ),
+                        ..default()
+                    },
+                    BeingHeld,
+                ))
                 .id();
             commands.entity(entity).add_child(child);
         }
@@ -1955,7 +1962,7 @@ fn melee_attacking(
                     let attack_frames = attack.frames;
                     // Spawn the attack entity
                     let attack_entity = commands
-                        .spawn_bundle(TransformBundle::from_transform(
+                        .spawn(TransformBundle::from_transform(
                             Transform::from_translation(offset.extend(0.0)),
                         ))
                         .insert(CollisionGroups::new(
@@ -2062,11 +2069,7 @@ fn shooting(
                     animated_sprite.sprite_sheet.sprite.flip_x = facing.is_left();
                     animated_sprite.animation.play("shooting_particles", false);
 
-                    let weapon_particles = commands
-                        .spawn()
-                        .insert_bundle(animated_sprite.clone())
-                        .insert(Particle)
-                        .id();
+                    let weapon_particles = commands.spawn((animated_sprite.clone(), Particle)).id();
                     commands.entity(weapon_ent).add_child(weapon_particles);
 
                     //Sound
@@ -2102,7 +2105,7 @@ fn shooting(
                     );
 
                     let bullet_attack = commands
-                        .spawn_bundle(TransformBundle::from_transform(
+                        .spawn(TransformBundle::from_transform(
                             Transform::from_translation(
                                 (attack.hitbox.offset * direction_mul).extend(0.0),
                             ),
@@ -2125,8 +2128,11 @@ fn shooting(
                         .id();
 
                     commands
-                        .spawn_bundle(animated_sprite)
-                        .insert(Lifetime(Timer::from_seconds(weapon.bullet_lifetime, false)))
+                        .spawn(animated_sprite)
+                        .insert(Lifetime(Timer::from_seconds(
+                            weapon.bullet_lifetime,
+                            TimerMode::Once,
+                        )))
                         .insert(LinearVelocity(
                             Vec2::new(weapon.bullet_velocity, 0.) * direction_mul,
                         ))

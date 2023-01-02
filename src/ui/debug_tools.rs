@@ -192,6 +192,7 @@ impl Plugin for YSortDebugPlugin {
     }
 }
 
+#[derive(Resource)]
 pub struct YSortDebug {
     enabled: bool,
     stroke: egui::Stroke,

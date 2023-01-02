@@ -142,20 +142,22 @@ impl ActiveFighterBundle {
             },
         };
         let hurtbox = commands
-            .spawn_bundle(PhysicsBundle::new(&fighter.hurtbox, body_layers))
-            .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-                0.0,
-                fighter.collision_offset,
-                0.0,
-            )))
-            .insert(Hurtbox)
+            .spawn((
+                PhysicsBundle::new(&fighter.hurtbox, body_layers),
+                TransformBundle::from_transform(Transform::from_xyz(
+                    0.0,
+                    fighter.collision_offset,
+                    0.0,
+                )),
+                Hurtbox,
+            ))
             .id();
 
         let animated_spritesheet_bundle = active_fighter_bundle.animated_spritesheet_bundle.clone();
 
         commands
             .entity(entity)
-            .insert_bundle(active_fighter_bundle)
+            .insert(active_fighter_bundle)
             .push_children(&[hurtbox]);
 
         if let Some(attachment) = &fighter.attachment {
@@ -179,7 +181,7 @@ impl ActiveFighterBundle {
             attachment_spritesheet.sprite_sheet.sprite.anchor = bevy::sprite::Anchor::Center;
 
             let attachment_ent = commands
-                .spawn_bundle(attachment_spritesheet)
+                .spawn(attachment_spritesheet)
                 .insert(Attached {
                     position_face: false,
                     sync_animation: true,

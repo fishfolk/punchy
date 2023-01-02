@@ -67,7 +67,7 @@ impl ItemBundle {
             item_spawn_meta.location + ground_offset,
         ));
 
-        commands.insert_bundle(transform_bundle);
+        commands.insert(transform_bundle);
 
         let mut item = None;
         let item_meta = items_assets
@@ -85,9 +85,7 @@ impl ItemBundle {
                 let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::BREAKABLE_ITEM);
                 physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
-                commands
-                    .insert_bundle(physics_bundle)
-                    .insert(Breakable::new(*hits, false));
+                commands.insert((physics_bundle, Breakable::new(*hits, false)));
             }
             ItemKind::Script { script_handle, .. } => {
                 active_scripts.insert(script_handle.clone());
@@ -186,7 +184,10 @@ impl Projectile {
                     BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                 },
             ),
-            lifetime: Lifetime(Timer::from_seconds(item_vars.3, false)),
+            lifetime: Lifetime(Timer::from_seconds(
+                item_vars.3,
+                TimerMode::Once,
+            )),
             breakable: Breakable::new(0, false),
         }
     }
@@ -226,7 +227,7 @@ fn drop_system(
             item: String::new(),
             item_handle: items_assets.add(drop.item.clone()),
         };
-        let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+        let item_commands = commands.spawn(ItemBundle::new(&item_spawn_meta));
         ItemBundle::spawn(
             item_commands,
             &item_spawn_meta,
@@ -312,27 +313,25 @@ fn explodable_system(
             * animated_sprite.animation.timer.duration().as_secs_f32();
 
         let attack_ent = commands
-            .spawn()
-            .insert(Sensor)
-            .insert(ActiveEvents::COLLISION_EVENTS)
-            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-            .insert(CollisionGroups::new(
-                BodyLayers::ENEMY_ATTACK,
-                BodyLayers::PLAYER,
+            .spawn((
+                Sensor,
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                CollisionGroups::new(BodyLayers::ENEMY_ATTACK, BodyLayers::PLAYER),
+                Attack {
+                    damage: attack.damage,
+                    velocity: attack.velocity.unwrap_or(Vec2::ZERO),
+                    hitstun_duration: attack.hitstun_duration,
+                    hitbox_meta: Some(explodable.attack.hitbox),
+                },
+                explodable.explosion_frames,
+                transform,
             ))
-            .insert(Attack {
-                damage: attack.damage,
-                velocity: attack.velocity.unwrap_or(Vec2::ZERO),
-                hitstun_duration: attack.hitstun_duration,
-                hitbox_meta: Some(explodable.attack.hitbox),
-            })
-            .insert(explodable.explosion_frames)
-            .insert(transform)
             .id();
 
         commands
-            .spawn_bundle(animated_sprite)
-            .insert(Lifetime(Timer::from_seconds(seconds, false)))
+            .spawn(animated_sprite)
+            .insert(Lifetime(Timer::from_seconds(seconds, TimerMode::Once)))
             .insert(explodable)
             .push_children(&[attack_ent]);
     }
