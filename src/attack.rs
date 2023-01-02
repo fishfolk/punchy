@@ -216,7 +216,7 @@ fn attack_damage_system(
                     commands
                         .entity(hurtbox_parent_entity)
                         .insert(FlashingTimer {
-                            timer: Timer::new(Duration::from_millis(100), true),
+                            timer: Timer::new(Duration::from_millis(100), TimerMode::Repeating),
                         });
 
                     event_writer.send(DamageEvent {

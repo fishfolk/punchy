@@ -4,21 +4,23 @@ use rand::{prelude::SliceRandom, thread_rng};
 
 use bevy::{prelude::*, utils::HashMap};
 use bevy_egui::{egui::output::OutputEvent, EguiContext};
-use bevy_kira_audio::{AudioApp, AudioChannel, AudioSource};
+use bevy_kira_audio::{AudioApp, AudioChannel, AudioControl, AudioSource};
 use iyes_loopless::prelude::*;
 
 use crate::{
     animation::Animation,
     config::ENGINE_CONFIG,
-    metadata::{GameMeta, LevelMeta},
+    metadata::{GameMeta, LevelHandle, LevelMeta},
     GameState,
 };
 
 /// For readability.
 const IMPOSSIBLE_ANIMATION_I: usize = usize::MAX;
 
+#[derive(Resource)]
 pub struct MusicChannel;
 
+#[derive(Resource)]
 pub struct EffectsChannel;
 
 pub fn set_audio_channels_volume(
@@ -137,7 +139,7 @@ pub fn stop_menu_music(music_channel: Res<AudioChannel<MusicChannel>>) {
 }
 
 pub fn play_level_music(
-    level_handle: Res<Handle<LevelMeta>>,
+    level_handle: Res<LevelHandle>,
     assets: Res<Assets<LevelMeta>>,
     music_channel: Res<AudioChannel<MusicChannel>>,
 ) {
