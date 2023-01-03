@@ -1196,7 +1196,7 @@ fn projectile_attacking(
         if !animation.is_finished() {
             if animation.current_frame == attack.frames.startup && !proj_attacking.thrown {
                 // Spawn projectile
-                commands.spawn_bundle(Projectile::from_thrown_item(
+                commands.spawn(Projectile::from_thrown_item(
                     transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                     item,
                     facing,

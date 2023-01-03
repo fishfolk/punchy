@@ -184,10 +184,7 @@ impl Projectile {
                     BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
                 },
             ),
-            lifetime: Lifetime(Timer::from_seconds(
-                item_vars.3,
-                TimerMode::Once,
-            )),
+            lifetime: Lifetime(Timer::from_seconds(item_vars.3, TimerMode::Once)),
             breakable: Breakable::new(0, false),
         }
     }
