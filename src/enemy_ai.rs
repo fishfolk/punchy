@@ -79,16 +79,18 @@ pub fn set_move_target_near_player(
                             ..
                         } = item.kind
                         {
+                            let t = lifetime * 0.65;
+
                             //Change target offset to aim on player
                             x_offset += throw_velocity.x
-                                * (lifetime * 0.65)
+                                * t
                                 * if p_transform.translation.x > e_transform.translation.x {
                                     -1.
                                 } else {
                                     1.
                                 };
 
-                            y_offset += (throw_velocity.y + gravity) * (lifetime * 0.65);
+                            y_offset -= (throw_velocity.y * t) + (0.5 * -gravity * t.powi(2));
                         }
                     }
 
