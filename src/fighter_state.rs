@@ -49,7 +49,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(collect_hitstuns)
                     .with_system(collect_player_actions)
                     .with_system(
-                        enemy_ai::set_target_near_player.pipe(enemy_ai::emit_enemy_intents),
+                        enemy_ai::set_move_target_near_player.pipe(enemy_ai::emit_enemy_intents),
                     )
                     .into(),
             )
@@ -68,6 +68,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_melee_attacking)
                     .with_system(transition_from_shooting)
                     .with_system(transition_from_bomb_throw)
+                    .with_system(transition_from_proj_attacking)
                     .into(),
             )
             // State handler systems
@@ -89,6 +90,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(melee_attacking)
                     .with_system(shooting)
                     .with_system(bomb_throw)
+                    .with_system(projectile_attacking)
                     .into(),
             );
     }
@@ -316,6 +318,18 @@ pub struct Shooting {
 impl Shooting {
     pub const PRIORITY: i32 = 30;
     pub const ANIMATION: &'static str = "shooting";
+}
+
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct ProjectileAttacking {
+    pub has_started: bool,
+    pub is_finished: bool,
+    pub thrown: bool,
+}
+impl ProjectileAttacking {
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "attacking";
 }
 
 /// Component indicating the player is holding a item on it's head
@@ -741,6 +755,35 @@ fn transition_from_shooting(
     }
 }
 
+fn transition_from_proj_attacking(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &ProjectileAttacking)>,
+) {
+    'entity: for (entity, mut transition_intents, proj_attacking) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<ProjectileAttacking>(
+                entity,
+                ProjectileAttacking::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done attacking
+        if proj_attacking.is_finished {
+            // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<ProjectileAttacking>()
+                .insert(Idling);
+        }
+    }
+}
+
 //
 // Handle state systems
 //
@@ -1121,6 +1164,56 @@ fn punching(
     }
 }
 
+fn projectile_attacking(
+    mut commands: Commands,
+    mut fighters: Query<
+        (
+            &mut Animation,
+            &mut LinearVelocity,
+            &Facing,
+            &Transform,
+            &mut ProjectileAttacking,
+            &AvailableAttacks,
+        ),
+        With<Enemy>,
+    >,
+    item_assets: Res<Assets<ItemMeta>>,
+) {
+    for (mut animation, mut velocity, facing, transform, mut proj_attacking, available_attacks) in
+        &mut fighters
+    {
+        // Start the attack
+        let attack = available_attacks.current_attack();
+        let item = item_assets
+            .get(&attack.item_handle)
+            .expect("Fighter has no item");
+
+        if !proj_attacking.has_started {
+            proj_attacking.has_started = true;
+            animation.play(ProjectileAttacking::ANIMATION, false);
+        }
+
+        if !animation.is_finished() {
+            if animation.current_frame == attack.frames.startup && !proj_attacking.thrown {
+                // Spawn projectile
+                commands.spawn(Projectile::from_thrown_item(
+                    transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                    item,
+                    facing,
+                    true,
+                ));
+
+                proj_attacking.thrown = true;
+            }
+        } else if animation.is_finished() {
+            proj_attacking.is_finished = true;
+        }
+
+        // Stop fighter
+        **velocity = Vec2::ZERO;
+    }
+}
+
 /// The attacking state used for bosses
 fn ground_slam(
     mut commands: Commands,
@@ -1474,6 +1567,7 @@ fn throwing(
                         fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                         &item_meta,
                         facing,
+                        false,
                     ));
                 }
                 ItemKind::Script { script_handle, .. } => {
@@ -1490,6 +1584,7 @@ fn throwing(
                             fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                             &item_meta,
                             facing,
+                            false,
                         ))
                         .insert(Drop {
                             item: items_assets
@@ -1623,7 +1718,7 @@ fn grabbing(
                                 });
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::Throwable { damage: _ } => {
+                            ItemKind::Throwable { damage: _, .. } => {
                                 // If its throwable, pick up the item
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =

@@ -119,12 +119,36 @@ pub struct Projectile {
 }
 
 impl Projectile {
-    pub fn from_thrown_item(translation: Vec3, item_meta: &ItemMeta, facing: &Facing) -> Self {
+    pub fn from_thrown_item(
+        translation: Vec3,
+        item_meta: &ItemMeta,
+        facing: &Facing,
+        enemy: bool,
+    ) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
             Vec2::ONE
         };
+
+        let item_vars = match item_meta.kind {
+            crate::metadata::ItemKind::Throwable {
+                damage,
+                gravity,
+                throw_velocity,
+                lifetime,
+                ..
+            }
+            | crate::metadata::ItemKind::BreakableBox {
+                damage,
+                gravity,
+                throw_velocity,
+                lifetime,
+                ..
+            } => Some((damage, gravity, throw_velocity, lifetime)),
+            _ => None,
+        }
+        .expect("Non throwable item");
 
         Self {
             sprite_bundle: SpriteBundle {
@@ -133,27 +157,14 @@ impl Projectile {
                 ..default()
             },
             attack: Attack {
-                damage: match item_meta.kind {
-                    crate::metadata::ItemKind::Throwable { damage } => damage,
-                    crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
-                    crate::metadata::ItemKind::MeleeWeapon { .. }
-                    | crate::metadata::ItemKind::ProjectileWeapon { .. } => {
-                        panic!("Cannot throw weapon")
-                    }
-                    crate::metadata::ItemKind::Script { .. } => {
-                        panic!("Cannot throw scripted items as projectiles")
-                    }
-                    crate::metadata::ItemKind::Bomb { .. } => {
-                        panic!("Bomb is a animated projectile")
-                    }
-                },
+                damage: item_vars.0,
                 velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
                 hitbox_meta: None,
             },
-            velocity: LinearVelocity(consts::THROW_ITEM_SPEED * direction_mul),
+            velocity: LinearVelocity(item_vars.2 * direction_mul),
             // Gravity
-            force: Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+            force: Force(Vec2::new(0.0, -item_vars.1)),
             angular_velocity: AngularVelocity(consts::THROW_ITEM_ROTATION_SPEED * direction_mul.x),
             collider: Collider::cuboid(consts::ITEM_WIDTH / 2., consts::ITEM_HEIGHT / 2.),
             sensor: Sensor,
@@ -162,13 +173,18 @@ impl Projectile {
             //TODO: define collision layer based on the fighter shooting projectile, load for asset
             //files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(
-                BodyLayers::PLAYER_ATTACK,
-                BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
+                if enemy {
+                    BodyLayers::ENEMY_ATTACK
+                } else {
+                    BodyLayers::PLAYER_ATTACK
+                },
+                if enemy {
+                    BodyLayers::PLAYER
+                } else {
+                    BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                },
             ),
-            lifetime: Lifetime(Timer::from_seconds(
-                consts::THROW_ITEM_LIFETIME,
-                TimerMode::Once,
-            )),
+            lifetime: Lifetime(Timer::from_seconds(item_vars.3, TimerMode::Once)),
             breakable: Breakable::new(0, false),
         }
     }
