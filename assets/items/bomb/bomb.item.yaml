@@ -11,7 +11,7 @@ kind: !Bomb
     columns: 11
     rows: 3
 
-    animation_fps: 0.12
+    animation_fps: 1.
     animations:
       explosion:
         frames: [0, 10]

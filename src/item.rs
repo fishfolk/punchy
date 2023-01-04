@@ -8,6 +8,7 @@ use crate::{
     attack::{Attack, AttackFrames, Breakable, BrokeEvent},
     collision::{BodyLayers, PhysicsBundle},
     consts,
+    fighter::Inventory,
     lifetime::{Lifetime, LifetimeExpired},
     metadata::{AttackMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
@@ -41,9 +42,9 @@ pub struct Item;
 
 #[derive(Bundle)]
 pub struct ItemBundle {
-    item: Item,
-    item_meta_handle: Handle<ItemMeta>,
-    name: Name,
+    pub item: Item,
+    pub item_meta_handle: Handle<ItemMeta>,
+    pub name: Name,
 }
 
 impl ItemBundle {
@@ -242,6 +243,7 @@ pub struct Explodable {
     pub fusing: bool,
     pub animated_sprite: AnimatedSpriteSheetBundle,
     pub explosion_frames: AttackFrames,
+    pub attack_enemy: bool,
 }
 
 fn explodable_system(
@@ -253,10 +255,13 @@ fn explodable_system(
         &mut LinearVelocity,
         &mut AngularVelocity,
         &mut Transform,
+        &GlobalTransform,
         &mut Animation,
         Entity,
+        Option<&Parent>,
     )>,
     time: Res<Time>,
+    mut inventory: Query<&mut Inventory>,
 ) {
     let mut explosions = Vec::new();
 
@@ -272,8 +277,10 @@ fn explodable_system(
         mut velocity,
         mut ang_vel,
         mut transform,
+        g_transform,
         mut animation,
         entity,
+        parent,
     ) in &mut explodables
     {
         explodable.timer.tick(time.delta());
@@ -287,8 +294,18 @@ fn explodable_system(
 
             animation.play("bomb_fuse", false);
             explodable.fusing = true;
+
+            //Remove explosion on contact
+            commands.entity(entity).remove::<Collider>();
         } else if animation.is_finished() && explodable.fusing {
-            explosions.push((*transform, explodable.clone()));
+            explosions.push((g_transform.compute_transform(), explodable.clone()));
+
+            if let Some(parent) = parent {
+                if let Ok(mut inventory) = inventory.get_mut(parent.get()) {
+                    **inventory = None;
+                }
+            }
+
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -314,7 +331,18 @@ fn explodable_system(
                 Sensor,
                 ActiveEvents::COLLISION_EVENTS,
                 ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
-                CollisionGroups::new(BodyLayers::ENEMY_ATTACK, BodyLayers::PLAYER),
+                CollisionGroups::new(
+                    if explodable.attack_enemy {
+                        BodyLayers::PLAYER_ATTACK
+                    } else {
+                        BodyLayers::ENEMY_ATTACK
+                    },
+                    if explodable.attack_enemy {
+                        BodyLayers::PLAYER | BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                    } else {
+                        BodyLayers::PLAYER
+                    },
+                ),
                 Attack {
                     damage: attack.damage,
                     velocity: attack.velocity.unwrap_or(Vec2::ZERO),
