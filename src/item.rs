@@ -137,6 +137,8 @@ impl Projectile {
                 gravity,
                 throw_velocity,
                 lifetime,
+                pushback,
+                hitstun_duration,
                 ..
             }
             | crate::metadata::ItemKind::BreakableBox {
@@ -144,8 +146,17 @@ impl Projectile {
                 gravity,
                 throw_velocity,
                 lifetime,
+                pushback,
+                hitstun_duration,
                 ..
-            } => Some((damage, gravity, throw_velocity, lifetime)),
+            } => Some((
+                damage,
+                gravity,
+                throw_velocity,
+                lifetime,
+                pushback,
+                hitstun_duration,
+            )),
             _ => None,
         }
         .expect("Non throwable item");
@@ -158,8 +169,8 @@ impl Projectile {
             },
             attack: Attack {
                 damage: item_vars.0,
-                pushback: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
-                hitstun_duration: consts::HITSTUN_DURATION,
+                pushback: Vec2::new(item_vars.4, 0.0) * direction_mul,
+                hitstun_duration: item_vars.5,
                 hitbox_meta: None,
             },
             velocity: LinearVelocity(item_vars.2 * direction_mul),

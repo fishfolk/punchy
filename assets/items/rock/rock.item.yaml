@@ -9,3 +9,5 @@ kind: !Throwable
     gravity: 300
     throw_velocity: [300, 100]
     lifetime: 1
+    pushback: 10
+    hitstun_duration: 0.2
