@@ -158,7 +158,7 @@ impl Projectile {
             },
             attack: Attack {
                 damage: item_vars.0,
-                velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
+                pushback: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
                 hitbox_meta: None,
             },
@@ -317,7 +317,7 @@ fn explodable_system(
                 CollisionGroups::new(BodyLayers::ENEMY_ATTACK, BodyLayers::PLAYER),
                 Attack {
                     damage: attack.damage,
-                    velocity: attack.velocity.unwrap_or(Vec2::ZERO),
+                    pushback: attack.velocity.unwrap_or(Vec2::ZERO),
                     hitstun_duration: attack.hitstun_duration,
                     hitbox_meta: Some(explodable.attack.hitbox),
                 },
@@ -363,7 +363,7 @@ impl AnimatedProjectile {
             sprite_bundle: animated_sprite,
             attack: Attack {
                 damage,
-                velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
+                pushback: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
                 hitbox_meta: None,
             },
