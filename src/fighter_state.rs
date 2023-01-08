@@ -1377,6 +1377,7 @@ fn bomb_throw(
             if let ItemKind::Bomb {
                 attack_frames,
                 spritesheet,
+                ..
             } = &item.kind
             {
                 sprite = Some(spritesheet);
@@ -1423,13 +1424,23 @@ fn bomb_throw(
                 if (animation.current_frame == attack.frames.startup && !bomb_throw.thrown)
                     || (animation.current_frame == attack.frames.active && bomb_throw.thrown)
                 {
+                    let lifetime = if let ItemKind::Bomb { lifetime, .. } = item.kind {
+                        Some(lifetime)
+                    } else {
+                        None
+                    };
+
                     // Spawn bomb
                     commands
-                        .spawn(AnimatedProjectile::new(0, facing, animated_sprite.clone()))
+                        .spawn(AnimatedProjectile::new(
+                            item,
+                            facing,
+                            animated_sprite.clone(),
+                        ))
                         .insert(Explodable {
                             attack: attack.clone(),
                             timer: Timer::from_seconds(
-                                consts::THROW_ITEM_LIFETIME,
+                                lifetime.expect("Bomb item not found."),
                                 TimerMode::Once,
                             ),
                             fusing: false,

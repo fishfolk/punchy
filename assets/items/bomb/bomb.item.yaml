@@ -23,3 +23,9 @@ kind: !Bomb
     startup: 0
     active: 3
     recovery: 3
+
+  # Contact damage, explosion damage comes from boss attack
+  damage: 10
+  gravity: 1200
+  throw_velocity: [200, 300]
+  lifetime: 0.64
