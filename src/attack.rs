@@ -59,7 +59,7 @@ pub struct Attack {
     //maybe just replace all fields with AttackMeta
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.
-    pub velocity: Vec2,
+    pub pushback: Vec2,
     pub hitstun_duration: f32,
     /// add this for attacks that are not immediately active, used in activate_hitbox
     pub hitbox_meta: Option<ColliderMeta>,
@@ -221,7 +221,7 @@ fn attack_damage_system(
 
                     event_writer.send(DamageEvent {
                         damageing_entity: attack_entity,
-                        damage_velocity: attack.velocity,
+                        damage_velocity: attack.pushback,
                         damage: attack.damage,
                         damaged_entity: hurtbox_parent_entity,
                         hitstun_duration: attack.hitstun_duration,

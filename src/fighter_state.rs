@@ -345,7 +345,7 @@ impl Holding {
 #[component(storage = "SparseSet")]
 pub struct HitStun {
     //velocity > pushback?
-    pub velocity: Vec2,
+    pub pushback: Vec2,
     pub timer: Timer,
 }
 impl HitStun {
@@ -488,7 +488,7 @@ fn collect_hitstuns(
             transition_intents.push_back(StateTransition::new(
                 HitStun {
                     //Hit stun velocity feels strange right now
-                    velocity: event.damage_velocity,
+                    pushback: event.damage_velocity,
                     timer: Timer::from_seconds(event.hitstun_duration, TimerMode::Once),
                 },
                 HitStun::PRIORITY,
@@ -878,7 +878,7 @@ fn flopping(
                     ))
                     .insert(Attack {
                         damage: attack.damage,
-                        velocity: if facing.is_left() {
+                        pushback: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
@@ -1026,7 +1026,7 @@ fn chaining(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: if facing.is_left() {
+                            pushback: if facing.is_left() {
                                 Vec2::NEG_X
                             } else {
                                 Vec2::X
@@ -1131,7 +1131,7 @@ fn punching(
                     ))
                     .insert(Attack {
                         damage: attack.damage,
-                        velocity: if facing.is_left() {
+                        pushback: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
@@ -1268,7 +1268,7 @@ fn ground_slam(
                     ))
                     .insert(Attack {
                         damage: attack.damage,
-                        velocity: if facing.is_left() {
+                        pushback: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
@@ -1495,10 +1495,10 @@ fn hitstun(
         // If this is the start of the hit stun
         if hitstun.timer.elapsed_secs() == 0.0 {
             // Calculate animation to use based on attack direction and fighter facing
-            let is_left = hitstun.velocity.x < 0.0;
+            let is_left = hitstun.pushback.x < 0.0;
             //TODO: change knocked right and left to knocked front and back
             let use_left_anim = if facing.is_left() { !is_left } else { is_left };
-            let animation_name = if hitstun.velocity == Vec2::ZERO {
+            let animation_name = if hitstun.pushback == Vec2::ZERO {
                 HitStun::HITSTUN
             } else if use_left_anim {
                 HitStun::KNOCKED_LEFT
@@ -1514,7 +1514,7 @@ fn hitstun(
         hitstun.timer.tick(time.delta());
 
         // Set our figher velocity to the hit stun velocity
-        **velocity = hitstun.velocity;
+        **velocity = hitstun.pushback;
     }
 }
 
@@ -1994,7 +1994,7 @@ fn melee_attacking(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: if facing.is_left() {
+                            pushback: if facing.is_left() {
                                 Vec2::NEG_X
                             } else {
                                 Vec2::X
@@ -2131,7 +2131,7 @@ fn shooting(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
+                            pushback: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
                             hitstun_duration: attack.hitstun_duration,
                             hitbox_meta: None,
                         })
