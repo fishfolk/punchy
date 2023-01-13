@@ -11,7 +11,7 @@ kind: !Bomb
     columns: 11
     rows: 3
 
-    //TODO: return and find another way to extend duration after animation system changes
+    #TODO: return and find another way to extend duration after animation system changes
     animation_fps: 1.
     animations:
       explosion:
