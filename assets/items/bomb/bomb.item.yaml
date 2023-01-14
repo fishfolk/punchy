@@ -12,14 +12,14 @@ kind: !Bomb
     rows: 3
 
     #TODO: return and find another way to extend duration after animation system changes
-    animation_fps: 1.
+    animation_fps: 0.12
     animations:
       explosion:
         frames: [0, 10]
       bomb:
         frames: [11, 11]
       bomb_fuse:
-        frames: [22, 24]
+        frames: [22, 28]
   attack_frames:
     startup: 0
     active: 3
