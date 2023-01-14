@@ -67,31 +67,38 @@ pub fn set_move_target_near_player(
                         rng.gen_range(-ENEMY_TARGET_MAX_OFFSET..ENEMY_TARGET_MAX_OFFSET);
 
                     let cur_attack = available_attacks.current_attack();
-                    if cur_attack.name.as_str() == "projectile" {
-                        let item = items_assets
-                            .get(&cur_attack.item_handle)
-                            .expect("No item found.");
+                    let item = items_assets.get(&cur_attack.item_handle);
 
-                        if let ItemKind::Throwable {
-                            lifetime,
-                            throw_velocity,
-                            gravity,
-                            ..
-                        } = item.kind
-                        {
-                            let t = lifetime * 0.65;
+                    match cur_attack.name.as_str() {
+                        "projectile" | "bomb_throw" => {
+                            if let ItemKind::Throwable {
+                                lifetime,
+                                throw_velocity,
+                                gravity,
+                                ..
+                            }
+                            | ItemKind::Bomb {
+                                lifetime,
+                                throw_velocity,
+                                gravity,
+                                ..
+                            } = item.expect("No item found.").kind
+                            {
+                                let t = lifetime * 0.65;
 
-                            //Change target offset to aim on player
-                            x_offset += throw_velocity.x
-                                * t
-                                * if p_transform.translation.x > e_transform.translation.x {
-                                    -1.
-                                } else {
-                                    1.
-                                };
+                                //Change target offset to aim on player
+                                x_offset += throw_velocity.x
+                                    * t
+                                    * if p_transform.translation.x > e_transform.translation.x {
+                                        -1.
+                                    } else {
+                                        1.
+                                    };
 
-                            y_offset -= (throw_velocity.y * t) + (0.5 * -gravity * t.powi(2));
+                                y_offset -= (throw_velocity.y * t) + (0.5 * -gravity * t.powi(2));
+                            }
                         }
+                        _ => {}
                     }
 
                     let attack_distance =
@@ -190,7 +197,13 @@ pub fn emit_enemy_intents(
 
             // And attack!
             if maybe_boss.is_some() {
-                // TODO Add some proper ai for the bomb throw
+                // Face the player
+                *facing = if target.player_pos.x > position.x {
+                    Facing::Right
+                } else {
+                    Facing::Left
+                };
+
                 intents.push_back(StateTransition::new(
                     BossBombThrow::default(),
                     BossBombThrow::PRIORITY,

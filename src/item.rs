@@ -390,7 +390,11 @@ pub struct AnimatedProjectile {
 }
 
 impl AnimatedProjectile {
-    pub fn new(damage: i32, facing: &Facing, animated_sprite: AnimatedSpriteSheetBundle) -> Self {
+    pub fn new(
+        item_meta: &ItemMeta,
+        facing: &Facing,
+        animated_sprite: AnimatedSpriteSheetBundle,
+    ) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
@@ -398,19 +402,28 @@ impl AnimatedProjectile {
         };
         let mut rng = rand::thread_rng();
 
+        let item_vars = match item_meta.kind {
+            crate::metadata::ItemKind::Bomb {
+                damage,
+                gravity,
+                throw_velocity,
+                ..
+            } => Some((damage, gravity, throw_velocity)),
+            _ => None,
+        }
+        .expect("Non bomb");
+
         Self {
             sprite_bundle: animated_sprite,
             attack: Attack {
-                damage,
+                damage: item_vars.0,
                 pushback: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
                 hitbox_meta: None,
             },
-            velocity: LinearVelocity(
-                consts::THROW_ITEM_SPEED * direction_mul * rng.gen_range(0.8..1.2),
-            ),
+            velocity: LinearVelocity(item_vars.2 * direction_mul * rng.gen_range(0.8..1.2)),
             // Gravity
-            force: Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+            force: Force(Vec2::new(0.0, -item_vars.1)),
             angular_velocity: AngularVelocity(
                 consts::THROW_ITEM_ROTATION_SPEED * direction_mul.x * rng.gen_range(0.8..1.2),
             ),

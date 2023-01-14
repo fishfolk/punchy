@@ -1375,6 +1375,7 @@ fn bomb_throw(
             if let ItemKind::Bomb {
                 attack_frames,
                 spritesheet,
+                ..
             } = &item.kind
             {
                 sprite = Some(spritesheet);
@@ -1421,13 +1422,23 @@ fn bomb_throw(
                 if (animation.current_frame == attack.frames.startup && !bomb_throw.thrown)
                     || (animation.current_frame == attack.frames.active && bomb_throw.thrown)
                 {
+                    let lifetime = if let ItemKind::Bomb { lifetime, .. } = item.kind {
+                        Some(lifetime)
+                    } else {
+                        None
+                    };
+
                     // Spawn bomb
                     commands
-                        .spawn(AnimatedProjectile::new(0, facing, animated_sprite.clone()))
+                        .spawn(AnimatedProjectile::new(
+                            item,
+                            facing,
+                            animated_sprite.clone(),
+                        ))
                         .insert(Explodable {
                             attack: attack.clone(),
                             timer: Timer::from_seconds(
-                                consts::THROW_ITEM_LIFETIME,
+                                lifetime.expect("Bomb item not found."),
                                 TimerMode::Once,
                             ),
                             fusing: false,
@@ -1550,7 +1561,13 @@ fn throwing(
         With<Throwing>,
     >,
     mut being_held: Query<
-        (Entity, &Parent, &GlobalTransform, Option<&mut Explodable>),
+        (
+            Entity,
+            &Parent,
+            &GlobalTransform,
+            Option<&mut Explodable>,
+            &Handle<ItemMeta>,
+        ),
         With<BeingHeld>,
     >,
     weapon_held: Query<(Entity, &Parent), With<MeleeWeapon>>,
@@ -1665,7 +1682,9 @@ fn throwing(
                     }
                 }
                 ItemKind::Bomb { .. } => {
-                    for (head_ent, parent, g_transform, explodable) in being_held.iter_mut() {
+                    for (head_ent, parent, g_transform, explodable, item_handle) in
+                        being_held.iter_mut()
+                    {
                         if parent.get() == entity {
                             commands.entity(entity).remove_children(&[head_ent]);
                             commands
@@ -1682,14 +1701,25 @@ fn throwing(
                                 Vec2::ONE
                             };
                             let mut rng = rand::thread_rng();
+                            let item = items_assets.get(item_handle).expect("Bomb item not found.");
+
+                            let (gravity, throw_velocity) = if let ItemKind::Bomb {
+                                gravity,
+                                throw_velocity,
+                                ..
+                            } = item.kind
+                            {
+                                Some((gravity, throw_velocity))
+                            } else {
+                                None
+                            }
+                            .expect("Item is not a bomb.");
 
                             commands.entity(head_ent).insert((
                                 LinearVelocity(
-                                    consts::THROW_ITEM_SPEED
-                                        * direction_mul
-                                        * rng.gen_range(0.8..1.2),
+                                    throw_velocity * direction_mul * rng.gen_range(0.8..1.2),
                                 ),
-                                Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+                                Force(Vec2::new(0.0, -gravity)),
                                 AngularVelocity(
                                     consts::THROW_ITEM_ROTATION_SPEED
                                         * direction_mul.x

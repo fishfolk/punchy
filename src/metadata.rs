@@ -190,6 +190,10 @@ pub enum ItemKind {
     Bomb {
         spritesheet: FighterSpritesheetMeta,
         attack_frames: AttackFrames,
+        damage: i32,
+        gravity: f32,
+        throw_velocity: Vec2,
+        lifetime: f32,
     },
 }
 
