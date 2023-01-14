@@ -5,6 +5,7 @@ use bevy_mod_js_scripting::ActiveScripts;
 use bevy_rapier2d::prelude::CollisionGroups;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
+use rand::Rng;
 
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation, Facing},
@@ -23,7 +24,7 @@ use crate::{
     },
     lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
-    movement::LinearVelocity,
+    movement::{AngularVelocity, Force, LinearVelocity},
     player::Player,
     Collider, GameState, Stats,
 };
@@ -86,7 +87,6 @@ impl Plugin for FighterStatePlugin {
                     .with_system(grabbing)
                     .with_system(hitstun)
                     .with_system(dying)
-                    .with_system(holding)
                     .with_system(melee_attacking)
                     .with_system(shooting)
                     .with_system(bomb_throw)
@@ -335,9 +335,7 @@ impl ProjectileAttacking {
 /// Component indicating the player is holding a item on it's head
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-pub struct Holding {
-    item: Handle<ItemMeta>,
-}
+pub struct Holding;
 impl Holding {
     pub const PRIORITY: i32 = 35;
 }
@@ -1446,6 +1444,12 @@ fn bomb_throw(
                             fusing: false,
                             animated_sprite,
                             explosion_frames: *attack_frames,
+                            attack_enemy: false,
+                        })
+                        .insert(ItemBundle {
+                            item: Item,
+                            item_meta_handle: attack.item_handle.clone(),
+                            name: Name::new("Bomb Item"),
                         });
                     bomb_throw.thrown = !bomb_throw.thrown;
                 }
@@ -1556,7 +1560,10 @@ fn throwing(
         ),
         With<Throwing>,
     >,
-    being_held: Query<(Entity, &Parent), With<BeingHeld>>,
+    mut being_held: Query<
+        (Entity, &Parent, &GlobalTransform, Option<&mut Explodable>),
+        With<BeingHeld>,
+    >,
     weapon_held: Query<(Entity, &Parent), With<MeleeWeapon>>,
     pweapon_held: Query<(Entity, &Parent), With<ProjectileWeapon>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
@@ -1605,7 +1612,7 @@ fn throwing(
                         });
 
                     // Despawn head sprite
-                    for (head_ent, parent) in being_held.iter() {
+                    for (head_ent, parent, ..) in being_held.iter() {
                         if parent.get() == entity {
                             commands.entity(head_ent).despawn_recursive();
                         }
@@ -1669,7 +1676,47 @@ fn throwing(
                     }
                 }
                 ItemKind::Bomb { .. } => {
-                    panic!("Can't throw bomb")
+                    for (head_ent, parent, g_transform, explodable) in being_held.iter_mut() {
+                        if parent.get() == entity {
+                            commands.entity(entity).remove_children(&[head_ent]);
+                            commands
+                                .entity(head_ent)
+                                .insert(g_transform.compute_transform());
+                            if let Some(mut explodable) = explodable {
+                                explodable.timer.reset();
+                                explodable.attack_enemy = true;
+                            }
+
+                            let direction_mul = if facing.is_left() {
+                                Vec2::new(-1.0, 1.0)
+                            } else {
+                                Vec2::ONE
+                            };
+                            let mut rng = rand::thread_rng();
+
+                            commands.entity(head_ent).insert((
+                                LinearVelocity(
+                                    consts::THROW_ITEM_SPEED
+                                        * direction_mul
+                                        * rng.gen_range(0.8..1.2),
+                                ),
+                                Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+                                AngularVelocity(
+                                    consts::THROW_ITEM_ROTATION_SPEED
+                                        * direction_mul.x
+                                        * rng.gen_range(0.8..1.2),
+                                ),
+                                CollisionGroups::new(
+                                    BodyLayers::PLAYER_ATTACK,
+                                    BodyLayers::PLAYER
+                                        | BodyLayers::ENEMY
+                                        | BodyLayers::BREAKABLE_ITEM,
+                                ),
+                                Collider::cuboid(consts::ITEM_WIDTH / 2., consts::ITEM_HEIGHT / 2.),
+                            ));
+                        }
+                    }
+                    commands.entity(entity).remove::<Holding>();
                 }
             }
         }
@@ -1736,18 +1783,31 @@ fn grabbing(
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::BreakableBox { .. } => {
+                            ItemKind::BreakableBox { .. } | ItemKind::Bomb { .. } => {
                                 // Transition to holding state
                                 transition_intents.push_back(StateTransition::new(
-                                    Holding { item: item.clone() },
+                                    Holding,
                                     Holding::PRIORITY,
                                     true,
+                                ));
+
+                                let image = items_assets
+                                    .get(item)
+                                    .expect("Item not loaded!")
+                                    .clone()
+                                    .image;
+
+                                commands.entity(item_ent).insert(Transform::from_xyz(
+                                    0.,
+                                    consts::THROW_ITEM_OFFSET.y + image.image_size.y,
+                                    consts::PROJECTILE_Z,
                                 ));
 
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
-                                commands.entity(item_ent).despawn_recursive();
+                                commands.entity(item_ent).remove::<Item>().insert(BeingHeld);
+                                commands.entity(fighter_ent).add_child(item_ent);
                             }
                             ItemKind::MeleeWeapon {
                                 ref attack,
@@ -1871,9 +1931,6 @@ fn grabbing(
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
-                            ItemKind::Bomb { .. } => {
-                                panic!("Can't pick up bomb")
-                            }
                         }
                     }
                     break;
@@ -1883,48 +1940,6 @@ fn grabbing(
         // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
         // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
-    }
-}
-
-/// Holding item
-fn holding(
-    mut commands: Commands,
-    mut fighters: Query<(Entity, &Holding)>,
-    being_held: Query<&Parent, With<BeingHeld>>,
-    items_assets: Res<Assets<ItemMeta>>,
-) {
-    for (entity, holding) in &mut fighters {
-        let mut already_holding = false;
-        for parent in being_held.iter() {
-            if parent.get() == entity {
-                already_holding = true;
-                break;
-            }
-        }
-
-        if !already_holding {
-            let image = items_assets
-                .get(&holding.item)
-                .expect("Item not loaded!")
-                .clone()
-                .image;
-
-            let child = commands
-                .spawn((
-                    SpriteBundle {
-                        texture: image.image_handle.clone(),
-                        transform: Transform::from_xyz(
-                            0.,
-                            consts::THROW_ITEM_OFFSET.y + image.image_size.y,
-                            consts::PROJECTILE_Z,
-                        ),
-                        ..default()
-                    },
-                    BeingHeld,
-                ))
-                .id();
-            commands.entity(entity).add_child(child);
-        }
     }
 }
 
