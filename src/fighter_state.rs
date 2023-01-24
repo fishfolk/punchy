@@ -1447,7 +1447,9 @@ fn bomb_throw(
                             attack_enemy: false,
                         })
                         .insert(ItemBundle {
-                            item: Item,
+                            item: Item {
+                                spawn_sprite: false,
+                            },
                             item_meta_handle: attack.item_handle.clone(),
                             name: Name::new("Bomb Item"),
                         });

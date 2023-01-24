@@ -12,7 +12,7 @@ use crate::{
     enemy::{Boss, Enemy, EnemyBundle},
     fighter::ActiveFighterBundle,
     input::MenuAction,
-    item::ItemBundle,
+    item::{Item, ItemBundle},
     metadata::{
         BorderImageMeta, FighterMeta, GameHandle, GameMeta, ItemMeta, LevelHandle, LevelMeta,
         Settings,
@@ -427,10 +427,16 @@ fn hot_reload_level(
 
 fn load_items(
     mut commands: Commands,
-    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>), Without<Sprite>>,
+    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>, Option<&Item>), Without<Sprite>>,
     item_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (entity, transform, item_handle) in item_spawns.iter() {
+    for (entity, transform, item_handle, item) in item_spawns.iter() {
+        if let Some(item) = item {
+            if !item.spawn_sprite {
+                continue;
+            }
+        }
+
         if let Some(item_meta) = item_assets.get(item_handle) {
             commands.entity(entity).insert(SpriteBundle {
                 texture: item_meta.image.image_handle.clone(),
