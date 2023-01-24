@@ -38,7 +38,10 @@ pub struct ScriptItemGrabEvent {
 }
 
 #[derive(Component)]
-pub struct Item;
+pub struct Item {
+    /// Prevent the spawning of a Sprite component by load_items by setting this to false
+    pub spawn_sprite: bool,
+}
 
 #[derive(Bundle)]
 pub struct ItemBundle {
@@ -50,7 +53,7 @@ pub struct ItemBundle {
 impl ItemBundle {
     pub fn new(item_spawn_meta: &ItemSpawnMeta) -> Self {
         Self {
-            item: Item,
+            item: Item { spawn_sprite: true },
             item_meta_handle: item_spawn_meta.item_handle.clone(),
             // TODO: Actually include the item's name at some point
             name: Name::new("Map Item"),
