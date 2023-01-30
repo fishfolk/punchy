@@ -305,7 +305,7 @@ impl AssetLoader for FighterLoader {
                     get_relative_asset(load_context, load_context.path(), image);
 
                 let atlas_handle = load_context.set_labeled_asset(
-                    format!("atlas_{}", index).as_str(),
+                    format!("atlas_{index}").as_str(),
                     LoadedAsset::new(TextureAtlas::from_grid(
                         texture_handle,
                         meta.spritesheet.tile_size.as_vec2(),
@@ -418,7 +418,7 @@ impl AssetLoader for ItemLoader {
                             get_relative_asset(load_context, load_context.path(), image);
 
                         let atlas_handle = load_context.set_labeled_asset(
-                            format!("atlas_{}", index).as_str(),
+                            format!("atlas_{index}").as_str(),
                             LoadedAsset::new(TextureAtlas::from_grid(
                                 texture_handle,
                                 spritesheet.tile_size.as_vec2(),
@@ -447,7 +447,7 @@ impl AssetLoader for ItemLoader {
                             get_relative_asset(load_context, load_context.path(), image);
 
                         let atlas_handle = load_context.set_labeled_asset(
-                            format!("atlas_{}", index).as_str(),
+                            format!("atlas_{index}").as_str(),
                             LoadedAsset::new(TextureAtlas::from_grid(
                                 texture_handle,
                                 spritesheet.tile_size.as_vec2(),
