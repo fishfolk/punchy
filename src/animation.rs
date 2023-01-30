@@ -121,7 +121,7 @@ impl Animation {
             animations,
             current_frame: 0,
             current_animation: None,
-            timer: Timer::from_seconds(fps, false),
+            timer: Timer::from_seconds(fps, TimerMode::Once),
             played_once: false,
         }
     }
@@ -132,7 +132,11 @@ impl Animation {
         self.current_frame = 0;
         self.timer.reset();
         self.timer.unpause();
-        self.timer.set_repeating(repeating);
+        self.timer.set_mode(if repeating {
+            TimerMode::Repeating
+        } else {
+            TimerMode::Once
+        });
         self.played_once = false;
     }
 

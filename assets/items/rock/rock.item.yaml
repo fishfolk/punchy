@@ -1,0 +1,13 @@
+name: Rock
+
+image:
+    image: rock9x9.png
+    image_size: [9, 9]
+
+kind: !Throwable
+    damage: 10
+    gravity: 300
+    throw_velocity: [300, 100]
+    lifetime: 1
+    pushback: 0
+    hitstun_duration: 0.0

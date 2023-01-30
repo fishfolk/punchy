@@ -1,6 +1,6 @@
 use bevy::{
     math::{UVec2, Vec2, Vec3},
-    prelude::{Color, Component, Handle, Image},
+    prelude::{Color, Component, Deref, DerefMut, Handle, Image, Resource},
     reflect::{FromReflect, Reflect, TypeUuid},
     sprite::TextureAtlas,
     utils::HashMap,
@@ -23,7 +23,10 @@ pub mod ui;
 pub mod localization;
 pub use localization::TranslationsMeta;
 
-#[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
+#[derive(Resource, Deref, DerefMut)]
+pub struct GameHandle(pub Handle<GameMeta>);
+
+#[derive(Resource, HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "eb28180f-ef68-44a0-8479-a299a3cef66e"]
 pub struct GameMeta {
@@ -68,7 +71,10 @@ pub struct ImageMeta {
     pub image_handle: Handle<Image>,
 }
 
-#[derive(HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
+#[derive(Resource, Deref, DerefMut)]
+pub struct LevelHandle(pub Handle<LevelMeta>);
+
+#[derive(Resource, HasLoadProgress, TypeUuid, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 #[uuid = "32111f6e-bb9a-4ea7-8988-1220b923a059"]
 pub struct LevelMeta {
@@ -140,9 +146,19 @@ pub struct ItemMeta {
 pub enum ItemKind {
     Throwable {
         damage: i32,
+        gravity: f32,
+        throw_velocity: Vec2,
+        lifetime: f32,
+        pushback: f32,
+        hitstun_duration: f32,
     },
     BreakableBox {
         damage: i32,
+        gravity: f32,
+        throw_velocity: Vec2,
+        lifetime: f32,
+        pushback: f32,
+        hitstun_duration: f32,
         hurtbox: ColliderMeta,
         hits: i32,
         item: String,
@@ -174,6 +190,10 @@ pub enum ItemKind {
     Bomb {
         spritesheet: FighterSpritesheetMeta,
         attack_frames: AttackFrames,
+        damage: i32,
+        gravity: f32,
+        throw_velocity: Vec2,
+        lifetime: f32,
     },
 }
 

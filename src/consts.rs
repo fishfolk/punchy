@@ -35,10 +35,7 @@ pub const ITEM_HEIGHT: f32 = 10.;
 
 pub const PROJECTILE_Z: f32 = 101.;
 pub const THROW_ITEM_OFFSET: Vec2 = Vec2::from_array([5.0, 30.0]);
-pub const THROW_ITEM_SPEED: Vec2 = Vec2::from_array([200.0, 300.0]);
-pub const THROW_ITEM_LIFETIME: f32 = 0.64;
 pub const THROW_ITEM_ROTATION_SPEED: f32 = -20.;
-pub const THROW_ITEM_GRAVITY: f32 = 1200.0;
 
 pub const PICK_ITEM_RADIUS: f32 = 24.;
 

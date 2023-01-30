@@ -13,13 +13,13 @@ impl BodyLayers {
     // The layer is represented by 1 shifted 0 places to the left:          0b0001.
     // The second layer is represented by 1 shifted one place to the left:  0b0010.
     // And so on for the rest of the layers.
-    pub const ENEMY: u32 = 1 << 0;
-    pub const PLAYER: u32 = 1 << 1;
-    pub const PLAYER_ATTACK: u32 = 1 << 2;
-    pub const ENEMY_ATTACK: u32 = 1 << 3;
-    pub const BREAKABLE_ITEM: u32 = 1 << 4;
+    pub const ENEMY: Group = Group::GROUP_1;
+    pub const PLAYER: Group = Group::GROUP_2;
+    pub const PLAYER_ATTACK: Group = Group::GROUP_3;
+    pub const ENEMY_ATTACK: Group = Group::GROUP_4;
+    pub const BREAKABLE_ITEM: Group = Group::GROUP_5;
     // u32::MAX is a u32 with all of it's bits set to 1, so this will contain all of the layers.
-    pub const ALL: u32 = u32::MAX;
+    pub const ALL: Group = Group::ALL;
 }
 
 #[derive(Bundle)]
@@ -32,7 +32,7 @@ pub struct PhysicsBundle {
 }
 
 impl PhysicsBundle {
-    pub fn new(meta: &ColliderMeta, body_layers: u32) -> Self {
+    pub fn new(meta: &ColliderMeta, body_layers: Group) -> Self {
         PhysicsBundle {
             collider: (Collider::cuboid(meta.size.x / 2., meta.size.y / 2.)),
             sensor: Sensor,

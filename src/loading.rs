@@ -7,12 +7,16 @@ use rand::seq::SliceRandom;
 
 use crate::{
     animation::Animation,
+    assets::EguiFontDefinitions,
     config::ENGINE_CONFIG,
     enemy::{Boss, Enemy, EnemyBundle},
     fighter::ActiveFighterBundle,
     input::MenuAction,
-    item::ItemBundle,
-    metadata::{BorderImageMeta, FighterMeta, GameMeta, ItemMeta, LevelMeta, Settings},
+    item::{Item, ItemBundle},
+    metadata::{
+        BorderImageMeta, FighterMeta, GameHandle, GameMeta, ItemMeta, LevelHandle, LevelMeta,
+        Settings,
+    },
     platform::Storage,
     player::{Player, PlayerBundle},
     GameState, Stats,
@@ -67,7 +71,7 @@ impl Plugin for LoadingPlugin {
 
 // Condition system used to make sure game assets have loaded
 fn game_assets_loaded(
-    game_handle: Res<Handle<GameMeta>>,
+    game_handle: Res<GameHandle>,
     loading_resources: LoadingResources,
     game_assets: Res<Assets<GameMeta>>,
 ) -> bool {
@@ -93,7 +97,7 @@ pub struct GameLoader<'w, 's> {
     skip_next_asset_update_event: Local<'s, bool>,
     camera: Query<'w, 's, Entity, With<Camera>>,
     commands: Commands<'w, 's>,
-    game_handle: Res<'w, Handle<GameMeta>>,
+    game_handle: Res<'w, GameHandle>,
     assets: ResMut<'w, Assets<GameMeta>>,
     egui_ctx: ResMut<'w, EguiContext>,
     events: EventReader<'w, 's, AssetEvent<GameMeta>>,
@@ -150,7 +154,7 @@ impl<'w, 's> GameLoader<'w, 's> {
                     egui_fonts.families.insert(font_family, vec![]);
                 }
                 egui_ctx.ctx_mut().set_fonts(egui_fonts.clone());
-                commands.insert_resource(egui_fonts);
+                commands.insert_resource(EguiFontDefinitions(egui_fonts));
 
                 // Transition to the main menu when we are done
                 commands.insert_resource(NextState(GameState::MainMenu));
@@ -168,14 +172,14 @@ impl<'w, 's> GameLoader<'w, 's> {
             // camera_bundle.orthographic_projection.depth_calculation = DepthCalculation::Distance;
             camera_bundle.projection.scaling_mode =
                 ScalingMode::FixedVertical(game.camera_height as f32);
-            commands
-                .spawn_bundle(camera_bundle)
-                .insert(ParallaxCameraComponent)
-                // We also add another input manager bundle for `MenuAction`s
-                .insert_bundle(InputManagerBundle {
+            commands.spawn((
+                camera_bundle,
+                ParallaxCameraComponent,
+                InputManagerBundle {
                     input_map: menu_input_map(),
                     ..default()
-                });
+                },
+            ));
 
             // Helper to load border images
             let mut load_border_image = |border: &mut BorderImageMeta| {
@@ -204,7 +208,6 @@ impl<'w, 's> GameLoader<'w, 's> {
 
             // Insert the game resource
             commands.insert_resource(game.clone());
-            commands.insert_resource(game.start_level.clone());
 
             // If the game asset isn't loaded yet
         } else {
@@ -320,7 +323,7 @@ fn hot_reload_game(loader: GameLoader) {
 /// A [`Handle<Level>`] resource must be inserted before running this system, to indicate which
 /// level to load.
 fn load_level(
-    level_handle: Res<Handle<LevelMeta>>,
+    level_handle: Res<LevelHandle>,
     mut commands: Commands,
     assets: Res<Assets<LevelMeta>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
@@ -359,7 +362,7 @@ fn load_level(
 
         // Spawn the players
         for (i, player) in level.players.iter().enumerate() {
-            commands.spawn_bundle(PlayerBundle::new(
+            commands.spawn(PlayerBundle::new(
                 player,
                 i,
                 &game,
@@ -369,7 +372,7 @@ fn load_level(
 
         // Spawn the enemies
         for enemy in &level.enemies {
-            let mut ec = commands.spawn_bundle(EnemyBundle::new(enemy));
+            let mut ec = commands.spawn(EnemyBundle::new(enemy));
 
             if enemy.boss {
                 ec.insert(Boss);
@@ -378,7 +381,7 @@ fn load_level(
 
         // Spawn the items
         for item_spawn_meta in &level.items {
-            let item_commands = commands.spawn_bundle(ItemBundle::new(item_spawn_meta));
+            let item_commands = commands.spawn(ItemBundle::new(item_spawn_meta));
             ItemBundle::spawn(
                 item_commands,
                 item_spawn_meta,
@@ -400,7 +403,7 @@ fn hot_reload_level(
     mut parallax: ResMut<ParallaxResource>,
     mut events: EventReader<AssetEvent<LevelMeta>>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    level_handle: Res<Handle<LevelMeta>>,
+    level_handle: Res<LevelHandle>,
     assets: Res<Assets<LevelMeta>>,
     asset_server: Res<AssetServer>,
     windows: Res<Windows>,
@@ -408,7 +411,7 @@ fn hot_reload_level(
     for event in events.iter() {
         if let AssetEvent::Modified { handle } = event {
             let level = assets.get(handle).unwrap();
-            if handle == &*level_handle {
+            if handle == &**level_handle {
                 // Update the level background
                 let window = windows.primary();
                 parallax.despawn_layers(&mut commands);
@@ -424,12 +427,18 @@ fn hot_reload_level(
 
 fn load_items(
     mut commands: Commands,
-    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>), Without<Sprite>>,
+    item_spawns: Query<(Entity, &Transform, &Handle<ItemMeta>, Option<&Item>), Without<Sprite>>,
     item_assets: Res<Assets<ItemMeta>>,
 ) {
-    for (entity, transform, item_handle) in item_spawns.iter() {
+    for (entity, transform, item_handle, item) in item_spawns.iter() {
+        if let Some(item) = item {
+            if !item.spawn_sprite {
+                continue;
+            }
+        }
+
         if let Some(item_meta) = item_assets.get(item_handle) {
-            commands.entity(entity).insert_bundle(SpriteBundle {
+            commands.entity(entity).insert(SpriteBundle {
                 texture: item_meta.image.image_handle.clone(),
                 transform: *transform,
                 ..default()

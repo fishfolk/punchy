@@ -53,8 +53,8 @@ impl Plugin for MovementPlugin {
                         // the chain with the velocity system itself which applies the velocities to the
                         // entities.
                         update_left_movement_boundary
-                            .chain(constrain_player_movement)
-                            .chain(velocity_system),
+                            .pipe(constrain_player_movement)
+                            .pipe(velocity_system),
                     )
                     .with_system(angular_velocity_system)
                     .into(),
@@ -126,7 +126,7 @@ pub fn torque_system(mut query: Query<(&mut AngularVelocity, &Torque)>, time: Re
 }
 
 // (Moving) bondary before which, the players can't go back.
-#[derive(Component)]
+#[derive(Resource)]
 pub struct LeftMovementBoundary(f32);
 
 impl Default for LeftMovementBoundary {

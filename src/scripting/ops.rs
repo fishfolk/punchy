@@ -69,7 +69,7 @@ impl JsRuntimeOp for ItemGetGrabEvents {
                 // `wrapValueRef` on each item to wrap the them in a Proxy that will make it behave
                 // like a normal JavaScript object.
                 return bevyModJsScriptingOpSync('punchyGetItemGrabEvents')
-                    .map(x => globalThis.wrapValueRef(x));
+                    .map(x => Value.wrapValueRef(x));
             }
             "#,
         )
@@ -120,7 +120,7 @@ impl JsRuntimeOp for ItemGetGrabEvents {
                     .collect::<Vec<_>>();
 
                 // Return the list of events to JS
-                Ok(serde_json::to_value(&events)?)
+                Ok(serde_json::to_value(events)?)
             }
         )
     }

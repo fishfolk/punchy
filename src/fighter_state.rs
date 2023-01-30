@@ -5,6 +5,7 @@ use bevy_mod_js_scripting::ActiveScripts;
 use bevy_rapier2d::prelude::CollisionGroups;
 use iyes_loopless::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerSystem, prelude::ActionState};
+use rand::Rng;
 
 use crate::{
     animation::{AnimatedSpriteSheetBundle, Animation, Facing},
@@ -23,7 +24,7 @@ use crate::{
     },
     lifetime::Lifetime,
     metadata::{AttackMeta, AudioMeta, FighterMeta, ItemKind, ItemMeta, ItemSpawnMeta},
-    movement::LinearVelocity,
+    movement::{AngularVelocity, Force, LinearVelocity},
     player::Player,
     Collider, GameState, Stats,
 };
@@ -49,7 +50,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(collect_hitstuns)
                     .with_system(collect_player_actions)
                     .with_system(
-                        enemy_ai::set_target_near_player.chain(enemy_ai::emit_enemy_intents),
+                        enemy_ai::set_move_target_near_player.pipe(enemy_ai::emit_enemy_intents),
                     )
                     .into(),
             )
@@ -68,6 +69,7 @@ impl Plugin for FighterStatePlugin {
                     .with_system(transition_from_melee_attacking)
                     .with_system(transition_from_shooting)
                     .with_system(transition_from_bomb_throw)
+                    .with_system(transition_from_proj_attacking)
                     .into(),
             )
             // State handler systems
@@ -85,10 +87,10 @@ impl Plugin for FighterStatePlugin {
                     .with_system(grabbing)
                     .with_system(hitstun)
                     .with_system(dying)
-                    .with_system(holding)
                     .with_system(melee_attacking)
                     .with_system(shooting)
                     .with_system(bomb_throw)
+                    .with_system(projectile_attacking)
                     .into(),
             );
     }
@@ -318,12 +320,22 @@ impl Shooting {
     pub const ANIMATION: &'static str = "shooting";
 }
 
+#[derive(Component, Reflect, Default, Debug)]
+#[component(storage = "SparseSet")]
+pub struct ProjectileAttacking {
+    pub has_started: bool,
+    pub is_finished: bool,
+    pub thrown: bool,
+}
+impl ProjectileAttacking {
+    pub const PRIORITY: i32 = 30;
+    pub const ANIMATION: &'static str = "attacking";
+}
+
 /// Component indicating the player is holding a item on it's head
 #[derive(Component, Reflect, Default, Debug)]
 #[component(storage = "SparseSet")]
-pub struct Holding {
-    item: Handle<ItemMeta>,
-}
+pub struct Holding;
 impl Holding {
     pub const PRIORITY: i32 = 35;
 }
@@ -333,7 +345,7 @@ impl Holding {
 #[component(storage = "SparseSet")]
 pub struct HitStun {
     //velocity > pushback?
-    pub velocity: Vec2,
+    pub pushback: Vec2,
     pub timer: Timer,
 }
 impl HitStun {
@@ -472,12 +484,15 @@ fn collect_hitstuns(
     for event in damage_events.iter() {
         // If the damaged entity was a fighter
         if let Ok(mut transition_intents) = fighters.get_mut(event.damaged_entity) {
+            if event.hitstun_duration == 0.0 {
+                continue;
+            }
             // Trigger hit stun
             transition_intents.push_back(StateTransition::new(
                 HitStun {
                     //Hit stun velocity feels strange right now
-                    velocity: event.damage_velocity,
-                    timer: Timer::from_seconds(event.hitstun_duration, false),
+                    pushback: event.damage_velocity,
+                    timer: Timer::from_seconds(event.hitstun_duration, TimerMode::Once),
                 },
                 HitStun::PRIORITY,
                 false,
@@ -741,6 +756,35 @@ fn transition_from_shooting(
     }
 }
 
+fn transition_from_proj_attacking(
+    mut commands: Commands,
+    mut fighters: Query<(Entity, &mut StateTransitionIntents, &ProjectileAttacking)>,
+) {
+    'entity: for (entity, mut transition_intents, proj_attacking) in &mut fighters {
+        // Transition to any higher priority states
+        let current_state_removed = transition_intents
+            .transition_to_higher_priority_states::<ProjectileAttacking>(
+                entity,
+                ProjectileAttacking::PRIORITY,
+                &mut commands,
+            );
+
+        // If our current state was removed, don't continue processing this fighter
+        if current_state_removed {
+            continue 'entity;
+        }
+
+        // If we're done attacking
+        if proj_attacking.is_finished {
+            // Go back to idle
+            commands
+                .entity(entity)
+                .remove::<ProjectileAttacking>()
+                .insert(Idling);
+        }
+    }
+}
+
 //
 // Handle state systems
 //
@@ -820,7 +864,7 @@ fn flopping(
 
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
+                    .spawn(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
                     .insert(CollisionGroups::new(
@@ -837,7 +881,7 @@ fn flopping(
                     ))
                     .insert(Attack {
                         damage: attack.damage,
-                        velocity: if facing.is_left() {
+                        pushback: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
@@ -976,7 +1020,7 @@ fn chaining(
                     offset.y += fighter.collision_offset;
                     // Spawn the attack entity
                     let attack_entity = commands
-                        .spawn_bundle(TransformBundle::from_transform(
+                        .spawn(TransformBundle::from_transform(
                             Transform::from_translation(offset.extend(0.0)),
                         ))
                         .insert(CollisionGroups::new(
@@ -985,7 +1029,7 @@ fn chaining(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: if facing.is_left() {
+                            pushback: if facing.is_left() {
                                 Vec2::NEG_X
                             } else {
                                 Vec2::X
@@ -1073,7 +1117,7 @@ fn punching(
                 let attack_frames = attack.frames;
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
+                    .spawn(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
                     .insert(CollisionGroups::new(
@@ -1090,7 +1134,7 @@ fn punching(
                     ))
                     .insert(Attack {
                         damage: attack.damage,
-                        velocity: if facing.is_left() {
+                        pushback: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
@@ -1118,6 +1162,56 @@ fn punching(
         if animation.is_finished() {
             punching.is_finished = true;
         }
+    }
+}
+
+fn projectile_attacking(
+    mut commands: Commands,
+    mut fighters: Query<
+        (
+            &mut Animation,
+            &mut LinearVelocity,
+            &Facing,
+            &Transform,
+            &mut ProjectileAttacking,
+            &AvailableAttacks,
+        ),
+        With<Enemy>,
+    >,
+    item_assets: Res<Assets<ItemMeta>>,
+) {
+    for (mut animation, mut velocity, facing, transform, mut proj_attacking, available_attacks) in
+        &mut fighters
+    {
+        // Start the attack
+        let attack = available_attacks.current_attack();
+        let item = item_assets
+            .get(&attack.item_handle)
+            .expect("Fighter has no item");
+
+        if !proj_attacking.has_started {
+            proj_attacking.has_started = true;
+            animation.play(ProjectileAttacking::ANIMATION, false);
+        }
+
+        if !animation.is_finished() {
+            if animation.current_frame == attack.frames.startup && !proj_attacking.thrown {
+                // Spawn projectile
+                commands.spawn(Projectile::from_thrown_item(
+                    transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
+                    item,
+                    facing,
+                    true,
+                ));
+
+                proj_attacking.thrown = true;
+            }
+        } else if animation.is_finished() {
+            proj_attacking.is_finished = true;
+        }
+
+        // Stop fighter
+        **velocity = Vec2::ZERO;
     }
 }
 
@@ -1168,7 +1262,7 @@ fn ground_slam(
 
                 // Spawn the attack entity
                 let attack_entity = commands
-                    .spawn_bundle(TransformBundle::from_transform(
+                    .spawn(TransformBundle::from_transform(
                         Transform::from_translation(offset.extend(0.0)),
                     ))
                     .insert(CollisionGroups::new(
@@ -1177,7 +1271,7 @@ fn ground_slam(
                     ))
                     .insert(Attack {
                         damage: attack.damage,
-                        velocity: if facing.is_left() {
+                        pushback: if facing.is_left() {
                             Vec2::NEG_X
                         } else {
                             Vec2::X
@@ -1284,6 +1378,7 @@ fn bomb_throw(
             if let ItemKind::Bomb {
                 attack_frames,
                 spritesheet,
+                ..
             } = &item.kind
             {
                 sprite = Some(spritesheet);
@@ -1330,15 +1425,36 @@ fn bomb_throw(
                 if (animation.current_frame == attack.frames.startup && !bomb_throw.thrown)
                     || (animation.current_frame == attack.frames.active && bomb_throw.thrown)
                 {
+                    let lifetime = if let ItemKind::Bomb { lifetime, .. } = item.kind {
+                        Some(lifetime)
+                    } else {
+                        None
+                    };
+
                     // Spawn bomb
                     commands
-                        .spawn_bundle(AnimatedProjectile::new(0, facing, animated_sprite.clone()))
+                        .spawn(AnimatedProjectile::new(
+                            item,
+                            facing,
+                            animated_sprite.clone(),
+                        ))
                         .insert(Explodable {
                             attack: attack.clone(),
-                            timer: Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false),
+                            timer: Timer::from_seconds(
+                                lifetime.expect("Bomb item not found."),
+                                TimerMode::Once,
+                            ),
                             fusing: false,
                             animated_sprite,
                             explosion_frames: *attack_frames,
+                            attack_enemy: false,
+                        })
+                        .insert(ItemBundle {
+                            item: Item {
+                                spawn_sprite: false,
+                            },
+                            item_meta_handle: attack.item_handle.clone(),
+                            name: Name::new("Bomb Item"),
                         });
                     bomb_throw.thrown = !bomb_throw.thrown;
                 }
@@ -1395,10 +1511,10 @@ fn hitstun(
         // If this is the start of the hit stun
         if hitstun.timer.elapsed_secs() == 0.0 {
             // Calculate animation to use based on attack direction and fighter facing
-            let is_left = hitstun.velocity.x < 0.0;
+            let is_left = hitstun.pushback.x < 0.0;
             //TODO: change knocked right and left to knocked front and back
             let use_left_anim = if facing.is_left() { !is_left } else { is_left };
-            let animation_name = if hitstun.velocity == Vec2::ZERO {
+            let animation_name = if hitstun.pushback == Vec2::ZERO {
                 HitStun::HITSTUN
             } else if use_left_anim {
                 HitStun::KNOCKED_LEFT
@@ -1414,7 +1530,7 @@ fn hitstun(
         hitstun.timer.tick(time.delta());
 
         // Set our figher velocity to the hit stun velocity
-        **velocity = hitstun.velocity;
+        **velocity = hitstun.pushback;
     }
 }
 
@@ -1449,7 +1565,16 @@ fn throwing(
         ),
         With<Throwing>,
     >,
-    being_held: Query<(Entity, &Parent), With<BeingHeld>>,
+    mut being_held: Query<
+        (
+            Entity,
+            &Parent,
+            &GlobalTransform,
+            Option<&mut Explodable>,
+            &Handle<ItemMeta>,
+        ),
+        With<BeingHeld>,
+    >,
     weapon_held: Query<(Entity, &Parent), With<MeleeWeapon>>,
     pweapon_held: Query<(Entity, &Parent), With<ProjectileWeapon>>,
     mut items_assets: ResMut<Assets<ItemMeta>>,
@@ -1467,10 +1592,11 @@ fn throwing(
             match &item_meta.kind {
                 ItemKind::Throwable { .. } => {
                     // Throw the item!
-                    commands.spawn_bundle(Projectile::from_thrown_item(
+                    commands.spawn(Projectile::from_thrown_item(
                         fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                         &item_meta,
                         facing,
+                        false,
                     ));
                 }
                 ItemKind::Script { script_handle, .. } => {
@@ -1483,10 +1609,11 @@ fn throwing(
                     ref item_handle, ..
                 } => {
                     commands
-                        .spawn_bundle(Projectile::from_thrown_item(
+                        .spawn(Projectile::from_thrown_item(
                             fighter_transform.translation + consts::THROW_ITEM_OFFSET.extend(0.0),
                             &item_meta,
                             facing,
+                            false,
                         ))
                         .insert(Drop {
                             item: items_assets
@@ -1496,7 +1623,7 @@ fn throwing(
                         });
 
                     // Despawn head sprite
-                    for (head_ent, parent) in being_held.iter() {
+                    for (head_ent, parent, ..) in being_held.iter() {
                         if parent.get() == entity {
                             commands.entity(head_ent).despawn_recursive();
                         }
@@ -1512,7 +1639,7 @@ fn throwing(
                         item: String::new(),
                         item_handle: items_assets.add(item_meta.clone()),
                     };
-                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    let item_commands = commands.spawn(ItemBundle::new(&item_spawn_meta));
                     ItemBundle::spawn(
                         item_commands,
                         &item_spawn_meta,
@@ -1540,7 +1667,7 @@ fn throwing(
                         item: String::new(),
                         item_handle: items_assets.add(item_meta.clone()),
                     };
-                    let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+                    let item_commands = commands.spawn(ItemBundle::new(&item_spawn_meta));
                     ItemBundle::spawn(
                         item_commands,
                         &item_spawn_meta,
@@ -1560,7 +1687,60 @@ fn throwing(
                     }
                 }
                 ItemKind::Bomb { .. } => {
-                    panic!("Can't throw bomb")
+                    for (head_ent, parent, g_transform, explodable, item_handle) in
+                        being_held.iter_mut()
+                    {
+                        if parent.get() == entity {
+                            commands.entity(entity).remove_children(&[head_ent]);
+                            commands
+                                .entity(head_ent)
+                                .insert(g_transform.compute_transform());
+                            if let Some(mut explodable) = explodable {
+                                explodable.timer.reset();
+                                explodable.attack_enemy = true;
+                            }
+
+                            let direction_mul = if facing.is_left() {
+                                Vec2::new(-1.0, 1.0)
+                            } else {
+                                Vec2::ONE
+                            };
+                            let mut rng = rand::thread_rng();
+                            let item = items_assets.get(item_handle).expect("Bomb item not found.");
+
+                            let (gravity, throw_velocity) = if let ItemKind::Bomb {
+                                gravity,
+                                throw_velocity,
+                                ..
+                            } = item.kind
+                            {
+                                Some((gravity, throw_velocity))
+                            } else {
+                                None
+                            }
+                            .expect("Item is not a bomb.");
+
+                            commands.entity(head_ent).insert((
+                                LinearVelocity(
+                                    throw_velocity * direction_mul * rng.gen_range(0.8..1.2),
+                                ),
+                                Force(Vec2::new(0.0, -gravity)),
+                                AngularVelocity(
+                                    consts::THROW_ITEM_ROTATION_SPEED
+                                        * direction_mul.x
+                                        * rng.gen_range(0.8..1.2),
+                                ),
+                                CollisionGroups::new(
+                                    BodyLayers::PLAYER_ATTACK,
+                                    BodyLayers::PLAYER
+                                        | BodyLayers::ENEMY
+                                        | BodyLayers::BREAKABLE_ITEM,
+                                ),
+                                Collider::cuboid(consts::ITEM_WIDTH / 2., consts::ITEM_HEIGHT / 2.),
+                            ));
+                        }
+                    }
+                    commands.entity(entity).remove::<Holding>();
                 }
             }
         }
@@ -1620,25 +1800,38 @@ fn grabbing(
                                 });
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::Throwable { damage: _ } => {
+                            ItemKind::Throwable { damage: _, .. } => {
                                 // If its throwable, pick up the item
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
                                 commands.entity(item_ent).despawn_recursive();
                             }
-                            ItemKind::BreakableBox { .. } => {
+                            ItemKind::BreakableBox { .. } | ItemKind::Bomb { .. } => {
                                 // Transition to holding state
                                 transition_intents.push_back(StateTransition::new(
-                                    Holding { item: item.clone() },
+                                    Holding,
                                     Holding::PRIORITY,
                                     true,
+                                ));
+
+                                let image = items_assets
+                                    .get(item)
+                                    .expect("Item not loaded!")
+                                    .clone()
+                                    .image;
+
+                                commands.entity(item_ent).insert(Transform::from_xyz(
+                                    0.,
+                                    consts::THROW_ITEM_OFFSET.y + image.image_size.y,
+                                    consts::PROJECTILE_Z,
                                 ));
 
                                 picked_item_ids.insert(item_ent);
                                 **fighter_inventory =
                                     Some(items_assets.get(item).expect("Item not loaded!").clone());
-                                commands.entity(item_ent).despawn_recursive();
+                                commands.entity(item_ent).remove::<Item>().insert(BeingHeld);
+                                commands.entity(fighter_ent).add_child(item_ent);
                             }
                             ItemKind::MeleeWeapon {
                                 ref attack,
@@ -1676,23 +1869,24 @@ fn grabbing(
                                     Some("idle".to_string());
 
                                 let weapon = commands
-                                    .spawn()
-                                    .insert(MeleeWeapon {
-                                        audio: audio.clone(),
-                                        attack: attack.clone(),
-                                    })
-                                    //need this because of hierarchy check in hitbox activation system,
-                                    //consider rearchitecting
-                                    .insert(AvailableAttacks {
-                                        attacks: vec![attack.clone()],
-                                    })
-                                    .insert_bundle(animated_sprite)
-                                    .insert(Attached {
-                                        position_face: true,
-                                        sync_facing: true,
-                                        sync_animation: false,
-                                    })
-                                    .insert(Facing::default())
+                                    .spawn((
+                                        MeleeWeapon {
+                                            audio: audio.clone(),
+                                            attack: attack.clone(),
+                                        },
+                                        //need this because of hierarchy check in hitbox activation system,
+                                        //consider rearchitecting
+                                        AvailableAttacks {
+                                            attacks: vec![attack.clone()],
+                                        },
+                                        animated_sprite,
+                                        Attached {
+                                            position_face: true,
+                                            sync_facing: true,
+                                            sync_animation: false,
+                                        },
+                                        Facing::default(),
+                                    ))
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
                             }
@@ -1735,32 +1929,31 @@ fn grabbing(
                                 animated_sprite.animation.current_animation =
                                     Some("idle".to_string());
 
-                                let mut shoot_timer = Timer::from_seconds(*shoot_delay, false);
+                                let mut shoot_timer =
+                                    Timer::from_seconds(*shoot_delay, TimerMode::Once);
                                 shoot_timer.set_elapsed(Duration::from_secs_f32(*shoot_delay));
 
                                 let weapon = commands
-                                    .spawn()
-                                    .insert(ProjectileWeapon {
-                                        attack: attack.clone(),
-                                        animated_sprite: animated_sprite.clone(),
-                                        audio: audio.clone(),
-                                        bullet_velocity: *bullet_velocity,
-                                        bullet_lifetime: *bullet_lifetime,
-                                        ammo: *ammo,
-                                        shoot_delay: shoot_timer,
-                                    })
-                                    .insert_bundle(animated_sprite)
-                                    .insert(Attached {
-                                        position_face: true,
-                                        sync_facing: true,
-                                        sync_animation: false,
-                                    })
-                                    .insert(Facing::default())
+                                    .spawn((
+                                        ProjectileWeapon {
+                                            attack: attack.clone(),
+                                            animated_sprite: animated_sprite.clone(),
+                                            audio: audio.clone(),
+                                            bullet_velocity: *bullet_velocity,
+                                            bullet_lifetime: *bullet_lifetime,
+                                            ammo: *ammo,
+                                            shoot_delay: shoot_timer,
+                                        },
+                                        animated_sprite,
+                                        Attached {
+                                            position_face: true,
+                                            sync_facing: true,
+                                            sync_animation: false,
+                                        },
+                                        Facing::default(),
+                                    ))
                                     .id();
                                 commands.entity(fighter_ent).add_child(weapon);
-                            }
-                            ItemKind::Bomb { .. } => {
-                                panic!("Can't pick up bomb")
                             }
                         }
                     }
@@ -1771,47 +1964,6 @@ fn grabbing(
         // Grabbing is an "instant" state, that is removed at the end of every frame. Eventually it
         // may not be and it might play a fighter animation.
         commands.entity(fighter_ent).remove::<Grabbing>();
-    }
-}
-
-/// Holding item
-fn holding(
-    mut commands: Commands,
-    mut fighters: Query<(Entity, &Holding)>,
-    being_held: Query<&Parent, With<BeingHeld>>,
-    items_assets: Res<Assets<ItemMeta>>,
-) {
-    for (entity, holding) in &mut fighters {
-        let mut already_holding = false;
-        for parent in being_held.iter() {
-            if parent.get() == entity {
-                already_holding = true;
-                break;
-            }
-        }
-
-        if !already_holding {
-            let image = items_assets
-                .get(&holding.item)
-                .expect("Item not loaded!")
-                .clone()
-                .image;
-
-            let child = commands
-                .spawn()
-                .insert_bundle(SpriteBundle {
-                    texture: image.image_handle.clone(),
-                    transform: Transform::from_xyz(
-                        0.,
-                        consts::THROW_ITEM_OFFSET.y + image.image_size.y,
-                        consts::PROJECTILE_Z,
-                    ),
-                    ..default()
-                })
-                .insert(BeingHeld)
-                .id();
-            commands.entity(entity).add_child(child);
-        }
     }
 }
 
@@ -1860,7 +2012,7 @@ fn melee_attacking(
                     let attack_frames = attack.frames;
                     // Spawn the attack entity
                     let attack_entity = commands
-                        .spawn_bundle(TransformBundle::from_transform(
+                        .spawn(TransformBundle::from_transform(
                             Transform::from_translation(offset.extend(0.0)),
                         ))
                         .insert(CollisionGroups::new(
@@ -1877,7 +2029,7 @@ fn melee_attacking(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: if facing.is_left() {
+                            pushback: if facing.is_left() {
                                 Vec2::NEG_X
                             } else {
                                 Vec2::X
@@ -1967,11 +2119,7 @@ fn shooting(
                     animated_sprite.sprite_sheet.sprite.flip_x = facing.is_left();
                     animated_sprite.animation.play("shooting_particles", false);
 
-                    let weapon_particles = commands
-                        .spawn()
-                        .insert_bundle(animated_sprite.clone())
-                        .insert(Particle)
-                        .id();
+                    let weapon_particles = commands.spawn((animated_sprite.clone(), Particle)).id();
                     commands.entity(weapon_ent).add_child(weapon_particles);
 
                     //Sound
@@ -2007,7 +2155,7 @@ fn shooting(
                     );
 
                     let bullet_attack = commands
-                        .spawn_bundle(TransformBundle::from_transform(
+                        .spawn(TransformBundle::from_transform(
                             Transform::from_translation(
                                 (attack.hitbox.offset * direction_mul).extend(0.0),
                             ),
@@ -2018,7 +2166,7 @@ fn shooting(
                         ))
                         .insert(Attack {
                             damage: attack.damage,
-                            velocity: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
+                            pushback: attack.velocity.unwrap_or(Vec2::ZERO) * direction_mul,
                             hitstun_duration: attack.hitstun_duration,
                             hitbox_meta: None,
                         })
@@ -2030,8 +2178,11 @@ fn shooting(
                         .id();
 
                     commands
-                        .spawn_bundle(animated_sprite)
-                        .insert(Lifetime(Timer::from_seconds(weapon.bullet_lifetime, false)))
+                        .spawn(animated_sprite)
+                        .insert(Lifetime(Timer::from_seconds(
+                            weapon.bullet_lifetime,
+                            TimerMode::Once,
+                        )))
                         .insert(LinearVelocity(
                             Vec2::new(weapon.bullet_velocity, 0.) * direction_mul,
                         ))

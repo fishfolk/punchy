@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{
     hierarchy::DespawnRecursiveExt,
     math::Vec2,
@@ -34,6 +36,7 @@ impl Plugin for AttackPlugin {
                     .with_system(activate_hitbox)
                     .with_system(deactivate_hitbox)
                     .with_system(breakable_system)
+                    .with_system(damage_flash)
                     .into(),
             )
             // Attack damage is run in PostUpdate to make sure it runs after rapier generates collision events
@@ -43,6 +46,12 @@ impl Plugin for AttackPlugin {
     }
 }
 
+//Component to representing a timer to start and stop the flash upon damage impact
+#[derive(Component)]
+pub struct FlashingTimer {
+    pub timer: Timer,
+}
+
 /// A component representing an attack that can do damage to [`Damageable`]s with [`Health`].
 #[derive(Component, Clone, Copy, Default, Reflect)]
 #[reflect(Component)]
@@ -50,7 +59,7 @@ pub struct Attack {
     //maybe just replace all fields with AttackMeta
     pub damage: i32,
     /// The direction and speed that the attack is hitting something in.
-    pub velocity: Vec2,
+    pub pushback: Vec2,
     pub hitstun_duration: f32,
     /// add this for attacks that are not immediately active, used in activate_hitbox
     pub hitbox_meta: Option<ColliderMeta>,
@@ -152,8 +161,31 @@ fn deactivate_hitbox(
     }
 }
 
+// flash component
+// changes an entity's sprite to white for a specified amount of time
+fn damage_flash(
+    mut commands: Commands,
+    mut flash_query: Query<(&mut FlashingTimer, Entity, &mut TextureAtlasSprite)>,
+    time: Res<Time>,
+) {
+    for (mut timer, timer_e, mut timer_sprite) in flash_query.iter_mut() {
+        //Set the color to white
+        timer_sprite.color = Color::rgb(255.0, 255.0, 255.0);
+
+        //run the timer
+        timer.timer.tick(time.delta());
+
+        //Reset the color back to normal and remove the flash component
+        if timer.timer.finished() {
+            timer_sprite.color = Color::rgba(1.0, 1.0, 1.0, 1.0);
+            commands.entity(timer_e).remove::<FlashingTimer>();
+        }
+    }
+}
+
 /// Depletes the health of damageables that have collided with attacks
 fn attack_damage_system(
+    mut commands: Commands,
     mut events: EventReader<CollisionEvent>,
     mut damageables: Query<(&mut Health, &Damageable)>,
     attacks: Query<&Attack>,
@@ -180,9 +212,16 @@ fn attack_damage_system(
                 if **damageable {
                     **health -= attack.damage;
 
+                    //Damage flash of 100ms upon an entity taking damage
+                    commands
+                        .entity(hurtbox_parent_entity)
+                        .insert(FlashingTimer {
+                            timer: Timer::new(Duration::from_millis(100), TimerMode::Repeating),
+                        });
+
                     event_writer.send(DamageEvent {
                         damageing_entity: attack_entity,
-                        damage_velocity: attack.velocity,
+                        damage_velocity: attack.pushback,
                         damage: attack.damage,
                         damaged_entity: hurtbox_parent_entity,
                         hitstun_duration: attack.hitstun_duration,

@@ -8,6 +8,7 @@ use crate::{
     attack::{Attack, AttackFrames, Breakable, BrokeEvent},
     collision::{BodyLayers, PhysicsBundle},
     consts,
+    fighter::Inventory,
     lifetime::{Lifetime, LifetimeExpired},
     metadata::{AttackMeta, ItemKind, ItemMeta, ItemSpawnMeta},
     movement::{AngularVelocity, Force, LinearVelocity},
@@ -37,19 +38,22 @@ pub struct ScriptItemGrabEvent {
 }
 
 #[derive(Component)]
-pub struct Item;
+pub struct Item {
+    /// Prevent the spawning of a Sprite component by load_items by setting this to false
+    pub spawn_sprite: bool,
+}
 
 #[derive(Bundle)]
 pub struct ItemBundle {
-    item: Item,
-    item_meta_handle: Handle<ItemMeta>,
-    name: Name,
+    pub item: Item,
+    pub item_meta_handle: Handle<ItemMeta>,
+    pub name: Name,
 }
 
 impl ItemBundle {
     pub fn new(item_spawn_meta: &ItemSpawnMeta) -> Self {
         Self {
-            item: Item,
+            item: Item { spawn_sprite: true },
             item_meta_handle: item_spawn_meta.item_handle.clone(),
             // TODO: Actually include the item's name at some point
             name: Name::new("Map Item"),
@@ -67,7 +71,7 @@ impl ItemBundle {
             item_spawn_meta.location + ground_offset,
         ));
 
-        commands.insert_bundle(transform_bundle);
+        commands.insert(transform_bundle);
 
         let mut item = None;
         let item_meta = items_assets
@@ -85,9 +89,7 @@ impl ItemBundle {
                 let mut physics_bundle = PhysicsBundle::new(hurtbox, BodyLayers::BREAKABLE_ITEM);
                 physics_bundle.collision_groups.filters = BodyLayers::PLAYER_ATTACK;
 
-                commands
-                    .insert_bundle(physics_bundle)
-                    .insert(Breakable::new(*hits, false));
+                commands.insert((physics_bundle, Breakable::new(*hits, false)));
             }
             ItemKind::Script { script_handle, .. } => {
                 active_scripts.insert(script_handle.clone());
@@ -121,12 +123,47 @@ pub struct Projectile {
 }
 
 impl Projectile {
-    pub fn from_thrown_item(translation: Vec3, item_meta: &ItemMeta, facing: &Facing) -> Self {
+    pub fn from_thrown_item(
+        translation: Vec3,
+        item_meta: &ItemMeta,
+        facing: &Facing,
+        enemy: bool,
+    ) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
             Vec2::ONE
         };
+
+        let item_vars = match item_meta.kind {
+            crate::metadata::ItemKind::Throwable {
+                damage,
+                gravity,
+                throw_velocity,
+                lifetime,
+                pushback,
+                hitstun_duration,
+                ..
+            }
+            | crate::metadata::ItemKind::BreakableBox {
+                damage,
+                gravity,
+                throw_velocity,
+                lifetime,
+                pushback,
+                hitstun_duration,
+                ..
+            } => Some((
+                damage,
+                gravity,
+                throw_velocity,
+                lifetime,
+                pushback,
+                hitstun_duration,
+            )),
+            _ => None,
+        }
+        .expect("Non throwable item");
 
         Self {
             sprite_bundle: SpriteBundle {
@@ -135,27 +172,14 @@ impl Projectile {
                 ..default()
             },
             attack: Attack {
-                damage: match item_meta.kind {
-                    crate::metadata::ItemKind::Throwable { damage } => damage,
-                    crate::metadata::ItemKind::BreakableBox { damage, .. } => damage,
-                    crate::metadata::ItemKind::MeleeWeapon { .. }
-                    | crate::metadata::ItemKind::ProjectileWeapon { .. } => {
-                        panic!("Cannot throw weapon")
-                    }
-                    crate::metadata::ItemKind::Script { .. } => {
-                        panic!("Cannot throw scripted items as projectiles")
-                    }
-                    crate::metadata::ItemKind::Bomb { .. } => {
-                        panic!("Bomb is a animated projectile")
-                    }
-                },
-                velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
-                hitstun_duration: consts::HITSTUN_DURATION,
+                damage: item_vars.0,
+                pushback: Vec2::new(item_vars.4, 0.0) * direction_mul,
+                hitstun_duration: item_vars.5,
                 hitbox_meta: None,
             },
-            velocity: LinearVelocity(consts::THROW_ITEM_SPEED * direction_mul),
+            velocity: LinearVelocity(item_vars.2 * direction_mul),
             // Gravity
-            force: Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+            force: Force(Vec2::new(0.0, -item_vars.1)),
             angular_velocity: AngularVelocity(consts::THROW_ITEM_ROTATION_SPEED * direction_mul.x),
             collider: Collider::cuboid(consts::ITEM_WIDTH / 2., consts::ITEM_HEIGHT / 2.),
             sensor: Sensor,
@@ -164,10 +188,18 @@ impl Projectile {
             //TODO: define collision layer based on the fighter shooting projectile, load for asset
             //files of fighter which "team" they are on
             collision_groups: CollisionGroups::new(
-                BodyLayers::PLAYER_ATTACK,
-                BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM,
+                if enemy {
+                    BodyLayers::ENEMY_ATTACK
+                } else {
+                    BodyLayers::PLAYER_ATTACK
+                },
+                if enemy {
+                    BodyLayers::PLAYER
+                } else {
+                    BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                },
             ),
-            lifetime: Lifetime(Timer::from_seconds(consts::THROW_ITEM_LIFETIME, false)),
+            lifetime: Lifetime(Timer::from_seconds(item_vars.3, TimerMode::Once)),
             breakable: Breakable::new(0, false),
         }
     }
@@ -207,7 +239,7 @@ fn drop_system(
             item: String::new(),
             item_handle: items_assets.add(drop.item.clone()),
         };
-        let item_commands = commands.spawn_bundle(ItemBundle::new(&item_spawn_meta));
+        let item_commands = commands.spawn(ItemBundle::new(&item_spawn_meta));
         ItemBundle::spawn(
             item_commands,
             &item_spawn_meta,
@@ -225,6 +257,7 @@ pub struct Explodable {
     pub fusing: bool,
     pub animated_sprite: AnimatedSpriteSheetBundle,
     pub explosion_frames: AttackFrames,
+    pub attack_enemy: bool,
 }
 
 fn explodable_system(
@@ -236,10 +269,13 @@ fn explodable_system(
         &mut LinearVelocity,
         &mut AngularVelocity,
         &mut Transform,
+        &GlobalTransform,
         &mut Animation,
         Entity,
+        Option<&Parent>,
     )>,
     time: Res<Time>,
+    mut inventory: Query<&mut Inventory>,
 ) {
     let mut explosions = Vec::new();
 
@@ -255,8 +291,10 @@ fn explodable_system(
         mut velocity,
         mut ang_vel,
         mut transform,
+        g_transform,
         mut animation,
         entity,
+        parent,
     ) in &mut explodables
     {
         explodable.timer.tick(time.delta());
@@ -270,8 +308,18 @@ fn explodable_system(
 
             animation.play("bomb_fuse", false);
             explodable.fusing = true;
+
+            //Remove explosion on contact
+            commands.entity(entity).remove::<Collider>();
         } else if animation.is_finished() && explodable.fusing {
-            explosions.push((*transform, explodable.clone()));
+            explosions.push((g_transform.compute_transform(), explodable.clone()));
+
+            if let Some(parent) = parent {
+                if let Ok(mut inventory) = inventory.get_mut(parent.get()) {
+                    **inventory = None;
+                }
+            }
+
             commands.entity(entity).despawn_recursive();
         }
     }
@@ -293,27 +341,36 @@ fn explodable_system(
             * animated_sprite.animation.timer.duration().as_secs_f32();
 
         let attack_ent = commands
-            .spawn()
-            .insert(Sensor)
-            .insert(ActiveEvents::COLLISION_EVENTS)
-            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC)
-            .insert(CollisionGroups::new(
-                BodyLayers::ENEMY_ATTACK,
-                BodyLayers::PLAYER,
+            .spawn((
+                Sensor,
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::default() | ActiveCollisionTypes::STATIC_STATIC,
+                CollisionGroups::new(
+                    if explodable.attack_enemy {
+                        BodyLayers::PLAYER_ATTACK
+                    } else {
+                        BodyLayers::ENEMY_ATTACK
+                    },
+                    if explodable.attack_enemy {
+                        BodyLayers::PLAYER | BodyLayers::ENEMY | BodyLayers::BREAKABLE_ITEM
+                    } else {
+                        BodyLayers::PLAYER
+                    },
+                ),
+                Attack {
+                    damage: attack.damage,
+                    pushback: attack.velocity.unwrap_or(Vec2::ZERO),
+                    hitstun_duration: attack.hitstun_duration,
+                    hitbox_meta: Some(explodable.attack.hitbox),
+                },
+                explodable.explosion_frames,
+                transform,
             ))
-            .insert(Attack {
-                damage: attack.damage,
-                velocity: attack.velocity.unwrap_or(Vec2::ZERO),
-                hitstun_duration: attack.hitstun_duration,
-                hitbox_meta: Some(explodable.attack.hitbox),
-            })
-            .insert(explodable.explosion_frames)
-            .insert(transform)
             .id();
 
         commands
-            .spawn_bundle(animated_sprite)
-            .insert(Lifetime(Timer::from_seconds(seconds, false)))
+            .spawn(animated_sprite)
+            .insert(Lifetime(Timer::from_seconds(seconds, TimerMode::Once)))
             .insert(explodable)
             .push_children(&[attack_ent]);
     }
@@ -336,7 +393,11 @@ pub struct AnimatedProjectile {
 }
 
 impl AnimatedProjectile {
-    pub fn new(damage: i32, facing: &Facing, animated_sprite: AnimatedSpriteSheetBundle) -> Self {
+    pub fn new(
+        item_meta: &ItemMeta,
+        facing: &Facing,
+        animated_sprite: AnimatedSpriteSheetBundle,
+    ) -> Self {
         let direction_mul = if facing.is_left() {
             Vec2::new(-1.0, 1.0)
         } else {
@@ -344,19 +405,28 @@ impl AnimatedProjectile {
         };
         let mut rng = rand::thread_rng();
 
+        let item_vars = match item_meta.kind {
+            crate::metadata::ItemKind::Bomb {
+                damage,
+                gravity,
+                throw_velocity,
+                ..
+            } => Some((damage, gravity, throw_velocity)),
+            _ => None,
+        }
+        .expect("Non bomb");
+
         Self {
             sprite_bundle: animated_sprite,
             attack: Attack {
-                damage,
-                velocity: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
+                damage: item_vars.0,
+                pushback: Vec2::new(consts::ITEM_ATTACK_VELOCITY, 0.0) * direction_mul,
                 hitstun_duration: consts::HITSTUN_DURATION,
                 hitbox_meta: None,
             },
-            velocity: LinearVelocity(
-                consts::THROW_ITEM_SPEED * direction_mul * rng.gen_range(0.8..1.2),
-            ),
+            velocity: LinearVelocity(item_vars.2 * direction_mul * rng.gen_range(0.8..1.2)),
             // Gravity
-            force: Force(Vec2::new(0.0, -consts::THROW_ITEM_GRAVITY)),
+            force: Force(Vec2::new(0.0, -item_vars.1)),
             angular_velocity: AngularVelocity(
                 consts::THROW_ITEM_ROTATION_SPEED * direction_mul.x * rng.gen_range(0.8..1.2),
             ),

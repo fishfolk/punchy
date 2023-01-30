@@ -11,6 +11,7 @@ kind: !Bomb
     columns: 11
     rows: 3
 
+    #TODO: return and find another way to extend duration after animation system changes
     animation_fps: 0.12
     animations:
       explosion:
@@ -18,8 +19,14 @@ kind: !Bomb
       bomb:
         frames: [11, 11]
       bomb_fuse:
-        frames: [22, 24]
+        frames: [22, 28]
   attack_frames:
     startup: 0
     active: 3
     recovery: 3
+
+  # Contact damage, explosion damage comes from boss attack
+  damage: 10
+  gravity: 1200
+  throw_velocity: [200, 300]
+  lifetime: 0.64
