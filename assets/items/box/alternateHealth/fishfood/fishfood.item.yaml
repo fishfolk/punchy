@@ -1,8 +1,0 @@
-name: Fishfood
-
-image:
-  image: fishfood.png
-  image_size: [20, 30]
-
-kind: !Script
-  script: ./50percent.ts
