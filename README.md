@@ -9,7 +9,7 @@ A 2.5D side-scroller beat-’em-up, made in Bevy. Inspired by games like Little 
 
 ![EA469655-50B7-487F-84EA-A4A06938356A](https://user-images.githubusercontent.com/583842/161245719-7b587a2a-dd02-4edc-8640-b26ae6f7eafb.gif)
 
-https://user-images.githubusercontent.com/1379590/204110547-80312b22-db88-4ce0-be59-b4fff28f094f.mp4
+https://user-images.githubusercontent.com/1379590/215623680-2abbd867-717c-42d3-898c-aa7d110e0e0c.mp4
 
 ## Web Build
 
@@ -42,7 +42,3 @@ Or if you install [`just`](https://github.com/casey/just) you can simply run `ju
 ## MVP Spec
 
 ![861A6300-5FFD-4DDC-B4BF-0E8514F4B87C](https://user-images.githubusercontent.com/583842/161247148-0bc07089-1409-48ca-9cc8-ee1a1edddb9e.png)
-
-
-
-
