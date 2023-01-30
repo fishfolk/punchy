@@ -681,11 +681,11 @@ fn format_input(input: &InputKind) -> String {
             let direction = if axis.positive_low == 1.0 { "-" } else { "+" };
 
             let stick = match axis.axis_type {
-                leafwing_input_manager::axislike::AxisType::Gamepad(axis) => format!("{:?}", axis),
-                other => format!("{:?}", other),
+                leafwing_input_manager::axislike::AxisType::Gamepad(axis) => format!("{axis:?}"),
+                other => format!("{other:?}"),
             };
 
-            format!("{} {}", stick, direction)
+            format!("{stick} {direction}")
         }
         other => other.to_string(),
     }
