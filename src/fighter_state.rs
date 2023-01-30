@@ -484,6 +484,9 @@ fn collect_hitstuns(
     for event in damage_events.iter() {
         // If the damaged entity was a fighter
         if let Ok(mut transition_intents) = fighters.get_mut(event.damaged_entity) {
+            if event.hitstun_duration == 0.0 {
+                continue;
+            }
             // Trigger hit stun
             transition_intents.push_back(StateTransition::new(
                 HitStun {
