@@ -1,0 +1,22 @@
+name: Box
+
+image:
+    image: box.png
+    image_size: [32, 32]
+
+kind: !BreakableBox
+    hits: 1
+
+    damage: 20
+    gravity: 1200
+    throw_velocity: [200, 300]
+    lifetime: 0.64
+    pushback: 80
+    hitstun_duration: 0.5
+
+    hurtbox:
+        size: [36, 52]
+        offset: [0, 0]
+
+    item: &bottle /items/bottle/bottle.item.yaml
+            

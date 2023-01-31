@@ -1,0 +1,8 @@
+name: Poison
+
+image:
+  image: poison.png
+  image_size: [22, 20]
+
+kind: !Script
+  script: ./poison.ts
