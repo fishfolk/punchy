@@ -21,7 +21,7 @@ anyhow          = "1.0.58"
 bevy-parallax   = "0.3.0"
 bevy_egui       = "0.18.0"
 bevy_kira_audio = { version = "0.13.0", features = ["mp3"] }
-bevy_rapier2d   = { version = "0.19.0", features = ["debug-render"] }
+bevy_rapier2d   = { version = "0.20.0", features = ["debug-render-2d"] }
 egui_extras     = "0.20.0"
 getrandom       = { version = "0.2", features = ["js"] }
 iyes_loopless   = { version = "0.9.0", features = ["states"] }
